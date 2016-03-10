@@ -28,11 +28,6 @@ unsigned int column_index( unsigned int i, unsigned int M ){
 */
 
 
-__global__ void test()
-{
-	return;
-}
-
 
 //Assumes square matrices
 __device__ __host__ uint64_t upperTriangularLength(unsigned int numRows)
@@ -93,6 +88,17 @@ __global__ void parallelMeanUnroll2(float* d_inputArray, uint64_t inputLength, f
 
 }
 
+
+
+__global__ void subtractMean(float* d_inputArray, uint64_t inputLength, float d_mean)
+{
+	uint32_t globalThreadIndex = blockDim.x * blockIdx.x + threadIdx.x;
+
+	if(globalThreadIndex >= inputLength)
+		return;
+
+	d_inputArray[globalThreadIndex] -= d_mean;
+}
 
 
 

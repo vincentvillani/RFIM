@@ -18,10 +18,11 @@
 
 #include "../Header/Kernels.h"
 #include "../Header/UnitTests.h"
+#include "../Header/CudaMacros.h"
 
 
 //TODO: Test the mean kernel on known data
-
+//TODO: Have the signal number be a parameter, store it all in one big array
 
 
 int main(int argc, char **argv)
@@ -33,22 +34,28 @@ int main(int argc, char **argv)
 
 	uint64_t n = 1024;
 	curandGenerator_t rngGen;
-	float* d_Signal1;
-	float* d_Signal2;
+	float* d_signal1;
+	float* d_signal2;
+	float* d_tempWorkingSpace; //The length of 1 signal
 
-	float* d_Signal1Mean;
-	float* d_Signal2Mean;
+	float* d_meanVector;
+	float* d_covarianceVector;
+	float* d_covarianceMatrix; //triangular
 
 
 
 	//Allocate data on the device
-	cudaMalloc(&d_Signal1, sizeof(float) * n);
-	cudaMalloc(&d_Signal2, sizeof(float) * n);
+	cudaMalloc(&d_signal1, sizeof(float) * n);
+	cudaMalloc(&d_signal2, sizeof(float) * n);
+	cudaMalloc(&d_tempWorkingSpace, sizeof(float) * n);
 
-	cudaMalloc(&d_Signal1Mean, sizeof(float));
-	cudaMalloc(&d_Signal2Mean, sizeof(float));
 
-	//Create RN generator
+	cudaMalloc(&d_covarianceVector, sizeof(float) * 2);
+	cudaMalloc(&d_meanVector, sizeof(float) * 2);
+	cudaMalloc(&d_covarianceMatrix, sizeof(float) * 2);
+
+
+	//Create RNG
 	//Might have to change this to something else if it isn't good enough
 	if( curandCreateGenerator(&rngGen, CURAND_RNG_PSEUDO_DEFAULT) != CURAND_STATUS_SUCCESS)
 	{
@@ -67,14 +74,14 @@ int main(int argc, char **argv)
 	//Generate random numbers using a normal distribution
 	//Normal distribution should emulate white noise hopefully?
 	//Generate signal 1
-	if(curandGenerateNormal(rngGen, d_Signal1, n, 0.0f, 1.0f) != CURAND_STATUS_SUCCESS)
+	if(curandGenerateNormal(rngGen, d_signal1, n, 0.0f, 1.0f) != CURAND_STATUS_SUCCESS)
 	{
 		printf("Error at %s:%d\n",__FILE__,__LINE__);
 		exit(1);
 	}
 
 	//Generate signal 2
-	if(curandGenerateNormal(rngGen, d_Signal2, n, 0.0f, 1.0f) != CURAND_STATUS_SUCCESS)
+	if(curandGenerateNormal(rngGen, d_signal2, n, 0.0f, 1.0f) != CURAND_STATUS_SUCCESS)
 	{
 		printf("Error at %s:%d\n",__FILE__,__LINE__);
 		exit(1);
@@ -85,9 +92,25 @@ int main(int argc, char **argv)
 	dim3 grid(2); //Number of blocks in the grid
 	dim3 block(256); //Number of threads per block
 
-	//parallelMeanUnroll2 <<<grid.x, block.x>>> (d_Signal1, n, d_Signal1Mean);
-	//parallelMeanUnroll2 <<< grid.x, block.x >>>(d_Signal2, n, d_Signal2Mean);
+	//Copy the signal into the temp working space before we start using it, this algorithm computes the mean in place
+	cudaMemcpy(d_tempWorkingSpace, d_signal1, sizeof(float) * n, cudaMemcpyDeviceToDevice);
+	parallelMeanUnroll2 <<<grid.x, block.x>>> (d_tempWorkingSpace, n, d_meanVector);
+	CudaCheckError();
 
+	cudaMemcpy(d_tempWorkingSpace, d_signal2, sizeof(float) * n, cudaMemcpyDeviceToDevice);
+	parallelMeanUnroll2 <<< grid.x, block.x >>> (d_tempWorkingSpace, n, d_meanVector + 1);
+	CudaCheckError();
+
+	//Subtract the mean from each of the signals
+	subtractMean <<<4, 256>>> (d_signal1, n, *d_meanVector);
+	subtractMean <<<4, 256>>> (d_signal2, n, *d_meanVector + 1);
+	CudaCheckError();
+
+	//Calculate the covariance matrix
+	//outerProductSmartBruteForceLessThreads <<<1, 2>>> (d_covarianceMatrix, d_covarianceVector, 2);
+	CudaCheckError();
+
+	//Copy the results back over
 
 
 
@@ -99,10 +122,13 @@ int main(int argc, char **argv)
 	}
 
 	//Free memory
-	cudaFree(d_Signal1);
-	cudaFree(d_Signal2);
-	cudaFree(d_Signal1Mean);
-	cudaFree(d_Signal2Mean);
+	cudaFree(d_signal1);
+	cudaFree(d_signal2);
+	cudaFree(d_tempWorkingSpace);
+
+	cudaFree(d_covarianceVector);
+	cudaFree(d_meanVector);
+	cudaFree(d_covarianceMatrix);
 
 
 	return 0;

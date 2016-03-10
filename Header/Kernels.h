@@ -16,8 +16,6 @@
 
 __device__ __host__ uint64_t upperTriangularLength(unsigned int numRows);
 
-__global__ void test();
-
 
 //Parallel Reduce
 //---------------------
@@ -25,6 +23,9 @@ __global__ void test();
 
 //Calculates the mean of an input array in parallel, in place in the input array
 __global__ void parallelMeanUnroll2(float* d_inputArray, uint64_t inputLength, float* d_outputMean);
+
+//Subtracts mean from the input array
+__global__ void subtractMean(float* d_inputArray, uint64_t inputLength, float d_mean);
 
 //---------------------
 
