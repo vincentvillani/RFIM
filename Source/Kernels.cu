@@ -35,7 +35,7 @@ __global__ void test()
 
 
 //Assumes square matrices
-__device__ __host__ unsigned int upperTriangularLength(unsigned int numRows)
+__device__ __host__ uint64_t upperTriangularLength(unsigned int numRows)
 {
 	return (numRows * (numRows + 1)) / 2;
 }
@@ -113,7 +113,7 @@ __global__ void outerProductSmartBruteForce(float* resultMatrix, float* vec, int
 }
 
 
-__global__ void outerProductSmartBruteForceLessThreads(float* resultMatrix, float* vec, int vectorLength)
+__global__ void outerProductSmartBruteForceLessThreads(float* resultMatrix, float* vec, uint64_t vectorLength)
 {
 	int col = (blockIdx.x * blockDim.x) + threadIdx.x; //column
 	int row = (blockIdx.y * blockDim.y) + threadIdx.y; //row
@@ -131,7 +131,7 @@ __global__ void outerProductSmartBruteForceLessThreads(float* resultMatrix, floa
 
 	int index = (row * vectorLength + col) - (row * (row + 1)) / 2;
 
-	resultMatrix[index] += vec[row] * vec[col];
+	resultMatrix[index] = vec[row] * vec[col];
 }
 
 
