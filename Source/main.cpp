@@ -14,6 +14,8 @@
 #include <cuda.h>
 #include <curand.h>
 
+#include "../Header/Kernels.h"
+
 //static const int WORK_SIZE = 256;
 
 /**
@@ -53,14 +55,12 @@ int main(int argc, char **argv)
 {
 	size_t n = 1024;
 	curandGenerator_t rngGen;
-	float* d_Data;
-	float* h_Data;
-
-	//Allocate data on the host
-	h_Data = (float*)calloc(n, sizeof(float));
+	float* d_Signal1;
+	float* d_Signal2;
 
 	//Allocate data on the device
-	gpuErrchk(cudaMalloc(&d_Data, sizeof(float) * n));
+	gpuErrchk(cudaMalloc(&d_Signal1, sizeof(float) * n));
+	gpuErrchk(cudaMalloc(&d_Signal2, sizeof(float) * n));
 
 	//Create RN generator
 	//Might have to change this to something else if it isn't good enough
@@ -80,19 +80,24 @@ int main(int argc, char **argv)
 	//Generate random numbers on the device
 	//Generate random numbers using a normal distribution
 	//Normal distribution should emulate white noise hopefully?
-	if(curandGenerateNormal(rngGen, d_Data, n, 0.0f, 1.0f) != CURAND_STATUS_SUCCESS)
+	//Generate signal 1
+	if(curandGenerateNormal(rngGen, d_Signal1, n, 0.0f, 1.0f) != CURAND_STATUS_SUCCESS)
 	{
 		printf("Error at %s:%d\n",__FILE__,__LINE__);
 		exit(1);
 	}
 
-	//Copy to the host
-	gpuErrchk(cudaMemcpy(h_Data, d_Data, n * sizeof(float), cudaMemcpyDeviceToHost));
-
-	for(int i = 0; i < n; ++i)
+	//Generate signal 2
+	if(curandGenerateNormal(rngGen, d_Signal2, n, 0.0f, 1.0f) != CURAND_STATUS_SUCCESS)
 	{
-		printf("%f\n", h_Data[i]);
+		printf("Error at %s:%d\n",__FILE__,__LINE__);
+		exit(1);
 	}
+
+
+	//Calculate the mean of each signal, should be zero based on the RNG, but we will need it when we do this for real anyway
+
+
 
 	//Destroy the RNG
 	if(curandDestroyGenerator(rngGen) != CURAND_STATUS_SUCCESS)
@@ -102,8 +107,8 @@ int main(int argc, char **argv)
 	}
 
 	//Free memory
-	cudaFree(d_Data);
-	free(h_Data);
+	cudaFree(d_Signal1);
+	cudaFree(d_Signal2);
 
 
 	return 0;
