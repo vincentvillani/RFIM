@@ -28,6 +28,12 @@ unsigned int column_index( unsigned int i, unsigned int M ){
 */
 
 
+__global__ void test()
+{
+	return;
+}
+
+
 //Assumes square matrices
 __device__ __host__ unsigned int upperTriangularLength(unsigned int numRows)
 {
@@ -79,6 +85,10 @@ __global__ void parallelMeanUnroll2(float* d_inputArray, uint64_t inputLength, f
 		{
 			*d_outputMean += d_inputArray[ i * blockDim.x * 2]; //Times 2 because we take in 'two blocks' worth of data for each actual block
 		}
+
+		*d_outputMean =  *d_outputMean / (inputLength - 1);
+
+		//printf("Mean: %f\n", *d_outputMean);
 	}
 
 }

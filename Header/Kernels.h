@@ -16,6 +16,8 @@
 
 __device__ __host__ unsigned int upperTriangularLength(unsigned int numRows);
 
+__global__ void test();
+
 
 //Parallel Reduce
 //---------------------

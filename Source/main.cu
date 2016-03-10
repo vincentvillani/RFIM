@@ -14,53 +14,39 @@
 #include <cuda.h>
 #include <curand.h>
 
+#include <stdint.h>
+
 #include "../Header/Kernels.h"
-
-//static const int WORK_SIZE = 256;
-
-/**
- * This macro checks return value of the CUDA runtime call and exits
- * the application if the call failed.
- *
- * See cuda.h for error code descriptions.
- */
-#define CHECK_CUDA_RESULT(N) {											\
-	c result = N;												\
-	if (result != 0) {													\
-		printf("CUDA call on line %d returned error %d\n", __LINE__,	\
-			result);													\
-		exit(1);														\
-	} }
+#include "../Header/UnitTests.h"
 
 
-inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=true)
-{
-   if (code != cudaSuccess)
-   {
-      fprintf(stderr,"GPUassert: %s %s %d\n", cudaGetErrorString(code), file, line);
-      if (abort) exit(code);
-   }
-}
-
-#define gpuErrchk(ans) { gpuAssert((ans), __FILE__, __LINE__); }
-
-
-
-//#define CURAND_CALL(x) do { if((x)!=CURAND_STATUS_SUCCESS) { \ printf("Error at %s:%d\n",__FILE__,__LINE__);\return EXIT_FAILURE;}} while(0)
-
+//TODO: Test the mean kernel on known data
 
 
 
 int main(int argc, char **argv)
 {
-	size_t n = 1024;
+	//Run all the unit tests
+	RunAllUnitTests();
+
+
+
+	uint64_t n = 1024;
 	curandGenerator_t rngGen;
 	float* d_Signal1;
 	float* d_Signal2;
 
+	float* d_Signal1Mean;
+	float* d_Signal2Mean;
+
+
+
 	//Allocate data on the device
-	gpuErrchk(cudaMalloc(&d_Signal1, sizeof(float) * n));
-	gpuErrchk(cudaMalloc(&d_Signal2, sizeof(float) * n));
+	cudaMalloc(&d_Signal1, sizeof(float) * n);
+	cudaMalloc(&d_Signal2, sizeof(float) * n);
+
+	cudaMalloc(&d_Signal1Mean, sizeof(float));
+	cudaMalloc(&d_Signal2Mean, sizeof(float));
 
 	//Create RN generator
 	//Might have to change this to something else if it isn't good enough
@@ -95,7 +81,13 @@ int main(int argc, char **argv)
 	}
 
 
-	//Calculate the mean of each signal, should be zero based on the RNG, but we will need it when we do this for real anyway
+	//Calculate the mean of each signal, should be around zero based on the RNG, but we will need it when we do this for real anyway
+	dim3 grid(2); //Number of blocks in the grid
+	dim3 block(256); //Number of threads per block
+
+	//parallelMeanUnroll2 <<<grid.x, block.x>>> (d_Signal1, n, d_Signal1Mean);
+	//parallelMeanUnroll2 <<< grid.x, block.x >>>(d_Signal2, n, d_Signal2Mean);
+
 
 
 
@@ -109,6 +101,8 @@ int main(int argc, char **argv)
 	//Free memory
 	cudaFree(d_Signal1);
 	cudaFree(d_Signal2);
+	cudaFree(d_Signal1Mean);
+	cudaFree(d_Signal2Mean);
 
 
 	return 0;
