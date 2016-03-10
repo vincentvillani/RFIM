@@ -77,7 +77,7 @@ __global__ void parallelMeanUnroll2(float* d_inputArray, uint64_t inputLength, f
 
 		for(uint32_t i = 0; i < gridDim.x; ++i)
 		{
-			*d_outputMean += d_inputArray[ i * blockDim.x * 2]; //Times 2 because we take in 'two blocks' worth of data
+			*d_outputMean += d_inputArray[ i * blockDim.x * 2]; //Times 2 because we take in 'two blocks' worth of data for each actual block
 		}
 	}
 
