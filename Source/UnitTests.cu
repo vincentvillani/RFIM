@@ -11,12 +11,15 @@
 #include "../Header/CudaMacros.h"
 #include "../Header/Kernels.h"
 
+#include <cublas.h>
+
 #include <assert.h>
 
 //Private dec's
 void ParallelMeanUnitTest();
 
-void CovarianceMatrixUnitTest();
+void CovarianceMatrixUsingMyCodeUnitTest();
+void CovarianceMatrixCUBLAS();
 
 //-------------------------------------
 
@@ -85,7 +88,7 @@ void ParallelMeanUnitTest()
 
 
 
-void CovarianceMatrixUnitTest()
+void CovarianceMatrixUsingMyCodeUnitTest()
 {
 	float* d_vec;
 	float* d_resultMatrix;
@@ -162,7 +165,62 @@ void CovarianceMatrixUnitTest()
 	free(h_resultMatrix);
 }
 
+void CovarianceMatrixCUBLAS()
+{
+	float* d_vec;
+	float* d_resultMatrix;
 
+	float* h_vec;
+	float* h_resultMatrix;
+
+	uint64_t vectorLength = 3;
+	uint64_t resultMatrixLength = upperTriangularLength(vectorLength);
+
+	//Start the cublas context
+	cublasHandle_t cublasHandle;
+	cublasCreate_v2(&cublasHandle); //Create the handle
+
+	//Allocate storage for the arrays on the host and device
+	cudaMalloc(&d_vec, sizeof(float) * vectorLength);
+	h_vec = (float*)malloc(sizeof(float) * vectorLength);
+
+	cudaMalloc(&d_resultMatrix, sizeof(float) * resultMatrixLength);
+	cudaMemset(d_resultMatrix, 0, sizeof(float) * resultMatrixLength); //Set the resultMatrix to zero
+	h_resultMatrix = (float*)malloc(sizeof(float) * resultMatrixLength);
+
+
+	//Set the vector for on the host
+	for(uint64_t i = 0; i < vectorLength; ++i)
+	{
+		h_vec[i] = 1 + i;
+	}
+
+	//Copy the data over
+	//Column major, cublas uses 1-based indexing
+	cublasSetMatrix(3, 1, sizeof(float), h_vec, 3, d_vec, 3);
+
+	//Perform the outer product
+	float alpha = 1.0f;
+	cublasSspr_v2(cublasHandle, CUBLAS_FILL_MODE_UPPER, 3, &alpha, d_vec, 1, d_resultMatrix);
+
+	//Copy the data back to the host
+	cudaMemcpy(h_resultMatrix, d_resultMatrix, sizeof(float) * vectorLength, cudaMemcpyDeviceToHost);
+
+	for(uint64_t i = 0; i < resultMatrixLength; ++i)
+	{
+		printf("%llu: %f\n", i, h_resultMatrix[i]);
+	}
+
+	//Free all memory
+	free(h_vec);
+	free(h_resultMatrix);
+
+	cudaFree(d_vec);
+	cudaFree(d_resultMatrix);
+
+	cublasDestroy_v2(cublasHandle);
+
+}
 
 
 
@@ -170,7 +228,9 @@ void CovarianceMatrixUnitTest()
 void RunAllUnitTests()
 {
 	ParallelMeanUnitTest();
-	CovarianceMatrixUnitTest();
+
+	CovarianceMatrixUsingMyCodeUnitTest();
+	CovarianceMatrixCUBLAS();
 
 	printf("All tests passed!\n");
 }

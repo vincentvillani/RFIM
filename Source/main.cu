@@ -30,17 +30,14 @@ int main(int argc, char **argv)
 	//Run all the unit tests
 	RunAllUnitTests();
 
+/*
+	uint64_t sampleElements = 26; //The number of elements per sample (i.e. b1p1, b1p2, b2p1,b2p2) where b = beam, p = polarisation
+	uint64_t sampleNumber = 1024; //Numbers of samples being used to compute the covariance matrix in this iteration
 
-
-	uint64_t n = 1024;
 	curandGenerator_t rngGen;
-	float* d_signal1;
-	float* d_signal2;
-	float* d_tempWorkingSpace; //The length of 1 signal
 
-	float* d_meanVector;
-	float* d_covarianceVector;
-	float* d_covarianceMatrix; //triangular
+
+
 
 
 
@@ -92,6 +89,7 @@ int main(int argc, char **argv)
 	dim3 grid(2); //Number of blocks in the grid
 	dim3 block(256); //Number of threads per block
 
+
 	//Copy the signal into the temp working space before we start using it, this algorithm computes the mean in place
 	cudaMemcpy(d_tempWorkingSpace, d_signal1, sizeof(float) * n, cudaMemcpyDeviceToDevice);
 	parallelMeanUnroll2 <<<grid.x, block.x>>> (d_tempWorkingSpace, n, d_meanVector);
@@ -111,7 +109,7 @@ int main(int argc, char **argv)
 	CudaCheckError();
 
 	//Copy the results back over
-
+	//
 
 
 	//Destroy the RNG
@@ -130,6 +128,6 @@ int main(int argc, char **argv)
 	cudaFree(d_meanVector);
 	cudaFree(d_covarianceMatrix);
 
-
+*/
 	return 0;
 }
