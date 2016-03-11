@@ -37,10 +37,6 @@ int main(int argc, char **argv)
 	curandGenerator_t rngGen;
 
 
-
-
-
-
 	//Allocate data on the device
 	cudaMalloc(&d_signal1, sizeof(float) * n);
 	cudaMalloc(&d_signal2, sizeof(float) * n);
@@ -85,31 +81,6 @@ int main(int argc, char **argv)
 	}
 
 
-	//Calculate the mean of each signal, should be around zero based on the RNG, but we will need it when we do this for real anyway
-	dim3 grid(2); //Number of blocks in the grid
-	dim3 block(256); //Number of threads per block
-
-
-	//Copy the signal into the temp working space before we start using it, this algorithm computes the mean in place
-	cudaMemcpy(d_tempWorkingSpace, d_signal1, sizeof(float) * n, cudaMemcpyDeviceToDevice);
-	parallelMeanUnroll2 <<<grid.x, block.x>>> (d_tempWorkingSpace, n, d_meanVector);
-	CudaCheckError();
-
-	cudaMemcpy(d_tempWorkingSpace, d_signal2, sizeof(float) * n, cudaMemcpyDeviceToDevice);
-	parallelMeanUnroll2 <<< grid.x, block.x >>> (d_tempWorkingSpace, n, d_meanVector + 1);
-	CudaCheckError();
-
-	//Subtract the mean from each of the signals
-	subtractMean <<<4, 256>>> (d_signal1, n, *d_meanVector);
-	subtractMean <<<4, 256>>> (d_signal2, n, *d_meanVector + 1);
-	CudaCheckError();
-
-	//Calculate the covariance matrix
-	//outerProductSmartBruteForceLessThreads <<<1, 2>>> (d_covarianceMatrix, d_covarianceVector, 2);
-	CudaCheckError();
-
-	//Copy the results back over
-	//
 
 
 	//Destroy the RNG
@@ -127,7 +98,39 @@ int main(int argc, char **argv)
 	cudaFree(d_covarianceVector);
 	cudaFree(d_meanVector);
 	cudaFree(d_covarianceMatrix);
-
 */
+
 	return 0;
 }
+
+
+
+
+
+/*
+//Calculate the mean of each signal, should be around zero based on the RNG, but we will need it when we do this for real anyway
+dim3 grid(2); //Number of blocks in the grid
+dim3 block(256); //Number of threads per block
+
+
+//Copy the signal into the temp working space before we start using it, this algorithm computes the mean in place
+cudaMemcpy(d_tempWorkingSpace, d_signal1, sizeof(float) * n, cudaMemcpyDeviceToDevice);
+parallelMeanUnroll2 <<<grid.x, block.x>>> (d_tempWorkingSpace, n, d_meanVector);
+CudaCheckError();
+
+cudaMemcpy(d_tempWorkingSpace, d_signal2, sizeof(float) * n, cudaMemcpyDeviceToDevice);
+parallelMeanUnroll2 <<< grid.x, block.x >>> (d_tempWorkingSpace, n, d_meanVector + 1);
+CudaCheckError();
+
+//Subtract the mean from each of the signals
+subtractMean <<<4, 256>>> (d_signal1, n, *d_meanVector);
+subtractMean <<<4, 256>>> (d_signal2, n, *d_meanVector + 1);
+CudaCheckError();
+
+//Calculate the covariance matrix
+//outerProductSmartBruteForceLessThreads <<<1, 2>>> (d_covarianceMatrix, d_covarianceVector, 2);
+CudaCheckError();
+
+//Copy the results back over
+//
+*/

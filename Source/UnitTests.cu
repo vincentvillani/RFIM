@@ -17,9 +17,11 @@
 
 //Private dec's
 void ParallelMeanUnitTest();
+void ParallelMeanCublas();
 
 void CovarianceMatrixUsingMyCodeUnitTest();
 void CovarianceMatrixCUBLAS();
+
 
 //-------------------------------------
 
@@ -84,6 +86,91 @@ void ParallelMeanUnitTest()
 
 }
 
+
+
+void ParallelMeanCublas()
+{
+	float* d_meanCoefficentMatrix; //A 1x3 matrix containing just 1's (COL MAJOR)
+	float* d_matrix; //A 3x3 matrix containing data that we want to sum down the columns (COL MAJOR)
+	float* d_resultMatrix; //A 1x3 matrix containing the mean for each column of the matrix (COL MAJOR)
+
+	float* h_meanCoefficentMatrix; //A 1x3 matrix containing just 1's (COL MAJOR)
+	float* h_matrix; //A 3x3 matrix containing data that we want to sum down the columns (COL MAJOR)
+	float* h_resultMatrix; //A 1x3 matrix containing the mean for each column of the matrix (COL MAJOR)
+
+	//Allocate data for the host and the device
+	cudaMalloc(&d_meanCoefficentMatrix, sizeof(float) * 3);
+	cudaMalloc(&d_matrix, sizeof(float) * 9);
+	cudaMalloc(&d_resultMatrix, sizeof(float) * 3);
+	cudaMemset(d_resultMatrix, 0, sizeof(float) * 3); //Set the inital values to zero
+
+	h_meanCoefficentMatrix = (float*)malloc(sizeof(float) * 3);
+	h_matrix = (float*)malloc(sizeof(float) * 9);
+	h_resultMatrix = (float*)malloc(sizeof(float) * 3);
+
+	//Setup the data on the host
+	for(uint32_t i = 0; i < 3; ++i)
+	{
+		h_meanCoefficentMatrix[i] = 1;
+	}
+
+	//Setup the matrix whose columns we want to sum
+	for(uint32_t i = 0; i < 9; ++i)
+	{
+		h_matrix[i] = i + 1;
+	}
+
+	//Copy the data over to the device
+	cudaMemcpy(d_meanCoefficentMatrix, h_meanCoefficentMatrix, sizeof(float) * 3, cudaMemcpyHostToDevice);
+	cudaMemcpy(d_matrix, h_matrix, sizeof(float) * 9, cudaMemcpyHostToDevice);
+
+	//Setup cublas
+	cublasHandle_t cublasHandle;
+	cublasCreate_v2(&cublasHandle); //Create the handle
+
+	//Do the matrix * matrix multiplication
+	float alpha = 1.0f / 3.0f; //To calculate the mean after the matrix multiplication takes place
+	float beta = 1.0f;
+	cublasSgemm_v2(cublasHandle, CUBLAS_OP_N, CUBLAS_OP_N, 1, 3, 3,
+			&alpha, d_meanCoefficentMatrix, 1, d_matrix, 3, &beta, d_resultMatrix, 1);
+
+	//copy the data back across to the host
+	cudaMemcpy(h_resultMatrix, d_resultMatrix, sizeof(float) * 3, cudaMemcpyDeviceToHost);
+
+	/*
+	//print out the results
+	for(uint64_t i = 0; i < 3; ++i)
+	{
+		printf("%llu: %f\n", i, h_resultMatrix[i]);
+	}
+	*/
+
+	bool failed = false;
+
+	if(h_resultMatrix[0] - 2.0f > 0.000001)
+		failed = true;
+	else if(h_resultMatrix[1] - 5.0f > 0.000001)
+		failed = true;
+	else if(h_resultMatrix[2] - 8.0f > 0.000001)
+		failed = true;
+
+	if(failed)
+	{
+		fprintf(stderr, "ParallelMeanCublas() failed.\nExpected: %f, %f, %f\nActual: %f, %f, %f\n", 2.0f, 5.0f, 8.0f,
+				h_resultMatrix[0], h_resultMatrix[1], h_resultMatrix[2]);
+		exit(1);
+	}
+
+	//Free all memory
+	free(h_matrix);
+	free(h_meanCoefficentMatrix);
+	free(h_resultMatrix);
+
+	cudaFree(d_matrix);
+	cudaFree(d_meanCoefficentMatrix);
+	cudaFree(d_resultMatrix);
+
+}
 
 
 
@@ -152,7 +239,7 @@ void CovarianceMatrixUsingMyCodeUnitTest()
 
 	if(failed)
 	{
-		fprintf(stderr, "CovarianceMatrixUnitTest() failed.\nExpected: %f, %f, %f\nActual: %f, %f, %f\n", 1.0f, 2.0f, 4.0f,
+		fprintf(stderr, "CovarianceMatrixUsingMyCodeUnitTest() failed.\nExpected: %f, %f, %f\nActual: %f, %f, %f\n", 1.0f, 2.0f, 4.0f,
 				h_resultMatrix[0], h_resultMatrix[1], h_resultMatrix[2]);
 		exit(1);
 	}
@@ -164,6 +251,9 @@ void CovarianceMatrixUsingMyCodeUnitTest()
 	free(h_vec);
 	free(h_resultMatrix);
 }
+
+
+
 
 void CovarianceMatrixCUBLAS()
 {
@@ -240,8 +330,8 @@ void CovarianceMatrixCUBLAS()
 
 	if(failed)
 	{
-		fprintf(stderr, "CovarianceMatrixUnitTest() failed.\nExpected: %f, %f, %f\nActual: %f, %f, %f\n", 1.0f, 2.0f, 3.0f,
-				h_resultMatrix[0], h_resultMatrix[1], h_resultMatrix[2]);
+		fprintf(stderr, "CovarianceMatrixCUBLAS() failed.\nExpected: %f, %f, %f, %f, %f, %f\nActual: %f, %f, %f, %f, %f, %f\n", 1.0f, 2.0f, 3.0f, 4.0f, 6.0f, 9.0f,
+				h_resultMatrix[0], h_resultMatrix[1], h_resultMatrix[2], h_resultMatrix[3], h_resultMatrix[4], h_resultMatrix[5]);
 		exit(1);
 	}
 
@@ -269,6 +359,7 @@ void CovarianceMatrixCUBLAS()
 void RunAllUnitTests()
 {
 	ParallelMeanUnitTest();
+	ParallelMeanCublas();
 
 	CovarianceMatrixUsingMyCodeUnitTest();
 	CovarianceMatrixCUBLAS();
