@@ -367,7 +367,7 @@ void CovarianceMatrixCUBLASSsyrk_v2()
 	uint64_t sampleElements = 4;
 	uint64_t sampleNumber = 2;
 	uint64_t totalElements = sampleElements * sampleNumber;
-	uint64_t covarianceMatrixElements = upperTriangularLength(sampleNumber) + 1;
+	uint64_t covarianceMatrixElements = sampleNumber * sampleNumber;
 
 
 
