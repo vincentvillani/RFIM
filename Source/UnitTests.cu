@@ -367,12 +367,16 @@ void CovarianceMatrixCUBLASSsyrk_v2()
 	uint64_t sampleElements = 4;
 	uint64_t sampleNumber = 2;
 	uint64_t totalElements = sampleElements * sampleNumber;
-	uint64_t covarianceMatrixElements = upperTriangularLength(sampleNumber);
+	uint64_t covarianceMatrixElements = upperTriangularLength(sampleNumber) + 1;
+
+
 
 	//Allocate data and set data
 	cudaMalloc(&d_signal, sizeof(float) * totalElements);
 	cudaMalloc(&d_covarianceMatrix, sizeof(float) * covarianceMatrixElements);
 	cudaMemset(d_covarianceMatrix, 0, sizeof(float) * covarianceMatrixElements);
+
+	CudaCheckError();
 
 	h_signal = (float*)malloc(sizeof(float) * totalElements);
 	h_covarianceMatrix = (float*)malloc(sizeof(float) * covarianceMatrixElements);
@@ -386,6 +390,8 @@ void CovarianceMatrixCUBLASSsyrk_v2()
 	//Copy the signal to the device
 	cudaMemcpy(d_signal, h_signal, sizeof(float) * totalElements, cudaMemcpyHostToDevice);
 
+	CudaCheckError();
+
 	//Startup cublas
 	cublasHandle_t cublasHandle;
 	cublasCreate_v2(&cublasHandle);
@@ -397,6 +403,8 @@ void CovarianceMatrixCUBLASSsyrk_v2()
 			//Handle, fill mode, transpose, n, k, alpha, Matrix A, lda, beta, Matrix C, ldc
 	status = cublasSsyrk_v2(cublasHandle, CUBLAS_FILL_MODE_UPPER, CUBLAS_OP_N, 2, 4, &alpha, d_signal, 2, &beta, d_covarianceMatrix, 2);
 
+	CudaCheckError();
+
 	if(status != CUBLAS_STATUS_SUCCESS)
 	{
 		printf("ERROR!\n");
@@ -404,6 +412,8 @@ void CovarianceMatrixCUBLASSsyrk_v2()
 
 	//Copy the data back to the host
 	cudaMemcpy(h_covarianceMatrix, d_covarianceMatrix, sizeof(float) * covarianceMatrixElements, cudaMemcpyDeviceToHost);
+
+	CudaCheckError();
 
 	//print the result
 	for(uint64_t i = 0; i < covarianceMatrixElements; ++i)
