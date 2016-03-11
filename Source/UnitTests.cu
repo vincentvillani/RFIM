@@ -177,8 +177,15 @@ void CovarianceMatrixCUBLAS()
 	uint64_t resultMatrixLength = upperTriangularLength(vectorLength);
 
 	//Start the cublas context
+	cublasStatus_t cuStat;
 	cublasHandle_t cublasHandle;
-	cublasCreate_v2(&cublasHandle); //Create the handle
+	cuStat = cublasCreate_v2(&cublasHandle); //Create the handle
+
+	if(cuStat != CUBLAS_STATUS_SUCCESS)
+	{
+		printf("ERROR!\n");
+		exit(1);
+	}
 
 	//Allocate storage for the arrays on the host and device
 	cudaMalloc(&d_vec, sizeof(float) * vectorLength);
@@ -197,20 +204,53 @@ void CovarianceMatrixCUBLAS()
 
 	//Copy the data over
 	//Column major, cublas uses 1-based indexing
-	cublasSetMatrix(3, 1, sizeof(float), h_vec, 3, d_vec, 3);
+	//cuStat = cublasSetMatrix(vectorLength, 1, sizeof(float), h_vec, vectorLength, d_vec, vectorLength);
+	cudaMemcpy(d_vec, h_vec, sizeof(float) * vectorLength, cudaMemcpyHostToDevice);
 
 	//Perform the outer product
 	float alpha = 1.0f;
-	cublasSspr_v2(cublasHandle, CUBLAS_FILL_MODE_UPPER, 3, &alpha, d_vec, 1, d_resultMatrix);
+	cuStat = cublasSspr_v2(cublasHandle, CUBLAS_FILL_MODE_LOWER, vectorLength, &alpha, d_vec, 1, d_resultMatrix);
+
+
+	if(cuStat != CUBLAS_STATUS_SUCCESS)
+	{
+		printf("ERROR!\n");
+		exit(1);
+	}
 
 	//Copy the data back to the host
-	cudaMemcpy(h_resultMatrix, d_resultMatrix, sizeof(float) * vectorLength, cudaMemcpyDeviceToHost);
+	//cublasGetMatrix(vectorLength, vectorLength, sizeof(float), d_resultMatrix, vectorLength, h_resultMatrix, vectorLength);
+	cudaMemcpy(h_resultMatrix, d_resultMatrix, sizeof(float) * resultMatrixLength, cudaMemcpyDeviceToHost);
 
+	bool failed = false;
+
+	if(h_resultMatrix[0] - 1.0f > 0.000001f)
+		failed = true;
+	else if(h_resultMatrix[1] - 2.0f > 0.000001f)
+		failed = true;
+	else if(h_resultMatrix[2] - 3.0f > 0.000001f)
+		failed = true;
+	else if(h_resultMatrix[3] - 4.0f > 0.000001f)
+		failed = true;
+	else if(h_resultMatrix[4] - 6.0f > 0.000001f)
+		failed = true;
+	else if(h_resultMatrix[5] - 9.0f > 0.000001f)
+		failed = true;
+
+
+	if(failed)
+	{
+		fprintf(stderr, "CovarianceMatrixUnitTest() failed.\nExpected: %f, %f, %f\nActual: %f, %f, %f\n", 1.0f, 2.0f, 3.0f,
+				h_resultMatrix[0], h_resultMatrix[1], h_resultMatrix[2]);
+		exit(1);
+	}
+
+	/*
 	for(uint64_t i = 0; i < resultMatrixLength; ++i)
 	{
 		printf("%llu: %f\n", i, h_resultMatrix[i]);
 	}
-
+	 */
 	//Free all memory
 	free(h_vec);
 	free(h_resultMatrix);
@@ -219,6 +259,7 @@ void CovarianceMatrixCUBLAS()
 	cudaFree(d_resultMatrix);
 
 	cublasDestroy_v2(cublasHandle);
+
 
 }
 
