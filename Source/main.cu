@@ -13,6 +13,7 @@
 
 #include <cuda.h>
 #include <curand.h>
+#include <cublas.h>
 
 #include <stdint.h>
 
@@ -30,22 +31,23 @@ int main(int argc, char **argv)
 	//Run all the unit tests
 	RunAllUnitTests();
 
-/*
+	/*
+	float* d_signal; //row major matrix containing the generated signal, (sampleNumber x sampleElements) matrix
+	float* d_covarianceMatrix; //row major in the end, this will be a (sampleElements x sampleElements) covariance matrix
+
+
 	uint64_t sampleElements = 26; //The number of elements per sample (i.e. b1p1, b1p2, b2p1,b2p2) where b = beam, p = polarisation
 	uint64_t sampleNumber = 1024; //Numbers of samples being used to compute the covariance matrix in this iteration
-
+	uint64_t totalElements = sampleElements * sampleNumber; //The total number of elements in this signal
+	uint64_t covarianceMatrixElements = upperTriangularLength(sampleElements); //The number of elements that will end up in the covariance matrix
 	curandGenerator_t rngGen;
 
 
-	//Allocate data on the device
-	cudaMalloc(&d_signal1, sizeof(float) * n);
-	cudaMalloc(&d_signal2, sizeof(float) * n);
-	cudaMalloc(&d_tempWorkingSpace, sizeof(float) * n);
+	//Allocate data and set data
+	cudaMalloc(&d_signal, sizeof(float) * totalElements);
+	cudaMalloc(&d_covarianceMatrix, sizeof(float) * covarianceMatrixElements);
+	cudaMemset(d_covarianceMatrix, 0, sizeof(float) * covarianceMatrixElements);
 
-
-	cudaMalloc(&d_covarianceVector, sizeof(float) * 2);
-	cudaMalloc(&d_meanVector, sizeof(float) * 2);
-	cudaMalloc(&d_covarianceMatrix, sizeof(float) * 2);
 
 
 	//Create RNG
@@ -66,19 +68,40 @@ int main(int argc, char **argv)
 	//Generate random numbers on the device
 	//Generate random numbers using a normal distribution
 	//Normal distribution should emulate white noise hopefully?
-	//Generate signal 1
-	if(curandGenerateNormal(rngGen, d_signal1, n, 0.0f, 1.0f) != CURAND_STATUS_SUCCESS)
+	//Generate signal
+	if(curandGenerateNormal(rngGen, d_signal, totalElements, 0.0f, 1.0f) != CURAND_STATUS_SUCCESS)
 	{
 		printf("Error at %s:%d\n",__FILE__,__LINE__);
 		exit(1);
 	}
 
-	//Generate signal 2
-	if(curandGenerateNormal(rngGen, d_signal2, n, 0.0f, 1.0f) != CURAND_STATUS_SUCCESS)
-	{
-		printf("Error at %s:%d\n",__FILE__,__LINE__);
-		exit(1);
-	}
+	//Startup cublas
+	cublasHandle_t cublasHandle;
+	cublasCreate_v2(&cublasHandle);
+
+
+	//Calculate the covariance matrix
+	//-------------------------------
+	//1. Calculate the outer product of the signal (sampleNumber x sampleElements) * (sampleElements x sampleNumber)
+	//	AKA. signal * (signal)T, where T = transpose, which will give you a (sampleNumber x sampleNumber) matrix as a result
+
+	//Take the outer product of the signal with itself
+	float alpha = 1.0f;
+	float beta = 1.0f;
+	cublasSsyrk_v2(cublasHandle, CUBLAS_FILL_MODE_UPPER, CUBLAS_OP_T, sampleElements, sampleNumber, &alpha, d_signal, sampleElements,
+			&beta, d_covarianceMatrix, sampleElements);
+
+	//2. Calculate the mean using cublas
+
+	//3. Take the outer product of the mean with itself
+
+	//4. Subtract the result of step 3 from the result of step 1. This will give you a covariance matrix
+
+	//5. plot the covariance matrix
+
+
+	//-------------------------------
+
 
 
 
@@ -91,15 +114,12 @@ int main(int argc, char **argv)
 	}
 
 	//Free memory
-	cudaFree(d_signal1);
-	cudaFree(d_signal2);
-	cudaFree(d_tempWorkingSpace);
-
-	cudaFree(d_covarianceVector);
-	cudaFree(d_meanVector);
+	cudaFree(d_signal);
 	cudaFree(d_covarianceMatrix);
-*/
 
+	//Free cublas
+	cublasDestroy_v2(cublasHandle);
+	*/
 	return 0;
 }
 
