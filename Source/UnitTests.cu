@@ -17,10 +17,14 @@
 
 #include <assert.h>
 
+//Production tests
+void MeanCublasProduction();
+void CovarianceCublasProduction();
+
 //Private dec's
 void ParallelMeanUnitTest();
 void ParallelMeanCublas();
-void MeanCublasProduction();
+
 
 void CovarianceMatrixUsingMyCodeUnitTest();
 void CovarianceMatrixCUBLAS();
@@ -179,93 +183,6 @@ void ParallelMeanCublas()
 }
 
 
-void MeanCublasProduction()
-{
-	uint64_t valuesPerSample = 3;
-	uint64_t sampleNum = 2;
-
-	float* h_signal; //Column first signal (3, 2), 3 == valuesPerSample, 2 == sampleNum
-	float* h_meanMatrix;
-
-	h_signal = (float*)malloc(sizeof(float) * 6);
-
-
-	float* d_signal;
-	float* d_meanMatrix;
-
-	//Set the host signal
-	for(uint32_t i = 0; i < 6; ++i)
-	{
-		h_signal[i] = i + 1;
-	}
-
-	d_signal = Utility_CopySignalToDevice(h_signal, sizeof(float) * 6);
-
-
-	//Calculate the mean matrix
-	d_meanMatrix= DEBUG_CALCULATE_MEAN_MATRIX(d_signal, valuesPerSample, sampleNum);
-
-
-	//Copy it back to the host
-	h_meanMatrix = Utility_CopySignalToHost(d_meanMatrix, valuesPerSample * valuesPerSample * sizeof(float));
-
-
-	//Print out the result
-	/*
-	printf("\n\n");
-
-	for(uint32_t i = 0; i < valuesPerSample * valuesPerSample; ++i)
-	{
-		printf("final: %u: %f\n", i, h_meanMatrix[i]);
-	}
-	*/
-
-	/*
-	final: 0: 25.000000
-	final: 1: 0.000000
-	final: 2: 0.000000
-	final: 3: 35.000000
-	final: 4: 49.000000
-	final: 5: 0.000000
-	final: 6: 45.000000
-	final: 7: 63.000000
-	final: 8: 81.000000
-	*/
-
-
-	bool failed = false;
-
-	if(h_meanMatrix[0] - 25.0f > 0.000001f)
-		failed = true;
-	else if(h_meanMatrix[1] - 0.0f > 0.000001f)
-		failed = true;
-	else if(h_meanMatrix[2] - 0.0f > 0.000001f)
-		failed = true;
-	else if(h_meanMatrix[3] - 35.0f > 0.000001f)
-		failed = true;
-	else if(h_meanMatrix[4] - 49.0f > 0.000001f)
-		failed = true;
-	else if(h_meanMatrix[5] - 0.0f > 0.000001f)
-		failed = true;
-	else if(h_meanMatrix[6] - 45.0f > 0.000001f)
-		failed = true;
-	else if(h_meanMatrix[7] - 63.0f > 0.000001f)
-		failed = true;
-	else if(h_meanMatrix[8] - 81.0f > 0.000001f)
-		failed = true;
-
-	if(failed)
-	{
-		fprintf(stderr, "MeanCublasProduction failed!\n");
-		exit(1);
-	}
-
-	free(h_signal);
-	free(h_meanMatrix);
-
-	cudaFree(d_signal);
-	cudaFree(d_meanMatrix);
-}
 
 
 
@@ -529,9 +446,141 @@ void CovarianceMatrixCUBLASSsyrk_v2()
 
 
 
+void MeanCublasProduction()
+{
+	uint64_t valuesPerSample = 3;
+	uint64_t sampleNum = 2;
+
+	float* h_signal; //Column first signal (3, 2), 3 == valuesPerSample, 2 == sampleNum
+	float* h_meanMatrix;
+
+	h_signal = (float*)malloc(sizeof(float) * 6);
+
+
+	float* d_signal;
+	float* d_meanMatrix;
+
+	//Set the host signal
+	for(uint32_t i = 0; i < 6; ++i)
+	{
+		h_signal[i] = i + 1;
+	}
+
+	d_signal = Utility_CopySignalToDevice(h_signal, sizeof(float) * 6);
+
+
+	//Calculate the mean matrix
+	d_meanMatrix= DEBUG_CALCULATE_MEAN_MATRIX(d_signal, valuesPerSample, sampleNum);
+
+
+	//Copy it back to the host
+	h_meanMatrix = Utility_CopySignalToHost(d_meanMatrix, valuesPerSample * valuesPerSample * sizeof(float));
+
+
+	//Print out the result
+	/*
+	printf("\n\n");
+
+	for(uint32_t i = 0; i < valuesPerSample * valuesPerSample; ++i)
+	{
+		printf("final: %u: %f\n", i, h_meanMatrix[i]);
+	}
+	*/
+
+	/*
+	final: 0: 25.000000
+	final: 1: 0.000000
+	final: 2: 0.000000
+	final: 3: 35.000000
+	final: 4: 49.000000
+	final: 5: 0.000000
+	final: 6: 45.000000
+	final: 7: 63.000000
+	final: 8: 81.000000
+	*/
+
+
+	bool failed = false;
+
+	if(h_meanMatrix[0] - 25.0f > 0.000001f)
+		failed = true;
+	else if(h_meanMatrix[1] - 0.0f > 0.000001f)
+		failed = true;
+	else if(h_meanMatrix[2] - 0.0f > 0.000001f)
+		failed = true;
+	else if(h_meanMatrix[3] - 35.0f > 0.000001f)
+		failed = true;
+	else if(h_meanMatrix[4] - 49.0f > 0.000001f)
+		failed = true;
+	else if(h_meanMatrix[5] - 0.0f > 0.000001f)
+		failed = true;
+	else if(h_meanMatrix[6] - 45.0f > 0.000001f)
+		failed = true;
+	else if(h_meanMatrix[7] - 63.0f > 0.000001f)
+		failed = true;
+	else if(h_meanMatrix[8] - 81.0f > 0.000001f)
+		failed = true;
+
+	if(failed)
+	{
+		fprintf(stderr, "MeanCublasProduction failed!\n");
+		exit(1);
+	}
+
+	free(h_signal);
+	free(h_meanMatrix);
+
+	cudaFree(d_signal);
+	cudaFree(d_meanMatrix);
+}
+
+
+
+
+void CovarianceCublasProduction()
+{
+	uint64_t valuesPerSample = 3;
+	uint64_t sampleNum = 2;
+
+	float* h_signal; //Column first signal (3, 2), 3 == valuesPerSample, 2 == sampleNum
+
+	h_signal = (float*)malloc( sizeof(float) * 6);
+
+	float* d_signal;
+	float* d_covarianceMatrix;
+
+	//Set the host signal
+	for(uint32_t i = 0; i < 6; ++i)
+	{
+		h_signal[i] = i + 1;
+	}
+
+	d_signal = Utility_CopySignalToDevice(h_signal, sizeof(float) * 6);
+
+	d_covarianceMatrix = Device_CalculateCovarianceMatrix(d_signal, valuesPerSample, sampleNum);
+
+	//Copy the data back to the device and print it
+	free(h_signal);
+
+	h_signal = Utility_CopySignalToHost(d_covarianceMatrix, valuesPerSample * valuesPerSample * sizeof(float));
+	for(int i = 0; i < valuesPerSample * valuesPerSample; ++i)
+	{
+		printf("%d: %f\n", i, h_signal[i]);
+	}
+
+	free(h_signal);
+	cudaFree(d_signal);
+	cudaFree(d_covarianceMatrix);
+}
+
+
+
+
+
 void RunAllUnitTests()
 {
 	MeanCublasProduction();
+	CovarianceCublasProduction();
 
 	ParallelMeanUnitTest();
 	ParallelMeanCublas();

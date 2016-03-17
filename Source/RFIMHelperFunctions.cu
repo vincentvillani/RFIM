@@ -19,7 +19,7 @@
 //Private helper functions
 //--------------------------
 
-float* CalculateMeanMatrix(cublasHandle_t* cublasHandle, float* d_signalMatrix, uint64_t h_valuesPerSample, uint64_t h_numberOfSamples);
+float* CalculateMeanMatrix(cublasHandle_t* cublasHandle, const float* d_signalMatrix, uint64_t h_valuesPerSample, uint64_t h_numberOfSamples);
 
 
 //--------------------------
@@ -97,79 +97,49 @@ float* Device_CalculateCovarianceMatrix(const float* d_signalMatrix, uint64_t h_
 	//d_signalMatrix should be column-major as CUBLAS is column-major library (indexes start at 1 also)
 	//Remember to take that into account!
 
-	uint64_t covarianceMatrixLength = h_valuesPerSample * h_valuesPerSample;
-	uint64_t covarianceMatrixByteSize = covarianceMatrixLength * sizeof(float);
+	//Setup
+	//--------------------------------
+
 	float* d_covarianceMatrix;
 
-	//Make a copy of the signal, we are going to need the original
-	uint64_t signalLength = h_valuesPerSample * h_numberOfSamples;
-	uint64_t signalByteSize = signalLength * sizeof(float);
-	float* d_signalMatrixCopy;
-
-	cudaError_t error;
-
-	//Allocate space for the copy of the signal
-	error = cudaMalloc(&d_signalMatrixCopy, signalByteSize);
-
-	if(error != cudaSuccess)
-	{
-		fprintf(stderr, "Device_CalculateCovarianceMatrix: Error when allocating %llu bytes to copy the signal\n", signalByteSize);
-		exit(1);
-	}
-
-	//Copy the signals values over
-	error = cudaMemcpy(d_signalMatrixCopy, d_signalMatrix, signalByteSize, cudaMemcpyDeviceToDevice);
-
-	if(error != cudaSuccess)
-	{
-		fprintf(stderr, "Device_CalculateCovarianceMatrix: Error when copying the signal\n");
-		exit(1);
-	}
-
-
-	//Allocate space for the covariance matrix
-	error = cudaMalloc(&d_covarianceMatrix, covarianceMatrixByteSize);
-
-	if(error != cudaSuccess)
-	{
-		fprintf(stderr, "Device_CalculateCovarianceMatrix: Error in allocating %llu bytes on the device\n", covarianceMatrixByteSize);
-		exit(1);
-	}
 
 	//Setup the cublas library
 	//TODO: In the future maybe there should be a shared handle for the cublas library
 	cublasHandle_t cublasHandle;
 	cublasCreate_v2(&cublasHandle);
 
-
-	//Calculate the mean of the signal
-
 	//--------------------------------
 
 
+	//Calculate the meanMatrix of the signal
+	//--------------------------------
 
+	//At this point in time d_covarianceMatrix is actually the mean matrix
+	//This is done so I can get better performance out of the cublas API
+	d_covarianceMatrix = CalculateMeanMatrix(&cublasHandle, d_signalMatrix, h_valuesPerSample, h_numberOfSamples);
 
 	//--------------------------------
 
 
 	//Calculate the covariance matrix
 	//-------------------------------
-	//1. Calculate the outer product of the signal (sampleNumber x sampleElements) * (sampleElements x sampleNumber)
+	//1. Calculate the outer product of the signal (sampleElements x sampleNumber) * ( sampleNumber x sampleElements)
 	//	AKA. signal * (signal)T, where T = transpose, which will give you a (sampleNumber x sampleNumber) matrix as a result
 
 	//Take the outer product of the signal with itself
-	//float alpha = 1.0f;
-	//float beta = -1.0f;
+	float alpha = 1.0f;
+	float beta = -1.0f;
 
-	//cublasSsyrk_v2(cublasHandle, CUBLAS_FILL_MODE_UPPER, CUBLAS_OP_N,  )
+	cublasStatus_t cublasError;
+	cublasError = cublasSsyrk_v2(cublasHandle, CUBLAS_FILL_MODE_UPPER, CUBLAS_OP_N, h_valuesPerSample, h_numberOfSamples,
+			&alpha, d_signalMatrix, h_valuesPerSample, &beta, d_covarianceMatrix, h_valuesPerSample);
 
+	if(cublasError != CUBLAS_STATUS_SUCCESS)
+	{
+		fprintf(stderr, "Device_CalculateCovarianceMatrix: error calculating the covariance matrix\n");
+		exit(1);
+	}
 
-	//cublasSsyrk_v2(cublasHandle, CUBLAS_FILL_MODE_UPPER, CUBLAS_OP_T, sampleElements, sampleNumber, &alpha, d_signal, sampleElements,
-	//		&beta, d_covarianceMatrix, sampleElements);
-
-
-	//Free the signal copy as we don't need it anymore
-	cudaFree(d_signalMatrixCopy);
 
 	//Destroy the cublas handle
 	cublasDestroy_v2(cublasHandle);
@@ -189,7 +159,7 @@ float* Device_CalculateCovarianceMatrix(const float* d_signalMatrix, uint64_t h_
 //Private functions implementation
 //----------------------------------
 
-float* CalculateMeanMatrix(cublasHandle_t* cublasHandle, float* d_signalMatrix, uint64_t h_valuesPerSample, uint64_t h_numberOfSamples)
+float* CalculateMeanMatrix(cublasHandle_t* cublasHandle, const float* d_signalMatrix, uint64_t h_valuesPerSample, uint64_t h_numberOfSamples)
 {
 
 	/*
