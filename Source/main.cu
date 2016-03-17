@@ -20,6 +20,7 @@
 #include "../Header/Kernels.h"
 #include "../Header/UnitTests.h"
 #include "../Header/CudaMacros.h"
+#include "../Header/RFIMHelperFunctions.h"
 
 
 
@@ -47,60 +48,6 @@ int main(int argc, char **argv)
 	//3. Graph the covariance matrix
 	//----------------------------------
 	//http://gnuplot.sourceforge.net/demo/heatmaps.html
-
-	/*
-	 *
-				void SignalWriteToTextFile(const std::string filename, const Signal* signal)
-				{
-					FILE* signalFile = fopen(filename.c_str(), "w");
-
-					if(signalFile == NULL)
-						return;
-
-					uint32_t i = 0;
-
-					for(; i < signal->sampleLength - 1; ++i)
-					{
-						fprintf(signalFile, "%u %f\n", i, signal->samples[i]);
-					}
-
-					//print last line to the text file without the newline
-					fprintf(signalFile, "%u %f", i, signal->samples[i]);
-
-
-					fclose(signalFile);
-				}
-
-
-				void SignalGraph(const Signal* signal)
-				{
-					char filenameBuffer[50];
-					sprintf(filenameBuffer, "TempSignal%u.txt", tempGraphNumber);
-					tempGraphNumber++;
-
-
-					SignalWriteToTextFile(filenameBuffer, signal);
-
-					FILE* gnuplot;
-					//gnuplot = popen("gnuplot -persist", "w"); //Linux
-					gnuplot = popen("/usr/local/bin/gnuplot -persist", "w"); //OSX
-
-					if (gnuplot == NULL)
-						return;
-
-					fprintf(gnuplot, "set xrange[0 : %u]\n", signal->sampleLength);
-					fprintf(gnuplot, "set offset graph 0.01, 0.01, 0.01, 0.01\n");
-					fprintf(gnuplot, "set samples %u\n", signal->sampleLength);
-					fprintf(gnuplot, "plot \"%s\" with points pointtype 5  notitle\n", filenameBuffer);
-					//fprintf(gnuplot, "plot \"%s\" with impulses lw 1 notitle\n", "TempGraphFile.txt");
-
-					//Deletes the temp file
-					//remove(filenameBuffer);
-
-				}
-	 *
-	 *
-	 */
 
 	//----------------------------------
 

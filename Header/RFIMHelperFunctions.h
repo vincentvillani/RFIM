@@ -77,7 +77,6 @@ float* Device_CalculateCovarianceMatrix(const float* d_signalMatrix, uint64_t h_
 
 
 
-
 //TODO: Debug - Remove this
 float* DEBUG_CALCULATE_MEAN_MATRIX(float* d_signalMatrix, uint64_t h_valuesPerSample, uint64_t h_numberOfSamples);
 
