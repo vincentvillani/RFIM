@@ -127,7 +127,7 @@ float* Device_CalculateCovarianceMatrix(const float* d_signalMatrix, uint64_t h_
 	//	AKA. signal * (signal)T, where T = transpose, which will give you a (sampleNumber x sampleNumber) matrix as a result
 
 	//Take the outer product of the signal with itself
-	float alpha = 1.0f;
+	float alpha = 1.0f / h_numberOfSamples;
 	float beta = -1.0f;
 
 	cublasStatus_t cublasError;

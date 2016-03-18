@@ -56,14 +56,14 @@ int main(int argc, char **argv)
 	//----------------------------------
 
 	//Transpose it to row-major (simplify writing to file)
-	float* d_covarianceMatrixTranspose = Device_MatrixTranspose(d_covarianceMatrix, h_valuesPerSample, h_numberOfSamples);
+	float* d_covarianceMatrixTranspose = Device_MatrixTranspose(d_covarianceMatrix, h_valuesPerSample, h_valuesPerSample);
 
 	//Copy the signal to host memory
 	float* h_covarianceMatrixTranspose = CudaUtility_CopySignalToHost(d_covarianceMatrixTranspose,
-			h_valuesPerSample * h_numberOfSamples * sizeof(float));
+			h_valuesPerSample * h_valuesPerSample * sizeof(float));
 
 	//Write the signal to file
-	Utility_WriteSignalMatrixToFile(std::string("signal.txt"), h_covarianceMatrixTranspose, h_numberOfSamples, h_valuesPerSample);
+	Utility_WriteSignalMatrixToFile(std::string("signal.txt"), h_covarianceMatrixTranspose, h_valuesPerSample, h_valuesPerSample);
 
 	//Graph it via python on own computer!
 
