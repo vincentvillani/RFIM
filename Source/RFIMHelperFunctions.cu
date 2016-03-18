@@ -249,7 +249,7 @@ float* CalculateMeanMatrix(cublasHandle_t* cublasHandle, const float* d_signalMa
 	cublasStatus_t cublasError;
 
 
-	float alpha = 1;
+	float alpha = 1.0f / h_numberOfSamples;
 	float beta = 0;
 
 	cublasError = cublasSgemm_v2(*cublasHandle, CUBLAS_OP_N, CUBLAS_OP_T, 1, h_valuesPerSample, h_numberOfSamples,
@@ -280,6 +280,9 @@ float* CalculateMeanMatrix(cublasHandle_t* cublasHandle, const float* d_signalMa
 	//mean matrix = outer product of the transposed d_meanVec with itself
 	//d_meanMatrix = d_meanVec_Transposed (h_valuesPerSample x 1) * d_meanVec (1 x h_valuesPerSample)
 	//--------------------------------------
+
+	alpha = 1.0f;
+
 	cublasError = cublasSsyrk_v2(*cublasHandle, CUBLAS_FILL_MODE_UPPER, CUBLAS_OP_T, h_valuesPerSample, 1,
 			&alpha, d_meanVec, 1, &beta, d_meanMatrix, h_valuesPerSample);
 

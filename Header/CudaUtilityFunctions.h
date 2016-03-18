@@ -19,4 +19,5 @@ float* Utility_CopySignalToDevice(float* h_signal, uint64_t signalByteSize);
 float* Utility_CopySignalToHost(float* d_signal, uint64_t signalByteSize);
 
 
+
 #endif /* CUDAUTILITYFUNCTIONS_H_ */

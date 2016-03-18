@@ -79,38 +79,27 @@ void MeanCublasProduction()
 	}
 	*/
 
-	/*
-	final: 0: 25.000000
-	final: 1: 0.000000
-	final: 2: 0.000000
-	final: 3: 35.000000
-	final: 4: 49.000000
-	final: 5: 0.000000
-	final: 6: 45.000000
-	final: 7: 63.000000
-	final: 8: 81.000000
-	*/
 
 
 	bool failed = false;
 
-	if(h_meanMatrix[0] - 25.0f > 0.000001f)
+	if(h_meanMatrix[0] - 6.25f > 0.000001f)
 		failed = true;
 	else if(h_meanMatrix[1] - 0.0f > 0.000001f)
 		failed = true;
 	else if(h_meanMatrix[2] - 0.0f > 0.000001f)
 		failed = true;
-	else if(h_meanMatrix[3] - 35.0f > 0.000001f)
+	else if(h_meanMatrix[3] - 8.75f > 0.000001f)
 		failed = true;
-	else if(h_meanMatrix[4] - 49.0f > 0.000001f)
+	else if(h_meanMatrix[4] - 12.25f > 0.000001f)
 		failed = true;
 	else if(h_meanMatrix[5] - 0.0f > 0.000001f)
 		failed = true;
-	else if(h_meanMatrix[6] - 45.0f > 0.000001f)
+	else if(h_meanMatrix[6] - 11.25f > 0.000001f)
 		failed = true;
-	else if(h_meanMatrix[7] - 63.0f > 0.000001f)
+	else if(h_meanMatrix[7] - 15.75f > 0.000001f)
 		failed = true;
-	else if(h_meanMatrix[8] - 81.0f > 0.000001f)
+	else if(h_meanMatrix[8] - 20.25f > 0.000001f)
 		failed = true;
 
 	if(failed)
@@ -162,37 +151,28 @@ void CovarianceCublasProduction()
 		printf("%d: %f\n", i, h_signal[i]);
 	}
 	*/
-	/*
-	0: -8.000000
-	1: 0.000000
-	2: 0.000000
-	3: -13.000000
-	4: -20.000000
-	5: 0.000000
-	6: -18.000000
-	7: -27.000000
-	8: -36.000000
-	*/
+
+
 
 	bool failed = false;
 
-	if(h_signal[0] - -8.0f > 0.000001f)
+	if(h_signal[0] - 10.75f > 0.000001f)
 		failed = true;
 	else if(h_signal[1] - 0.0f > 0.000001f)
 		failed = true;
 	else if(h_signal[2] - 0.0f > 0.000001f)
 		failed = true;
-	else if(h_signal[3] - -13.0f > 0.000001f)
+	else if(h_signal[3] - 13.25f > 0.000001f)
 		failed = true;
-	else if(h_signal[4] - -20.0f > 0.000001f)
+	else if(h_signal[4] - 16.75f > 0.000001f)
 		failed = true;
 	else if(h_signal[5] - 0.0f > 0.000001f)
 		failed = true;
-	else if(h_signal[6] - -18.0f > 0.000001f)
+	else if(h_signal[6] - 15.75f > 0.000001f)
 		failed = true;
-	else if(h_signal[7] - -27.0f > 0.000001f)
+	else if(h_signal[7] - 20.25f > 0.000001f)
 		failed = true;
-	else if(h_signal[8] - -36.0f > 0.000001f)
+	else if(h_signal[8] - 24.75f > 0.000001f)
 		failed = true;
 
 	if(failed)

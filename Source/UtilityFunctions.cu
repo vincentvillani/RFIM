@@ -22,7 +22,23 @@ void WriteSignalMatrixToFile(const std::string filename, const float* h_signalMa
 	if(signalFile == NULL)
 		return;
 
-	uint32_t i = 0;
+	//1 4
+	//2 5
+	//3 6
+
+	/*
+
+	for(uint32_t currentRow = 0; currentRow < rows; ++currentRow)
+	{
+		for(uint32_t currentCol = 0; currentCol < columns; ++currentCol)
+		{
+			fprintf(signalFile, "%f", h_signalMatrix[ ]);
+		}
+
+		printf(signalFile, "\n");
+	}
+
+	*/
 
 	//Stored as column-major, but write row by row
 	//Write rows first
