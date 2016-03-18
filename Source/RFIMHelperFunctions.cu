@@ -164,7 +164,7 @@ float* CalculateMeanMatrix(cublasHandle_t* cublasHandle, const float* d_signalMa
 
 	/*
 	//TODO: DEBUG - REMOVE
-	float* h_signal = Utility_CopySignalToHost(d_signalMatrix, 6 * sizeof(float));
+	float* h_signal = CudaUtility_CopySignalToHost(d_signalMatrix, 6 * sizeof(float));
 	for(int i = 0; i < 6; ++i)
 	{
 		printf("h_signal %d: %f\n", i, h_signal[i]);
@@ -195,13 +195,13 @@ float* CalculateMeanMatrix(cublasHandle_t* cublasHandle, const float* d_signalMa
 	}
 
 	//Copy it over to the device
-	d_oneMatrix = Utility_CopySignalToDevice(h_oneMatrix, oneMatrixByteSize);
+	d_oneMatrix = CudaUtility_CopySignalToDevice(h_oneMatrix, oneMatrixByteSize);
 
 	//--------------------------------------
 
 	/*
 	//TODO: DEBUG - REMOVE
-	h_oneMatrix = Utility_CopySignalToHost(d_oneMatrix, oneMatrixByteSize);
+	h_oneMatrix = CudaUtility_CopySignalToHost(d_oneMatrix, oneMatrixByteSize);
 	for(int i = 0; i < h_numberOfSamples; ++i)
 	{
 		printf("oneMatrix %d: %f\n", i, h_oneMatrix[i]);
@@ -266,7 +266,7 @@ float* CalculateMeanMatrix(cublasHandle_t* cublasHandle, const float* d_signalMa
 	/*
 	//TODO: DEBUG - REMOVE
 	float* h_meanVec = (float*)malloc(meanVecByteSize);
-	h_meanVec = Utility_CopySignalToHost(d_meanVec, meanVecByteSize);
+	h_meanVec = CudaUtility_CopySignalToHost(d_meanVec, meanVecByteSize);
 	for(int i = 0; i < h_valuesPerSample; ++i)
 	{
 		printf("meanVec %d: %f\n", i, h_meanVec[i]);

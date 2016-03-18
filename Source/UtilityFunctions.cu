@@ -6,53 +6,76 @@
  */
 
 #include "../Header/UtilityFunctions.h"
+#include "../Header/RFIMHelperFunctions.h"
+#include "../Header/CudaUtilityFunctions.h"
 
 
 //Write a device signal matrix to a file and graph it
-void GraphData(const float* d_signalMatrix, uint64_t rows, uint64_t columns)
+void Utility_GraphData(float* d_signalMatrix, uint64_t rows, uint64_t columns, bool transpose)
 {
 
+	uint64_t h_rows;
+	uint64_t h_columns;
+	float* h_rowMajorMatrixToGraph;
+	float* d_matrixToGraph = d_signalMatrix;
+
+	//Transpose if neccessary
+	if(transpose)
+	{
+		d_matrixToGraph = Device_MatrixTranspose(d_signalMatrix, rows, columns);
+		h_rows = columns;
+		h_columns = rows;
+	}
+	else
+	{
+		h_rows = rows;
+		h_columns = columns;
+	}
+
+
+	h_rowMajorMatrixToGraph = CudaUtility_CopySignalToHost(d_matrixToGraph, rows * columns * sizeof(float));
+
+
+	//Write the signal to a file
+	Utility_WriteSignalMatrixToFile(std::string("Graph.txt"), h_rowMajorMatrixToGraph, h_rows, h_columns);
+
+	//Open up GNUPlot and graph a heatmap
+
+
+	if(transpose)
+		cudaFree(d_matrixToGraph);
+
+	free(h_rowMajorMatrixToGraph);
 }
 
 //Write a host signal matrix to a file
-void WriteSignalMatrixToFile(const std::string filename, const float* h_signalMatrix, uint64_t rows, uint64_t columns)
+void Utility_WriteSignalMatrixToFile(const std::string filename, const float* h_rowMajorSignalMatrix, uint64_t rows, uint64_t columns)
 {
 	FILE* signalFile = fopen(filename.c_str(), "w");
 
 	if(signalFile == NULL)
-		return;
+	{
+		fprintf(stderr, "WriteSignalMatrixToFile: failed to open %s file\n", filename.c_str());
+		exit(1);
+	}
 
-	//1 4
-	//2 5
-	//3 6
-
-	/*
 
 	for(uint32_t currentRow = 0; currentRow < rows; ++currentRow)
 	{
 		for(uint32_t currentCol = 0; currentCol < columns; ++currentCol)
 		{
-			fprintf(signalFile, "%f", h_signalMatrix[ ]);
+			//If last item in the column, write it without the ", "
+			if(currentCol == columns - 1)
+				fprintf(signalFile, "%f", h_rowMajorSignalMatrix[currentRow * columns + currentCol] );
+			else
+				fprintf(signalFile, "%f, ", h_rowMajorSignalMatrix[currentRow * columns + currentCol] );
 		}
 
-		printf(signalFile, "\n");
+		//Print a newline for each row except the last one
+		if(currentRow != currentRow - 1)
+			fprintf(signalFile, "\n");
 	}
 
-	*/
-
-	//Stored as column-major, but write row by row
-	//Write rows first
-
-
-	/*
-	for(; i < signal->sampleLength - 1; ++i)
-	{
-		fprintf(signalFile, "%u %f\n", i, signal->samples[i]);
-	}
-
-	//print last line to the text file without the newline
-	fprintf(signalFile, "%u %f", i, signal->samples[i]);
-	*/
 
 	fclose(signalFile);
 }

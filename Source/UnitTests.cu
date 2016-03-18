@@ -12,15 +12,18 @@
 #include "../Header/CudaUtilityFunctions.h"
 #include "../Header/Kernels.h"
 #include "../Header/RFIMHelperFunctions.h"
+#include "../Header/UtilityFunctions.h"
 
 #include <cublas.h>
 
 #include <assert.h>
+#include <string>
 
 //Production tests
 void MeanCublasProduction();
 void CovarianceCublasProduction();
 void TransposeProduction();
+void GraphProduction();
 
 //Private dec's
 void ParallelMeanUnitTest();
@@ -59,7 +62,7 @@ void MeanCublasProduction()
 		h_signal[i] = i + 1;
 	}
 
-	d_signal = Utility_CopySignalToDevice(h_signal, sizeof(float) * 6);
+	d_signal = CudaUtility_CopySignalToDevice(h_signal, sizeof(float) * 6);
 
 
 	//Calculate the mean matrix
@@ -67,7 +70,7 @@ void MeanCublasProduction()
 
 
 	//Copy it back to the host
-	h_meanMatrix = Utility_CopySignalToHost(d_meanMatrix, valuesPerSample * valuesPerSample * sizeof(float));
+	h_meanMatrix = CudaUtility_CopySignalToHost(d_meanMatrix, valuesPerSample * valuesPerSample * sizeof(float));
 
 
 	//Print out the result
@@ -137,14 +140,14 @@ void CovarianceCublasProduction()
 		h_signal[i] = i + 1;
 	}
 
-	d_signal = Utility_CopySignalToDevice(h_signal, sizeof(float) * 6);
+	d_signal = CudaUtility_CopySignalToDevice(h_signal, sizeof(float) * 6);
 
 	d_covarianceMatrix = Device_CalculateCovarianceMatrix(d_signal, valuesPerSample, sampleNum);
 
 	//Copy the data back to the device and print it
 	free(h_signal);
 
-	h_signal = Utility_CopySignalToHost(d_covarianceMatrix, valuesPerSample * valuesPerSample * sizeof(float));
+	h_signal = CudaUtility_CopySignalToHost(d_covarianceMatrix, valuesPerSample * valuesPerSample * sizeof(float));
 
 	/*
 	for(int i = 0; i < valuesPerSample * valuesPerSample; ++i)
@@ -210,14 +213,14 @@ void TransposeProduction()
 		h_signal[i] = i + 1;
 	}
 
-	d_signal = Utility_CopySignalToDevice(h_signal, sizeof(float) * 6);
+	d_signal = CudaUtility_CopySignalToDevice(h_signal, sizeof(float) * 6);
 
 	//Transpose the matrix
 	d_transposedSignal = Device_MatrixTranspose(d_signal, valuesPerSample, sampleNum);
 
 
 	free(h_signal);
-	h_signal = Utility_CopySignalToHost(d_transposedSignal, 6 * sizeof(float));
+	h_signal = CudaUtility_CopySignalToHost(d_transposedSignal, 6 * sizeof(float));
 
 	/*
 	for(int i = 0; i < 6; ++i)
@@ -258,6 +261,25 @@ void TransposeProduction()
 
 
 
+void GraphProduction()
+{
+	uint64_t valuesPerSample = 3;
+	uint64_t sampleNum = 2;
+
+	float* h_signal; //Column first signal (3, 2), 3 == valuesPerSample, 2 == sampleNum
+
+	h_signal = (float*)malloc( sizeof(float) * 6);
+
+	//Set the host signal
+	for(uint32_t i = 0; i < 6; ++i)
+	{
+		h_signal[i] = i + 1;
+	}
+
+	//Write it to file
+	Utility_WriteSignalMatrixToFile(std::string( "signal.txt"), h_signal, valuesPerSample, sampleNum);
+
+}
 
 
 
@@ -683,6 +705,7 @@ void RunAllUnitTests()
 	MeanCublasProduction();
 	CovarianceCublasProduction();
 	TransposeProduction();
+	GraphProduction();
 
 	ParallelMeanUnitTest();
 	ParallelMeanCublas();
