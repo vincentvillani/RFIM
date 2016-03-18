@@ -41,7 +41,32 @@ int main(int argc, char **argv)
 	uint64_t h_valuesPerSample = 26;
 	uint64_t h_numberOfSamples = 1024;
 
-	float* d_whiteNoiseSignalMatrix = Device_GenerateWhiteNoiseSignal(h_valuesPerSample, h_numberOfSamples);
+	//Start cuda rand library
+	curandGenerator_t rngGen;
+
+	if( curandCreateGenerator(&rngGen, CURAND_RNG_PSEUDO_DEFAULT) != CURAND_STATUS_SUCCESS)
+	{
+		fprintf(stderr, "main: Unable to start cuRand library\n");
+		exit(1);
+	}
+
+	//Set the RNG seed
+	if((curandSetPseudoRandomGeneratorSeed(rngGen, 1)) != CURAND_STATUS_SUCCESS)
+	{
+		fprintf(stderr, "main: Unable to set the RNG Seed value\n");
+		exit(1);
+	}
+
+
+
+	float* d_whiteNoiseSignalMatrix = Device_GenerateWhiteNoiseSignal(&rngGen, h_valuesPerSample, h_numberOfSamples);
+
+	//Destroy the RNG
+	if(curandDestroyGenerator(rngGen) != CURAND_STATUS_SUCCESS)
+	{
+		fprintf(stderr, "Device_GenerateWhiteNoiseSignal: Error in destroying the RNG generator \n");
+		exit(1);
+	}
 
 	//----------------------------------
 

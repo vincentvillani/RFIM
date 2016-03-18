@@ -25,8 +25,9 @@ float* CalculateMeanMatrix(cublasHandle_t* cublasHandle, const float* d_signalMa
 //--------------------------
 
 
-float* Device_GenerateWhiteNoiseSignal(uint64_t h_valuesPerSample, uint64_t h_numberOfSamples)
+float* Device_GenerateWhiteNoiseSignal(curandGenerator_t* rngGen, uint64_t h_valuesPerSample, uint64_t h_numberOfSamples)
 {
+
 	uint64_t totalSignalLength = h_valuesPerSample * h_numberOfSamples;
 	uint64_t totalSignalByteSize = totalSignalLength * sizeof(float);
 
@@ -44,41 +45,15 @@ float* Device_GenerateWhiteNoiseSignal(uint64_t h_valuesPerSample, uint64_t h_nu
 		exit(1);
 	}
 
-	//Start cuda rand library
-	curandGenerator_t rngGen;
-
-	if( curandCreateGenerator(&rngGen, CURAND_RNG_PSEUDO_DEFAULT) != CURAND_STATUS_SUCCESS)
-	{
-		fprintf(stderr, "Device_GenerateWhiteNoiseSignal: Unable to start cuRand library\n");
-		exit(1);
-	}
-
-
-	//Set the RNG seed
-	if((curandSetPseudoRandomGeneratorSeed(rngGen, 1)) != CURAND_STATUS_SUCCESS)
-	{
-		fprintf(stderr, "Device_GenerateWhiteNoiseSignal: Unable to set the RNG Seed value\n");
-		exit(1);
-	}
-
 
 	//Generate the signal!
 	//Generate random numbers on the device
 	//Generate random numbers using a normal distribution
 	//Normal distribution should emulate white noise hopefully?
 	//Generate signal
-	if(curandGenerateNormal(rngGen, d_signal, totalSignalLength, 0.0f, 1.0f) != CURAND_STATUS_SUCCESS)
+	if(curandGenerateNormal(*rngGen, d_signal, totalSignalLength, 0.0f, 1.0f) != CURAND_STATUS_SUCCESS)
 	{
 		fprintf(stderr, "Device_GenerateWhiteNoiseSignal: Error when generating the signal\n");
-		exit(1);
-	}
-
-
-
-	//Destroy the RNG
-	if(curandDestroyGenerator(rngGen) != CURAND_STATUS_SUCCESS)
-	{
-		fprintf(stderr, "Device_GenerateWhiteNoiseSignal: Error in destroying the RNG generator \n");
 		exit(1);
 	}
 

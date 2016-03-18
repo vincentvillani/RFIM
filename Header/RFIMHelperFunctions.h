@@ -9,6 +9,7 @@
 #define RFIMHELPERFUNCTIONS_H_
 
 #include <stdint.h>
+#include <curand.h>
 
 /*
 	Description:
@@ -27,7 +28,7 @@
 		Returns an array of floats on the DEVICE. This contains the generated signal.
 */
 
-float* Device_GenerateWhiteNoiseSignal(uint64_t h_valuesPerSample, uint64_t h_numberOfSamples);
+float* Device_GenerateWhiteNoiseSignal(curandGenerator_t* rngGen, uint64_t h_valuesPerSample, uint64_t h_numberOfSamples);
 
 
 
