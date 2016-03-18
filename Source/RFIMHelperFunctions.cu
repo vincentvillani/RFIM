@@ -305,7 +305,7 @@ float* CalculateMeanMatrix(cublasHandle_t* cublasHandle, const float* d_signalMa
 
 
 
-float* Device_MatrixTranspose(float* d_matrix, uint64_t rowNum, uint64_t colNum)
+float* Device_MatrixTranspose(const float* d_matrix, uint64_t rowNum, uint64_t colNum)
 {
 
 	float* d_transposedMatrix;
