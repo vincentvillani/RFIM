@@ -20,6 +20,7 @@
 //Production tests
 void MeanCublasProduction();
 void CovarianceCublasProduction();
+void TransposeProduction();
 
 //Private dec's
 void ParallelMeanUnitTest();
@@ -187,6 +188,78 @@ void CovarianceCublasProduction()
 	cudaFree(d_signal);
 	cudaFree(d_covarianceMatrix);
 }
+
+
+
+
+void TransposeProduction()
+{
+	uint64_t valuesPerSample = 3;
+	uint64_t sampleNum = 2;
+
+	float* h_signal; //Column first signal (3, 2), 3 == valuesPerSample, 2 == sampleNum
+
+	h_signal = (float*)malloc( sizeof(float) * 6);
+
+	float* d_signal;
+	float* d_transposedSignal;
+
+	//Set the host signal
+	for(uint32_t i = 0; i < 6; ++i)
+	{
+		h_signal[i] = i + 1;
+	}
+
+	d_signal = Utility_CopySignalToDevice(h_signal, sizeof(float) * 6);
+
+	//Transpose the matrix
+	d_transposedSignal = Device_MatrixTranspose(d_signal, valuesPerSample, sampleNum);
+
+
+	free(h_signal);
+	h_signal = Utility_CopySignalToHost(d_transposedSignal, 6 * sizeof(float));
+
+	/*
+	for(int i = 0; i < 6; ++i)
+	{
+		printf("%d: %f\n", i, h_signal[i]);
+	}
+	*/
+
+	bool failed = false;
+
+	if(h_signal[0] - 1.0f > 0.000001f)
+		failed = true;
+	else if(h_signal[1] - 4.0f > 0.000001f)
+		failed = true;
+	else if(h_signal[2] - 2.0f > 0.000001f)
+		failed = true;
+	else if(h_signal[3] - 5.0f > 0.000001f)
+		failed = true;
+	else if(h_signal[4] - 3.0f > 0.000001f)
+		failed = true;
+	else if(h_signal[5] - 6.0f > 0.000001f)
+		failed = true;
+
+	if(failed)
+	{
+		fprintf(stderr, "TransposeProduction unit test failed!\n");
+		exit(1);
+	}
+
+
+
+	free(h_signal);
+
+	cudaFree(d_signal);
+	cudaFree(d_transposedSignal);
+}
+
+
+
+
+
+
 
 //-------------------------------------
 
@@ -609,6 +682,7 @@ void RunAllUnitTests()
 {
 	MeanCublasProduction();
 	CovarianceCublasProduction();
+	TransposeProduction();
 
 	ParallelMeanUnitTest();
 	ParallelMeanCublas();

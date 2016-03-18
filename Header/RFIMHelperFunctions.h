@@ -65,15 +65,18 @@ float* Device_CalculateCovarianceMatrix(const float* d_signalMatrix, uint64_t h_
 
 /*
 	Description:
-		Performs an in-place matrix transpose
+		Performs an matrix transpose
 
 	Params:
 
-		d_matrix: A matrix that is transposed in-place
+		d_matrix: The matri
+
+	returns:
+		Device pointer to the transposed matrix. Remember to free this when you are done with it.
 
  */
 
-//void Device_InplaceMatrixTranspose(float* d_matrix);
+float* Device_MatrixTranspose(float* d_matrix, uint64_t rowNum, uint64_t colNum);
 
 
 

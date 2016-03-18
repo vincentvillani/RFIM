@@ -22,6 +22,8 @@
 #include "../Header/CudaMacros.h"
 #include "../Header/RFIMHelperFunctions.h"
 
+//TODO: Make the user hand in a cublasHandle to use in the RFIMHelper functions
+
 
 
 int main(int argc, char **argv)

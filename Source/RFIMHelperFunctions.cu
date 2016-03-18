@@ -305,6 +305,50 @@ float* CalculateMeanMatrix(cublasHandle_t* cublasHandle, const float* d_signalMa
 
 
 
+float* Device_MatrixTranspose(float* d_matrix, uint64_t rowNum, uint64_t colNum)
+{
+
+	float* d_transposedMatrix;
+
+	cudaError_t cudaError;
+	cudaError = cudaMalloc(&d_transposedMatrix, rowNum * colNum * sizeof(float));
+
+	if(cudaError != cudaSuccess)
+	{
+		fprintf(stderr, "Device_MatrixTranspose: Failed to allocate %llu bytes\n", rowNum * colNum * sizeof(float));
+		exit(1);
+	}
+
+
+	cublasHandle_t cublasHandle;
+	cublasCreate_v2(&cublasHandle);
+
+	cublasStatus_t cublasStatus;
+
+	float alpha = 1;
+	float beta = 0;
+
+	//cublasSgeam(handle, CUBLAS_OP_T, CUBLAS_OP_N, N, M, &alpha, d_matrix, M, &beta, d_matrix, N, d_matrixT, N);
+
+
+	cublasStatus = cublasSgeam(cublasHandle, CUBLAS_OP_T, CUBLAS_OP_N, colNum, rowNum,
+			&alpha, d_matrix, rowNum,
+			&beta, d_matrix, rowNum,
+			d_transposedMatrix, colNum);
+
+
+	if(cublasStatus != CUBLAS_STATUS_SUCCESS)
+	{
+		fprintf(stderr, "Device_InplaceMatrixTranspose: Transposition of the matrix failed!\n");
+		exit(1);
+	}
+
+	cublasDestroy_v2(cublasHandle);
+
+	return d_transposedMatrix;
+}
+
+
 
 float* DEBUG_CALCULATE_MEAN_MATRIX(float* d_signalMatrix, uint64_t h_valuesPerSample, uint64_t h_numberOfSamples)
 {
