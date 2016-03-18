@@ -705,7 +705,7 @@ void RunAllUnitTests()
 	MeanCublasProduction();
 	CovarianceCublasProduction();
 	TransposeProduction();
-	GraphProduction();
+	//GraphProduction();
 
 	ParallelMeanUnitTest();
 	ParallelMeanCublas();

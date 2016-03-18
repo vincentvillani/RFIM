@@ -9,7 +9,7 @@
 #include "../Header/RFIMHelperFunctions.h"
 #include "../Header/CudaUtilityFunctions.h"
 
-
+/*
 //Write a device signal matrix to a file and graph it
 void Utility_GraphData(float* d_signalMatrix, uint64_t rows, uint64_t columns, bool transpose)
 {
@@ -47,10 +47,13 @@ void Utility_GraphData(float* d_signalMatrix, uint64_t rows, uint64_t columns, b
 
 	free(h_rowMajorMatrixToGraph);
 }
+*/
 
 //Write a host signal matrix to a file
 void Utility_WriteSignalMatrixToFile(const std::string filename, const float* h_rowMajorSignalMatrix, uint64_t rows, uint64_t columns)
 {
+
+
 	FILE* signalFile = fopen(filename.c_str(), "w");
 
 	if(signalFile == NULL)
@@ -64,11 +67,11 @@ void Utility_WriteSignalMatrixToFile(const std::string filename, const float* h_
 	{
 		for(uint32_t currentCol = 0; currentCol < columns; ++currentCol)
 		{
-			//If last item in the column, write it without the ", "
+			//If last item in the column, write it without the " "
 			if(currentCol == columns - 1)
 				fprintf(signalFile, "%f", h_rowMajorSignalMatrix[currentRow * columns + currentCol] );
 			else
-				fprintf(signalFile, "%f, ", h_rowMajorSignalMatrix[currentRow * columns + currentCol] );
+				fprintf(signalFile, "%f ", h_rowMajorSignalMatrix[currentRow * columns + currentCol] );
 		}
 
 		//Print a newline for each row except the last one

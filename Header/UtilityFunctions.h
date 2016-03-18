@@ -17,7 +17,7 @@
 #include <string>
 
 //Write a device signal matrix to a file and graph it
-void Utility_GraphData(float* d_signalMatrix, uint64_t rows, uint64_t columns, bool transpose);
+//void Utility_GraphData(float* d_signalMatrix, uint64_t rows, uint64_t columns, bool transpose);
 
 //Write a host signal matrix to a file
 void Utility_WriteSignalMatrixToFile(const std::string filename, const float* h_rowMajorSignalMatrix, uint64_t rows, uint64_t columns);

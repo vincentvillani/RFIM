@@ -14,6 +14,7 @@
 #include <cuda.h>
 #include <curand.h>
 #include <cublas.h>
+#include <string>
 
 #include <stdint.h>
 
@@ -21,6 +22,8 @@
 #include "../Header/UnitTests.h"
 #include "../Header/CudaMacros.h"
 #include "../Header/RFIMHelperFunctions.h"
+#include "../Header/CudaUtilityFunctions.h"
+#include "../Header/UtilityFunctions.h"
 
 //TODO: Make the user hand in a cublasHandle to use in the RFIMHelper functions
 
@@ -34,6 +37,7 @@ int main(int argc, char **argv)
 
 	//1. Generate a signal on the device
 	//----------------------------------
+
 	uint64_t h_valuesPerSample = 26;
 	uint64_t h_numberOfSamples = 1024;
 
@@ -43,13 +47,25 @@ int main(int argc, char **argv)
 
 	//2.Calculate the covariance matrix of this signal
 	//----------------------------------
+
 	float* d_covarianceMatrix = Device_CalculateCovarianceMatrix(d_whiteNoiseSignalMatrix, h_valuesPerSample, h_numberOfSamples);
 
 	//----------------------------------
 
 	//3. Graph the covariance matrix
 	//----------------------------------
-	//http://gnuplot.sourceforge.net/demo/heatmaps.html
+
+	//Transpose it to row-major (simplify writing to file)
+	float* d_covarianceMatrixTranspose = Device_MatrixTranspose(d_covarianceMatrix, h_valuesPerSample, h_numberOfSamples);
+
+	//Copy the signal to host memory
+	float* h_covarianceMatrixTranspose = CudaUtility_CopySignalToHost(d_covarianceMatrixTranspose,
+			h_valuesPerSample * h_numberOfSamples * sizeof(float));
+
+	//Write the signal to file
+	Utility_WriteSignalMatrixToFile(std::string("signal.txt"), h_covarianceMatrixTranspose, h_numberOfSamples, h_valuesPerSample);
+
+	//Graph it via python on own computer!
 
 	//----------------------------------
 
@@ -57,8 +73,11 @@ int main(int argc, char **argv)
 	//Free all memory
 	//----------------------------------
 
+	free(h_covarianceMatrixTranspose);
+
 	cudaFree(d_whiteNoiseSignalMatrix);
 	cudaFree(d_covarianceMatrix);
+	cudaFree(d_covarianceMatrixTranspose);
 
 	//----------------------------------
 
