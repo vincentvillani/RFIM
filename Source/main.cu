@@ -64,7 +64,7 @@ int main(int argc, char **argv)
 	//Destroy the RNG
 	if(curandDestroyGenerator(rngGen) != CURAND_STATUS_SUCCESS)
 	{
-		fprintf(stderr, "Device_GenerateWhiteNoiseSignal: Error in destroying the RNG generator \n");
+		fprintf(stderr, "main: Error in destroying the RNG generator \n");
 		exit(1);
 	}
 
@@ -75,13 +75,26 @@ int main(int argc, char **argv)
 
 	//Setup the cublas library
 	cublasHandle_t cublasHandle;
-	cublasCreate_v2(&cublasHandle);
+	cublasStatus_t cublasStatus = cublasCreate_v2(&cublasHandle);
 
+	if(cublasStatus != CUBLAS_STATUS_SUCCESS)
+	{
+		fprintf(stderr, "Main: Error creating a cublas handle\n");
+		exit(1);
+	}
+
+	//Calculate the covariance matrix
 	float* d_covarianceMatrix = Device_CalculateCovarianceMatrix(&cublasHandle, d_whiteNoiseSignalMatrix, h_valuesPerSample, h_numberOfSamples);
 
 
 	//Destroy the cublas handle
-	cublasDestroy_v2(cublasHandle);
+	cublasStatus = cublasDestroy_v2(cublasHandle);
+
+	if(cublasStatus != CUBLAS_STATUS_SUCCESS)
+	{
+		fprintf(stderr, "Main: Error destroying a cublas handle\n");
+		exit(1);
+	}
 
 	//----------------------------------
 
