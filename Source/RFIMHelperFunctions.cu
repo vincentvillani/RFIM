@@ -9,9 +9,7 @@
 
 #include <stdio.h>
 
-#include <cuda.h>
-#include <curand.h>
-#include <cublas.h>
+
 
 #include "../Header/CudaUtilityFunctions.h"
 
@@ -67,7 +65,7 @@ float* Device_GenerateWhiteNoiseSignal(curandGenerator_t* rngGen, uint64_t h_val
 
 
 
-float* Device_CalculateCovarianceMatrix(const float* d_signalMatrix, uint64_t h_valuesPerSample, uint64_t h_numberOfSamples)
+float* Device_CalculateCovarianceMatrix(cublasHandle_t* cublasHandle, const float* d_signalMatrix, uint64_t h_valuesPerSample, uint64_t h_numberOfSamples)
 {
 	//d_signalMatrix should be column-major as CUBLAS is column-major library (indexes start at 1 also)
 	//Remember to take that into account!
@@ -78,11 +76,6 @@ float* Device_CalculateCovarianceMatrix(const float* d_signalMatrix, uint64_t h_
 	float* d_covarianceMatrix;
 
 
-	//Setup the cublas library
-	//TODO: In the future maybe there should be a shared handle for the cublas library
-	cublasHandle_t cublasHandle;
-	cublasCreate_v2(&cublasHandle);
-
 	//--------------------------------
 
 
@@ -91,7 +84,7 @@ float* Device_CalculateCovarianceMatrix(const float* d_signalMatrix, uint64_t h_
 
 	//At this point in time d_covarianceMatrix is actually the mean matrix
 	//This is done so I can get better performance out of the cublas API
-	d_covarianceMatrix = CalculateMeanMatrix(&cublasHandle, d_signalMatrix, h_valuesPerSample, h_numberOfSamples);
+	d_covarianceMatrix = CalculateMeanMatrix(cublasHandle, d_signalMatrix, h_valuesPerSample, h_numberOfSamples);
 
 	//--------------------------------
 
@@ -106,7 +99,7 @@ float* Device_CalculateCovarianceMatrix(const float* d_signalMatrix, uint64_t h_
 	float beta = -1.0f;
 
 	cublasStatus_t cublasError;
-	cublasError = cublasSsyrk_v2(cublasHandle, CUBLAS_FILL_MODE_UPPER, CUBLAS_OP_N, h_valuesPerSample, h_numberOfSamples,
+	cublasError = cublasSsyrk_v2(*cublasHandle, CUBLAS_FILL_MODE_UPPER, CUBLAS_OP_N, h_valuesPerSample, h_numberOfSamples,
 			&alpha, d_signalMatrix, h_valuesPerSample, &beta, d_covarianceMatrix, h_valuesPerSample);
 
 	if(cublasError != CUBLAS_STATUS_SUCCESS)
@@ -116,8 +109,7 @@ float* Device_CalculateCovarianceMatrix(const float* d_signalMatrix, uint64_t h_
 	}
 
 
-	//Destroy the cublas handle
-	cublasDestroy_v2(cublasHandle);
+
 
 	return d_covarianceMatrix;
 }

@@ -73,7 +73,15 @@ int main(int argc, char **argv)
 	//2.Calculate the covariance matrix of this signal
 	//----------------------------------
 
-	float* d_covarianceMatrix = Device_CalculateCovarianceMatrix(d_whiteNoiseSignalMatrix, h_valuesPerSample, h_numberOfSamples);
+	//Setup the cublas library
+	cublasHandle_t cublasHandle;
+	cublasCreate_v2(&cublasHandle);
+
+	float* d_covarianceMatrix = Device_CalculateCovarianceMatrix(&cublasHandle, d_whiteNoiseSignalMatrix, h_valuesPerSample, h_numberOfSamples);
+
+
+	//Destroy the cublas handle
+	cublasDestroy_v2(cublasHandle);
 
 	//----------------------------------
 

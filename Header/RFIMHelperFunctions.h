@@ -9,7 +9,9 @@
 #define RFIMHELPERFUNCTIONS_H_
 
 #include <stdint.h>
+#include <cuda.h>
 #include <curand.h>
+#include <cublas.h>
 
 /*
 	Description:
@@ -58,7 +60,8 @@ float* Device_GenerateWhiteNoiseSignal(curandGenerator_t* rngGen, uint64_t h_val
 		Only the upper trianglar contains values, the lower trianglar part is just zero (memory is allocated to store the zeroes and the lower trianglar part is set to zero)
 
 */
-float* Device_CalculateCovarianceMatrix(const float* d_signalMatrix, uint64_t h_valuesPerSample, uint64_t h_numberOfSamples);
+float* Device_CalculateCovarianceMatrix(cublasHandle_t* cublasHandle, const float* d_signalMatrix,
+		uint64_t h_valuesPerSample, uint64_t h_numberOfSamples);
 
 
 
@@ -80,7 +83,6 @@ float* Device_CalculateCovarianceMatrix(const float* d_signalMatrix, uint64_t h_
 		Device pointer to the transposed matrix. Remember to free this when you are done with it.
 
  */
-
 float* Device_MatrixTranspose(const float* d_matrix, uint64_t rowNum, uint64_t colNum);
 
 

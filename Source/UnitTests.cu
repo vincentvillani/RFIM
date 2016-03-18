@@ -142,7 +142,12 @@ void CovarianceCublasProduction()
 
 	d_signal = CudaUtility_CopySignalToDevice(h_signal, sizeof(float) * 6);
 
-	d_covarianceMatrix = Device_CalculateCovarianceMatrix(d_signal, valuesPerSample, sampleNum);
+	cublasHandle_t cublasHandle;
+	cublasCreate_v2(&cublasHandle);
+
+	d_covarianceMatrix = Device_CalculateCovarianceMatrix(&cublasHandle, d_signal, valuesPerSample, sampleNum);
+
+	cublasDestroy_v2(cublasHandle);
 
 	//Copy the data back to the device and print it
 	free(h_signal);
