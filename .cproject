@@ -31,6 +31,7 @@
 								<option id="nvcc.compiler.include.paths.535644455" name="Include paths (-I)" superClass="nvcc.compiler.include.paths" valueType="includePath">
 									<listOptionValue builtIn="false" value="/Developer/NVIDIA/CUDA-7.5/include"/>
 								</option>
+								<option id="com.nvidia.cuda.ide.build.option1.1980271802" name="Compiler Path (-ccbin)" superClass="com.nvidia.cuda.ide.build.option1" value="" valueType="string"/>
 								<inputType id="nvcc.compiler.input.cu.616749011" superClass="nvcc.compiler.input.cu"/>
 								<inputType id="nvcc.compiler.input.cpp.1879756011" superClass="nvcc.compiler.input.cpp"/>
 								<inputType id="nvcc.compiler.input.c.1858904298" superClass="nvcc.compiler.input.c"/>
@@ -41,7 +42,7 @@
 									<listOptionValue builtIn="false" value="curand"/>
 									<listOptionValue builtIn="false" value="cublas"/>
 								</option>
-								<option id="nvcc.linker.option.paths.589322352" superClass="nvcc.linker.option.paths" valueType="libPaths">
+								<option id="nvcc.linker.option.paths.589322352" name="Library search path (-L)" superClass="nvcc.linker.option.paths" valueType="libPaths">
 									<listOptionValue builtIn="false" value="/usr/local/cuda/lib"/>
 								</option>
 								<inputType id="nvcc.linker.input.1183962481" superClass="nvcc.linker.input">

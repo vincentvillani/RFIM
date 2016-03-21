@@ -88,7 +88,7 @@ float* Device_MatrixTranspose(const float* d_matrix, uint64_t rowNum, uint64_t c
 
 
 
-void Device_EigenvalueSolver(cusolverDnHandle_t* cusolverHandle, float* d_covarianceMatrix, float* d_U, float* d_S, float* d_VT,
+void Device_EigenvalueSolver(cublasHandle_t* cublasHandle, cusolverDnHandle_t* cusolverHandle, float* d_fullCovarianceMatrix, float* d_U, float* d_S, float* d_VT,
 		float* d_Lworkspace, float* d_Rworkspace, int workspaceLength, int* d_devInfo, int h_valuesPerSample);
 
 

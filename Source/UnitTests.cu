@@ -294,6 +294,7 @@ void EigendecompProduction()
 	int valuesPerSample = 2;
 	int covarianceMatrixByteSize = sizeof(float) * valuesPerSample * valuesPerSample;
 
+
 	cusolverStatus_t cusolverStatus;
 	cusolverDnHandle_t handle;
 	cusolverStatus = cusolverDnCreate(&handle);
@@ -309,11 +310,44 @@ void EigendecompProduction()
 	float* h_covarianceMatrix = (float*)malloc( covarianceMatrixByteSize );
 
 	h_covarianceMatrix[0] = 5.0f;
-	h_covarianceMatrix[1] = 2.0f;
+	h_covarianceMatrix[1] = 0.0f;
 	h_covarianceMatrix[2] = 2.0f;
 	h_covarianceMatrix[3] = 5.0f;
 
 	float* d_covarianceMatrix = CudaUtility_CopySignalToDevice(h_covarianceMatrix, covarianceMatrixByteSize);
+
+
+
+	//Transpose the matrix
+	float* d_covarianceMatrixTransposed = Device_MatrixTranspose(d_covarianceMatrix, valuesPerSample, valuesPerSample);
+
+	//Set the transposes diagonal to zero
+	dim3 blockDim(32);
+	dim3 gridDim(1, ceil(valuesPerSample / (float)32));
+	setDiagonalToZero<<<gridDim, blockDim>>>(d_covarianceMatrixTransposed, valuesPerSample);
+
+	//Add it to the covariance matrix
+	cublasHandle_t cublasHandle;
+	cublasCreate_v2(&cublasHandle);
+
+	cublasStatus_t cublasStatus;
+
+	float alpha = 1.0f;
+	float beta = 1.0f;
+
+	float* d_fullCovarianceMatrix;
+	cudaMalloc(&d_fullCovarianceMatrix, sizeof(float) * valuesPerSample * valuesPerSample);
+
+	cublasStatus = cublasSgeam(cublasHandle, CUBLAS_OP_N, CUBLAS_OP_N, valuesPerSample, valuesPerSample, &alpha, d_covarianceMatrix, valuesPerSample,
+			&beta, d_covarianceMatrixTransposed, valuesPerSample, d_fullCovarianceMatrix, valuesPerSample);
+
+	if(cublasStatus_t != CUBLAS_STATUS_SUCCESS)
+	{
+		fprintf(stderr, "EigendecompProduction cublasSgeam call failed\n");
+		exit(1);
+	}
+
+
 	float* d_S;
 	float* d_U;
 	float* d_VT;
@@ -338,7 +372,8 @@ void EigendecompProduction()
 	cudaMalloc(&d_devInfo, sizeof(int));
 
 
-	Device_EigenvalueSolver(&handle, d_covarianceMatrix, d_U, d_S, d_VT, d_Lworkspace, d_Rworkspace, workspaceLength, d_devInfo, valuesPerSample);
+
+	Device_EigenvalueSolver(&cublasHandle, &handle, d_fullCovarianceMatrix, d_U, d_S, d_VT, d_Lworkspace, NULL, workspaceLength, d_devInfo, valuesPerSample);
 
 	float* h_eigenvalues = CudaUtility_CopySignalToHost(d_S,  sizeof(float) * valuesPerSample);
 	float* h_eigenvectorMatrix = CudaUtility_CopySignalToHost(d_U, sizeof(float) * valuesPerSample * valuesPerSample);
@@ -389,6 +424,8 @@ void EigendecompProduction()
 	free(h_eigenvalues);
 	free(h_eigenvectorMatrix);
 	cudaFree(d_covarianceMatrix);
+	cudaFree(d_covarianceMatrixTransposed);
+	cudaFree(d_fullCovarianceMatrix);
 	cudaFree(d_S);
 	cudaFree(d_U);
 	cudaFree(d_VT);
@@ -397,6 +434,7 @@ void EigendecompProduction()
 	cudaFree(d_devInfo);
 
 	cusolverDnDestroy(handle);
+	cublasDestroy_v2(cublasHandle);
 
 }
 

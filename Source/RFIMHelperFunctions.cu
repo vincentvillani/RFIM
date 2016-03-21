@@ -318,15 +318,25 @@ float* Device_MatrixTranspose(const float* d_matrix, uint64_t rowNum, uint64_t c
 
 
 
-void Device_EigenvalueSolver(cusolverDnHandle_t* cusolverHandle, float* d_covarianceMatrix, float* d_U, float* d_S, float* d_VT,
+void Device_EigenvalueSolver(cublasHandle_t* cublasHandle, cusolverDnHandle_t* cusolverHandle, float* d_fullCovarianceMatrix, float* d_U, float* d_S, float* d_VT,
 		float* d_Lworkspace, float* d_Rworkspace, int workspaceLength, int* d_devInfo, int h_valuesPerSample)
 {
+
+	//make the upper triangular symmetric matrix a full symmetric matrix
+
+	//Transpose it
+
+	//Set it's diagonals to zero
+
+	//Add them together to get a full matrix
+
+
 	cusolverStatus_t cusolverStatus;
 
 
 
 	cusolverStatus = cusolverDnSgesvd(*cusolverHandle, 'A', 'A', h_valuesPerSample, h_valuesPerSample,
-			d_covarianceMatrix, h_valuesPerSample, d_S, d_U, h_valuesPerSample, d_VT, h_valuesPerSample,
+			d_fullCovarianceMatrix, h_valuesPerSample, d_S, d_U, h_valuesPerSample, d_VT, h_valuesPerSample,
 			d_Lworkspace, workspaceLength, d_Rworkspace, d_devInfo);
 
 
@@ -341,6 +351,7 @@ void Device_EigenvalueSolver(cusolverDnHandle_t* cusolverHandle, float* d_covari
 
 	if(cusolverStatus != CUSOLVER_STATUS_SUCCESS)
 	{
+		/*
 		if(cusolverStatus == CUSOLVER_STATUS_NOT_INITIALIZED)
 			printf("1\n");
 		if(cusolverStatus == CUSOLVER_STATUS_INVALID_VALUE)
@@ -349,6 +360,7 @@ void Device_EigenvalueSolver(cusolverDnHandle_t* cusolverHandle, float* d_covari
 			printf("3\n");
 		if(cusolverStatus == CUSOLVER_STATUS_INTERNAL_ERROR)
 			printf("4\n");
+		*/
 
 
 		fprintf(stderr, "Device_EigenvalueSolver: Error solving eigenvalues\n");

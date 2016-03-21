@@ -42,4 +42,7 @@ __global__ void outerProductUpperTri(cuFloatComplex* resultMatrix, cuFloatComple
 //Other stuff
 __global__ void normalise(float* result, unsigned int resultLength, float* amps, unsigned int* hits);
 
+//Sets the digaonal of the matrix to zero. Assumes square matrices
+__global__ void setDiagonalToZero(float* d_matrix, uint64_t columnsAndRows);
+
 #endif /* KERNELS_H_ */

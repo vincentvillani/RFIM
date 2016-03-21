@@ -175,3 +175,17 @@ __global__ void normalise(float* result, unsigned int resultLength, float* amps,
 }
 
 
+
+__global__ void setDiagonalToZero(float* d_matrix, uint64_t columnsAndRows)
+{
+	int absoluteThreadIdx = blockDim.x * blockIdx.x + threadIdx.x;
+
+	//Check for out of bounds
+	if(absoluteThreadIdx >= columnsAndRows)
+		return;
+
+	//set diag element to zero
+	int matrixIndex = absoluteThreadIdx * columnsAndRows + absoluteThreadIdx;
+	d_matrix[matrixIndex] = 0;
+}
+
