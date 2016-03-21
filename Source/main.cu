@@ -119,6 +119,23 @@ int main(int argc, char **argv)
 
 
 	//4. Calculate the eigenvectors and eigenvalues
+	//----------------------------------
+
+	//Create a cusolver handle
+	cusolverDnHandle_t cusolverHandle;
+	cusolverStatus_t cusolverStatus;
+
+	cusolverStatus = cusolverDnCreate(&cusolverHandle);
+
+	if(cusolverStatus != CUSOLVER_STATUS_SUCCESS)
+	{
+		fprintf(stderr, "main: error in creating a cusolver handle\n");
+		exit(1);
+	}
+
+
+
+	//----------------------------------
 
 	//Free all memory
 	//----------------------------------

@@ -24,6 +24,7 @@ void MeanCublasProduction();
 void CovarianceCublasProduction();
 void TransposeProduction();
 void GraphProduction();
+void EigendecompProduction();
 
 //Private dec's
 void ParallelMeanUnitTest();
@@ -283,6 +284,119 @@ void GraphProduction()
 
 	//Write it to file
 	Utility_WriteSignalMatrixToFile(std::string( "signal.txt"), h_signal, valuesPerSample, sampleNum);
+
+}
+
+
+
+void EigendecompProduction()
+{
+	int valuesPerSample = 2;
+	int covarianceMatrixByteSize = sizeof(float) * valuesPerSample * valuesPerSample;
+
+	cusolverStatus_t cusolverStatus;
+	cusolverDnHandle_t handle;
+	cusolverStatus = cusolverDnCreate(&handle);
+
+	if(cusolverStatus != CUSOLVER_STATUS_SUCCESS)
+	{
+		fprintf(stderr, "EigendecompProduction: Error creating a cusolver handle\n");
+		exit(1);
+	}
+
+
+
+	float* h_covarianceMatrix = (float*)malloc( covarianceMatrixByteSize );
+
+	h_covarianceMatrix[0] = 5.0f;
+	h_covarianceMatrix[1] = 2.0f;
+	h_covarianceMatrix[2] = 2.0f;
+	h_covarianceMatrix[3] = 5.0f;
+
+	float* d_covarianceMatrix = CudaUtility_CopySignalToDevice(h_covarianceMatrix, covarianceMatrixByteSize);
+	float* d_S;
+	float* d_U;
+	float* d_VT;
+	float* d_Lworkspace;
+	float* d_Rworkspace;
+	int* d_devInfo;
+	int workspaceLength = 0;
+
+	cudaMalloc(&d_S, sizeof(float) * valuesPerSample);
+	cudaMalloc(&d_U, sizeof(float) * valuesPerSample * valuesPerSample);
+	cudaMalloc(&d_VT, sizeof(float) * valuesPerSample * valuesPerSample);
+	cusolverStatus = cusolverDnSgesvd_bufferSize(handle, valuesPerSample, valuesPerSample, &workspaceLength);
+
+	if(cusolverStatus != CUSOLVER_STATUS_SUCCESS)
+	{
+		fprintf(stderr, "EigendecompProduction: Error calculating buffer size\n");
+		exit(1);
+	}
+
+	cudaMalloc(&d_Lworkspace, workspaceLength);
+	cudaMalloc(&d_Rworkspace, workspaceLength);
+	cudaMalloc(&d_devInfo, sizeof(int));
+
+
+	Device_EigenvalueSolver(&handle, d_covarianceMatrix, d_U, d_S, d_VT, d_Lworkspace, d_Rworkspace, workspaceLength, d_devInfo, valuesPerSample);
+
+	float* h_eigenvalues = CudaUtility_CopySignalToHost(d_S,  sizeof(float) * valuesPerSample);
+	float* h_eigenvectorMatrix = CudaUtility_CopySignalToHost(d_U, sizeof(float) * valuesPerSample * valuesPerSample);
+
+	/*
+	for(int i = 0; i < valuesPerSample; ++i)
+	{
+		printf("Eigenvalue %d: %f\n", i, h_eigenvalues[i]);
+	}
+
+	printf("\n");
+
+	for(int i = 0; i < valuesPerSample * valuesPerSample; ++i)
+	{
+		printf("Eigenvec %d: %f\n", i, h_eigenvectorMatrix[i]);
+	}
+	*/
+
+	bool failed = false;
+
+	if(h_eigenvalues[0] - 7.0f > 0.0000001f)
+		failed = true;
+	if(h_eigenvalues[1] - 3.0f > 0.0000001f)
+		failed = true;
+
+	if(failed)
+	{
+		fprintf(stderr, "EigendecompProduction Unit test: failed to correctly calculate eigenvalues\n");
+		exit(1);
+	}
+
+	if(h_eigenvectorMatrix[0] + 0.707107 > 0.000001f)
+		failed = true;
+	if(h_eigenvectorMatrix[1] + 0.707107 > 0.000001f)
+		failed = true;
+	if(h_eigenvectorMatrix[2] + 0.707107 > 0.000001f)
+		failed = true;
+	if(h_eigenvectorMatrix[3] - 0.707107 > 0.000001f)
+		failed = true;
+
+	if(failed)
+	{
+		fprintf(stderr, "EigendecompProduction Unit test: failed to correctly calculate eigenvectors\n");
+		exit(1);
+	}
+
+	free(h_covarianceMatrix);
+	free(h_eigenvalues);
+	free(h_eigenvectorMatrix);
+	cudaFree(d_covarianceMatrix);
+	cudaFree(d_S);
+	cudaFree(d_U);
+	cudaFree(d_VT);
+	cudaFree(d_Lworkspace);
+	cudaFree(d_Rworkspace);
+	cudaFree(d_devInfo);
+
+	cusolverDnDestroy(handle);
 
 }
 
@@ -711,6 +825,7 @@ void RunAllUnitTests()
 	CovarianceCublasProduction();
 	TransposeProduction();
 	//GraphProduction();
+	EigendecompProduction();
 
 	ParallelMeanUnitTest();
 	ParallelMeanCublas();

@@ -317,6 +317,52 @@ float* Device_MatrixTranspose(const float* d_matrix, uint64_t rowNum, uint64_t c
 
 
 
+
+void Device_EigenvalueSolver(cusolverDnHandle_t* cusolverHandle, float* d_covarianceMatrix, float* d_U, float* d_S, float* d_VT,
+		float* d_Lworkspace, float* d_Rworkspace, int workspaceLength, int* d_devInfo, int h_valuesPerSample)
+{
+	cusolverStatus_t cusolverStatus;
+
+
+
+	cusolverStatus = cusolverDnSgesvd(*cusolverHandle, 'A', 'A', h_valuesPerSample, h_valuesPerSample,
+			d_covarianceMatrix, h_valuesPerSample, d_S, d_U, h_valuesPerSample, d_VT, h_valuesPerSample,
+			d_Lworkspace, workspaceLength, d_Rworkspace, d_devInfo);
+
+
+	int* h_devInfo = (int*)malloc(sizeof(int));
+	cudaMemcpy(h_devInfo, d_devInfo, sizeof(int), cudaMemcpyDeviceToHost);
+
+	if(*h_devInfo != 0)
+	{
+		fprintf(stderr, "Device_EigenvalueSolver: Error with the %dth parameter\n", *h_devInfo);
+		exit(1);
+	}
+
+	if(cusolverStatus != CUSOLVER_STATUS_SUCCESS)
+	{
+		if(cusolverStatus == CUSOLVER_STATUS_NOT_INITIALIZED)
+			printf("1\n");
+		if(cusolverStatus == CUSOLVER_STATUS_INVALID_VALUE)
+			printf("2\n");
+		if(cusolverStatus == CUSOLVER_STATUS_ARCH_MISMATCH)
+			printf("3\n");
+		if(cusolverStatus == CUSOLVER_STATUS_INTERNAL_ERROR)
+			printf("4\n");
+
+
+		fprintf(stderr, "Device_EigenvalueSolver: Error solving eigenvalues\n");
+		exit(1);
+	}
+
+
+	free(h_devInfo);
+
+}
+
+
+
+
 float* DEBUG_CALCULATE_MEAN_MATRIX(float* d_signalMatrix, uint64_t h_valuesPerSample, uint64_t h_numberOfSamples)
 {
 	cublasHandle_t cublasHandle;

@@ -12,6 +12,7 @@
 #include <cuda.h>
 #include <curand.h>
 #include <cublas.h>
+#include <cusolverDn.h>
 
 /*
 	Description:
@@ -84,6 +85,11 @@ float* Device_CalculateCovarianceMatrix(cublasHandle_t* cublasHandle, const floa
 
  */
 float* Device_MatrixTranspose(const float* d_matrix, uint64_t rowNum, uint64_t colNum);
+
+
+
+void Device_EigenvalueSolver(cusolverDnHandle_t* cusolverHandle, float* d_covarianceMatrix, float* d_U, float* d_S, float* d_VT,
+		float* d_Lworkspace, float* d_Rworkspace, int workspaceLength, int* d_devInfo, int h_valuesPerSample);
 
 
 
