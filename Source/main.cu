@@ -26,7 +26,7 @@
 #include "../Header/UtilityFunctions.h"
 
 
-
+//TODO: Make the construction of a full covariance matrix a function and use that for the unit test
 //TODO: Look at ways to reuse allocated memory if possible
 //TODO: Make sure memory that can be used again, is still in a valid state after the first execution
 //TODO: Move everything over to GEMM because of the solver?
