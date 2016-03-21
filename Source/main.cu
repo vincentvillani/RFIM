@@ -14,8 +14,8 @@
 #include <cuda.h>
 #include <curand.h>
 #include <cublas.h>
+#include <cusolverDn.h>
 #include <string>
-
 #include <stdint.h>
 
 #include "../Header/Kernels.h"
@@ -25,14 +25,16 @@
 #include "../Header/CudaUtilityFunctions.h"
 #include "../Header/UtilityFunctions.h"
 
-//TODO: Make the user hand in a cublasHandle to use in the RFIMHelper functions
 
 
+//TODO: Look at ways to reuse allocated memory if possible
 
 int main(int argc, char **argv)
 {
 	//Run all the unit tests
 	RunAllUnitTests();
+
+
 
 
 	//1. Generate a signal on the device
@@ -115,6 +117,8 @@ int main(int argc, char **argv)
 
 	//----------------------------------
 
+
+	//4. Calculate the eigenvectors and eigenvalues
 
 	//Free all memory
 	//----------------------------------
