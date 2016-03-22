@@ -11,10 +11,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include <cuda.h>
-#include <curand.h>
-#include <cublas.h>
-#include <cusolverDn.h>
 #include <string>
 #include <stdint.h>
 
@@ -36,13 +32,15 @@ int main(int argc, char **argv)
 	RunAllUnitTests();
 
 
+	uint32_t h_valuesPerSample = 26;
+	uint32_t h_numberOfSamples = 1024;
+
 
 
 	//1. Generate a signal on the device
 	//----------------------------------
 
-	uint64_t h_valuesPerSample = 26;
-	uint64_t h_numberOfSamples = 1024;
+
 
 	//Start cuda rand library
 	curandGenerator_t rngGen;
