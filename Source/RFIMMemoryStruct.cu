@@ -15,8 +15,8 @@ RFIMMemoryStruct* RFIMMemoryStructCreate(uint32_t h_valuesPerSample, uint32_t h_
 	cusolverStatus_t cusolverStatus;
 
 	//Create the contexts for each library
-	cublasStatus = cublasCreate_v2( result->cublasHandle );
-	cusolverStatus = cusolverDnCreate( result->cusolverHandle );
+	cublasStatus = cublasCreate_v2( &result->cublasHandle );
+	cusolverStatus = cusolverDnCreate( &result->cusolverHandle );
 
 	//Check the contexts started up ok
 	if(cublasStatus != CUBLAS_STATUS_SUCCESS)
@@ -58,6 +58,8 @@ RFIMMemoryStruct* RFIMMemoryStructCreate(uint32_t h_valuesPerSample, uint32_t h_
 	//Free the host memory, don't need it anymore
 	free(h_oneVec);
 
+
+
 	//Allocate working space for the other mean
 	cudaMalloc(&(result->d_meanVec), sizeof(float) * h_valuesPerSample);
 	//cudaMalloc(&(result->d_meanMatrix), sizeof(float) * h_valuesPerSample * h_valuesPerSample);
@@ -78,7 +80,7 @@ RFIMMemoryStruct* RFIMMemoryStructCreate(uint32_t h_valuesPerSample, uint32_t h_
 	//Ask cusolver for the needed buffer size
 	result->h_eigWorkingSpaceLength = 0;
 
-	cusolverStatus = cusolverDnSgesvd_bufferSize(*(result->cusolverHandle), h_valuesPerSample, h_valuesPerSample, &(result->h_eigWorkingSpaceLength));
+	cusolverStatus = cusolverDnSgesvd_bufferSize(result->cusolverHandle, h_valuesPerSample, h_valuesPerSample, &(result->h_eigWorkingSpaceLength));
 
 	//Check if it went well
 	if(cusolverStatus != CUSOLVER_STATUS_SUCCESS)
@@ -106,7 +108,6 @@ RFIMMemoryStruct* RFIMMemoryStructCreate(uint32_t h_valuesPerSample, uint32_t h_
 	cudaMalloc(&(result->d_reducedEigenMatrixOuterProduct), sizeof(float) * h_valuesPerSample * h_valuesPerSample);
 
 
-
 	return result;
 }
 
@@ -115,8 +116,8 @@ RFIMMemoryStruct* RFIMMemoryStructCreate(uint32_t h_valuesPerSample, uint32_t h_
 void RFIMMemoryStructDestroy(RFIMMemoryStruct* RFIMStruct)
 {
 	//Destroy the cuda library contexts
-	cublasDestroy_v2(*RFIMStruct->cublasHandle);
-	cusolverDnDestroy(*RFIMStruct->cusolverHandle);
+	cublasDestroy_v2(RFIMStruct->cublasHandle);
+	cusolverDnDestroy(RFIMStruct->cusolverHandle);
 
 	//Deallocate the mean working memory
 	cudaFree(RFIMStruct->d_oneVec);

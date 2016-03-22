@@ -13,20 +13,22 @@
 #include "../Header/Kernels.h"
 #include "../Header/RFIMHelperFunctions.h"
 #include "../Header/UtilityFunctions.h"
+#include "../Header/RFIMMemoryStruct.h"
 
 #include <cublas.h>
 
 #include <assert.h>
 #include <string>
 
-/*
+
 //Production tests
 void MeanCublasProduction();
+/*
 void CovarianceCublasProduction();
 void TransposeProduction();
 void GraphProduction();
 void EigendecompProduction();
-
+*/
 
 
 
@@ -37,17 +39,19 @@ void EigendecompProduction();
 
 void MeanCublasProduction()
 {
-	uint64_t valuesPerSample = 3;
-	uint64_t sampleNum = 2;
 
-	float* h_signal; //Column first signal (3, 2), 3 == valuesPerSample, 2 == sampleNum
-	float* h_meanMatrix;
+	uint32_t valuesPerSample = 3;
+	uint32_t sampleNum = 2;
+
+	RFIMMemoryStruct* RFIMStruct = RFIMMemoryStructCreate(valuesPerSample, sampleNum);
+
+	float* h_signal;
+
 
 	h_signal = (float*)malloc(sizeof(float) * 6);
 
 
 	float* d_signal;
-	float* d_meanMatrix;
 
 	//Set the host signal
 	for(uint32_t i = 0; i < 6; ++i)
@@ -57,24 +61,23 @@ void MeanCublasProduction()
 
 	d_signal = CudaUtility_CopySignalToDevice(h_signal, sizeof(float) * 6);
 
-
 	//Calculate the mean matrix
-	d_meanMatrix= DEBUG_CALCULATE_MEAN_MATRIX(d_signal, valuesPerSample, sampleNum);
+	DEBUG_CALCULATE_MEAN_MATRIX(RFIMStruct, d_signal);
 
 
 	//Copy it back to the host
-	h_meanMatrix = CudaUtility_CopySignalToHost(d_meanMatrix, valuesPerSample * valuesPerSample * sizeof(float));
+	//At this point d_upperTriangularCovarianceMatrix is the mean matrix
+	float* h_meanMatrix = CudaUtility_CopySignalToHost(RFIMStruct->d_upperTriangularCovarianceMatrix, valuesPerSample * valuesPerSample * sizeof(float));
 
 
 	//Print out the result
-	/*
-	printf("\n\n");
 
+	/*
 	for(uint32_t i = 0; i < valuesPerSample * valuesPerSample; ++i)
 	{
 		printf("final: %u: %f\n", i, h_meanMatrix[i]);
 	}
-
+	*/
 
 
 
@@ -99,22 +102,20 @@ void MeanCublasProduction()
 	else if(h_meanMatrix[8] - 20.25f > 0.000001f)
 		failed = true;
 
+
 	if(failed)
 	{
 		fprintf(stderr, "MeanCublasProduction failed!\n");
 		exit(1);
 	}
 
-	free(h_signal);
-	free(h_meanMatrix);
+	RFIMMemoryStructDestroy(RFIMStruct);
 
-	cudaFree(d_signal);
-	cudaFree(d_meanMatrix);
 }
 
 
 
-
+/*
 void CovarianceCublasProduction()
 {
 	uint64_t valuesPerSample = 3;
@@ -419,8 +420,8 @@ void EigendecompProduction()
 
 void RunAllUnitTests()
 {
-	/*
 	MeanCublasProduction();
+	/*
 	CovarianceCublasProduction();
 	TransposeProduction();
 	//GraphProduction();

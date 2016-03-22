@@ -99,7 +99,7 @@ void Device_EigenvalueSolver(cublasHandle_t* cublasHandle, cusolverDnHandle_t* c
 
 
 //TODO: Debug - Remove this
-float* DEBUG_CALCULATE_MEAN_MATRIX(float* d_signalMatrix, uint64_t h_valuesPerSample, uint64_t h_numberOfSamples);
+void DEBUG_CALCULATE_MEAN_MATRIX(RFIMMemoryStruct* RFIMStruct, float* d_signalMatrix);
 
 
 
