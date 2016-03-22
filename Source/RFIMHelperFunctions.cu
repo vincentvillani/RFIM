@@ -126,6 +126,17 @@ void Device_CalculateCovarianceMatrix(RFIMMemoryStruct* RFIMStruct, const float*
 
 	CalculateMeanMatrix(RFIMStruct, d_signalMatrix);
 
+	//TODO: DEBUGGGGG
+	float* h_meanMatrix = CudaUtility_CopySignalToHost(RFIMStruct->d_upperTriangularCovarianceMatrix,
+			sizeof(float) * RFIMStruct->h_valuesPerSample * RFIMStruct->h_valuesPerSample);
+
+
+	//TODO: DEBUGGGGG
+	for(int i = 0; i < RFIMStruct->h_valuesPerSample * RFIMStruct->h_valuesPerSample; ++i)
+	{
+		printf("Intermediate mean %d: %f\n", i, h_meanMatrix[i]);
+	}
+
 	//--------------------------------
 
 
@@ -153,6 +164,22 @@ void Device_CalculateCovarianceMatrix(RFIMMemoryStruct* RFIMStruct, const float*
 		exit(1);
 	}
 
+	/*
+	//TODO: DEBUGGGGG
+	float* h_covarMatrix = CudaUtility_CopySignalToHost(RFIMStruct->d_upperTriangularCovarianceMatrix,
+			sizeof(float) * RFIMStruct->h_valuesPerSample * RFIMStruct->h_valuesPerSample);
+
+	//TODO: DEBUGGGGG
+	for(int i = 0; i < RFIMStruct->h_valuesPerSample * RFIMStruct->h_valuesPerSample; ++i)
+	{
+		printf("Intermediate covar %d: %f\n", i, h_covarMatrix[i]);
+	}
+
+	*/
+
+
+
+	/*
 	//Calculate the full symmetric covariance matrix
 	//1. Transpose the covariance matrix
 	Device_MatrixTranspose(&RFIMStruct->cublasHandle, RFIMStruct->d_upperTriangularCovarianceMatrix, RFIMStruct->d_upperTriangularTransposedMatrix,
@@ -183,6 +210,8 @@ void Device_CalculateCovarianceMatrix(RFIMMemoryStruct* RFIMStruct, const float*
 		fprintf(stderr, "Device_CalculateCovarianceMatrix: cublasSgeam call failed\n");
 		exit(1);
 	}
+
+	*/
 }
 
 

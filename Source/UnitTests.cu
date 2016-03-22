@@ -85,21 +85,21 @@ void MeanCublasProduction()
 
 	if(h_meanMatrix[0] - 6.25f > 0.000001f)
 		failed = true;
-	else if(h_meanMatrix[1] - 0.0f > 0.000001f)
+	if(h_meanMatrix[1] - 0.0f > 0.000001f)
 		failed = true;
-	else if(h_meanMatrix[2] - 0.0f > 0.000001f)
+	if(h_meanMatrix[2] - 0.0f > 0.000001f)
 		failed = true;
-	else if(h_meanMatrix[3] - 8.75f > 0.000001f)
+	if(h_meanMatrix[3] - 8.75f > 0.000001f)
 		failed = true;
-	else if(h_meanMatrix[4] - 12.25f > 0.000001f)
+	if(h_meanMatrix[4] - 12.25f > 0.000001f)
 		failed = true;
-	else if(h_meanMatrix[5] - 0.0f > 0.000001f)
+	if(h_meanMatrix[5] - 0.0f > 0.000001f)
 		failed = true;
-	else if(h_meanMatrix[6] - 11.25f > 0.000001f)
+	if(h_meanMatrix[6] - 11.25f > 0.000001f)
 		failed = true;
-	else if(h_meanMatrix[7] - 15.75f > 0.000001f)
+	if(h_meanMatrix[7] - 15.75f > 0.000001f)
 		failed = true;
-	else if(h_meanMatrix[8] - 20.25f > 0.000001f)
+	if(h_meanMatrix[8] - 20.25f > 0.000001f)
 		failed = true;
 
 
@@ -115,18 +115,18 @@ void MeanCublasProduction()
 
 
 
-/*
+
 void CovarianceCublasProduction()
 {
 	uint64_t valuesPerSample = 3;
 	uint64_t sampleNum = 2;
 
+	RFIMMemoryStruct* RFIMStruct = RFIMMemoryStructCreate(valuesPerSample, sampleNum);
+
 	float* h_signal; //Column first signal (3, 2), 3 == valuesPerSample, 2 == sampleNum
 
 	h_signal = (float*)malloc( sizeof(float) * 6);
 
-	float* d_signal;
-	float* d_covarianceMatrix;
 
 	//Set the host signal
 	for(uint32_t i = 0; i < 6; ++i)
@@ -134,21 +134,17 @@ void CovarianceCublasProduction()
 		h_signal[i] = i + 1;
 	}
 
-	d_signal = CudaUtility_CopySignalToDevice(h_signal, sizeof(float) * 6);
+	float* d_signal = CudaUtility_CopySignalToDevice(h_signal, sizeof(float) * 6);
 
-	cublasHandle_t cublasHandle;
-	cublasCreate_v2(&cublasHandle);
 
-	d_covarianceMatrix = Device_CalculateCovarianceMatrix(&cublasHandle, d_signal, valuesPerSample, sampleNum);
-
-	cublasDestroy_v2(cublasHandle);
+	Device_CalculateCovarianceMatrix(RFIMStruct, d_signal);
 
 	//Copy the data back to the device and print it
 	free(h_signal);
 
-	h_signal = CudaUtility_CopySignalToHost(d_covarianceMatrix, valuesPerSample * valuesPerSample * sizeof(float));
+	h_signal = CudaUtility_CopySignalToHost(RFIMStruct->d_upperTriangularCovarianceMatrix, valuesPerSample * valuesPerSample * sizeof(float));
 
-	/*
+
 	for(int i = 0; i < valuesPerSample * valuesPerSample; ++i)
 	{
 		printf("%d: %f\n", i, h_signal[i]);
@@ -156,26 +152,25 @@ void CovarianceCublasProduction()
 
 
 
-
 	bool failed = false;
 
 	if(h_signal[0] - 10.75f > 0.000001f)
 		failed = true;
-	else if(h_signal[1] - 0.0f > 0.000001f)
+	if(h_signal[1] - 0.0f > 0.000001f)
 		failed = true;
-	else if(h_signal[2] - 0.0f > 0.000001f)
+	if(h_signal[2] - 0.0f > 0.000001f)
 		failed = true;
-	else if(h_signal[3] - 13.25f > 0.000001f)
+	if(h_signal[3] - 13.25f > 0.000001f)
 		failed = true;
-	else if(h_signal[4] - 16.75f > 0.000001f)
+	if(h_signal[4] - 16.75f > 0.000001f)
 		failed = true;
-	else if(h_signal[5] - 0.0f > 0.000001f)
+	if(h_signal[5] - 0.0f > 0.000001f)
 		failed = true;
-	else if(h_signal[6] - 15.75f > 0.000001f)
+	if(h_signal[6] - 15.75f > 0.000001f)
 		failed = true;
-	else if(h_signal[7] - 20.25f > 0.000001f)
+	if(h_signal[7] - 20.25f > 0.000001f)
 		failed = true;
-	else if(h_signal[8] - 24.75f > 0.000001f)
+	if(h_signal[8] - 24.75f > 0.000001f)
 		failed = true;
 
 	if(failed)
@@ -186,14 +181,15 @@ void CovarianceCublasProduction()
 
 
 
+	RFIMMemoryStructDestroy(RFIMStruct);
+
 	free(h_signal);
 	cudaFree(d_signal);
-	cudaFree(d_covarianceMatrix);
 }
 
 
 
-
+/*
 void TransposeProduction()
 {
 	uint64_t valuesPerSample = 3;
@@ -421,8 +417,9 @@ void EigendecompProduction()
 void RunAllUnitTests()
 {
 	MeanCublasProduction();
-	/*
 	CovarianceCublasProduction();
+
+	/*
 	TransposeProduction();
 	//GraphProduction();
 	EigendecompProduction();
