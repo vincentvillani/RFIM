@@ -33,7 +33,7 @@ typedef struct RFIMMemoryStruct
 	//Mean working memory
 	float* d_oneVec; //A vector filled with ones, to calculate the mean
 	float* d_meanVec;
-	float* d_meanMatrix;
+	//float* d_meanMatrix;
 
 	//Covariance matrix working memory
 	float* d_upperTriangularCovarianceMatrix;

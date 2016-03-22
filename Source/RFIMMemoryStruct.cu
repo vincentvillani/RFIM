@@ -60,7 +60,7 @@ RFIMMemoryStruct* RFIMMemoryStructCreate(uint32_t h_valuesPerSample, uint32_t h_
 
 	//Allocate working space for the other mean
 	cudaMalloc(&(result->d_meanVec), sizeof(float) * h_valuesPerSample);
-	cudaMalloc(&(result->d_meanMatrix), sizeof(float) * h_valuesPerSample * h_valuesPerSample);
+	//cudaMalloc(&(result->d_meanMatrix), sizeof(float) * h_valuesPerSample * h_valuesPerSample);
 
 
 	//Allocate space for the covariance matrix
@@ -121,7 +121,7 @@ void RFIMMemoryStructDestroy(RFIMMemoryStruct* RFIMStruct)
 	//Deallocate the mean working memory
 	cudaFree(RFIMStruct->d_oneVec);
 	cudaFree(RFIMStruct->d_meanVec);
-	cudaFree(RFIMStruct->d_meanMatrix);
+	//cudaFree(RFIMStruct->d_meanMatrix);
 
 	//Deallocate covariance working memory
 	cudaFree(RFIMStruct->d_upperTriangularCovarianceMatrix);

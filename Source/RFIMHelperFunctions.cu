@@ -19,7 +19,71 @@
 //Private helper functions
 //--------------------------
 
-float* CalculateMeanMatrix(cublasHandle_t* cublasHandle, const float* d_signalMatrix, uint64_t h_valuesPerSample, uint64_t h_numberOfSamples);
+void CalculateMeanMatrix(RFIMMemoryStruct* RFIMStruct, const float* d_signalMatrix);
+
+
+
+//Private functions implementation
+//----------------------------------
+
+void CalculateMeanMatrix(RFIMMemoryStruct* RFIMStruct, const float* d_signalMatrix)
+{
+
+	//Calculate d_meanVec
+	//d_meanVec = d_oneMatrix (1 x h_numberOfSamples) * d_signal (transposed) (h_numberOfSamples x h_valuesPerSample ) matrix = 1 * h_valuesPerSample matrix
+	//This each of the beams added up. It adds up the columns of transposed d_signal
+	//---------------------------
+	cublasStatus_t cublasError;
+
+	//TODO: Look into whether or not I need to do this. This memory is reused each time around
+	cudaMemset(RFIMStruct->d_meanVec, 0, sizeof(float) * RFIMStruct->h_valuesPerSample);
+
+
+	float alpha = 1.0f / RFIMStruct->h_numberOfSamples;
+	float beta = 0;
+
+	cublasError = cublasSgemm_v2(*RFIMStruct->cublasHandle, CUBLAS_OP_N, CUBLAS_OP_T, 1, RFIMStruct->h_valuesPerSample, RFIMStruct->h_numberOfSamples,
+			&alpha, RFIMStruct->d_oneVec, 1, d_signalMatrix, RFIMStruct->h_valuesPerSample, &beta, RFIMStruct->d_meanVec, 1);
+
+	if(cublasError != CUBLAS_STATUS_SUCCESS)
+	{
+		fprintf(stderr, "CalculateMeanMatrix: An error occured while computing d_meanVec\n");
+		exit(1);
+	}
+
+	//--------------------------------------
+
+	/*
+	//TODO: DEBUG - REMOVE
+	float* h_meanVec = (float*)malloc(meanVecByteSize);
+	h_meanVec = CudaUtility_CopySignalToHost(d_meanVec, meanVecByteSize);
+	for(int i = 0; i < h_valuesPerSample; ++i)
+	{
+		printf("meanVec %d: %f\n", i, h_meanVec[i]);
+	}
+	//-----------------------
+	*/
+
+	//Calculate mean matrix
+	//mean matrix = outer product of the transposed d_meanVec with itself
+	//d_meanMatrix = d_meanVec_Transposed (h_valuesPerSample x 1) * d_meanVec (1 x h_valuesPerSample)
+	//--------------------------------------
+
+	alpha = 1.0f;
+
+	//TODO: Look into whether or not I need to do this. This memory is reused each time around
+	cudaMemset(RFIMStruct->d_upperTriangularCovarianceMatrix, 0, sizeof(float) * RFIMStruct->h_valuesPerSample * RFIMStruct->h_valuesPerSample);
+
+	cublasError = cublasSsyrk_v2(*RFIMStruct->cublasHandle, CUBLAS_FILL_MODE_UPPER, CUBLAS_OP_T, RFIMStruct->h_valuesPerSample, 1,
+			&alpha, RFIMStruct->d_meanVec, 1, &beta, RFIMStruct->d_upperTriangularCovarianceMatrix, RFIMStruct->h_valuesPerSample);
+
+	if(cublasError != CUBLAS_STATUS_SUCCESS)
+	{
+		fprintf(stderr, "CalculateMeanMatrix: An error occured while computing d_meanMatrix\n");
+		exit(1);
+	}
+
+}
 
 
 //--------------------------
@@ -67,26 +131,16 @@ float* Device_GenerateWhiteNoiseSignal(curandGenerator_t* rngGen, uint64_t h_val
 
 
 
-float* Device_CalculateCovarianceMatrix(cublasHandle_t* cublasHandle, const float* d_signalMatrix, uint64_t h_valuesPerSample, uint64_t h_numberOfSamples)
+void Device_CalculateCovarianceMatrix(RFIMMemoryStruct* RFIMStruct, const float* d_signalMatrix)
 {
 	//d_signalMatrix should be column-major as CUBLAS is column-major library (indexes start at 1 also)
 	//Remember to take that into account!
-
-	//Setup
-	//--------------------------------
-
-	float* d_covarianceMatrix;
-
-
-	//--------------------------------
 
 
 	//Calculate the meanMatrix of the signal
 	//--------------------------------
 
-	//At this point in time d_covarianceMatrix is actually the mean matrix
-	//This is done so I can get better performance out of the cublas API
-	d_covarianceMatrix = CalculateMeanMatrix(cublasHandle, d_signalMatrix, h_valuesPerSample, h_numberOfSamples);
+	CalculateMeanMatrix(RFIMStruct, d_signalMatrix);
 
 	//--------------------------------
 
@@ -97,12 +151,17 @@ float* Device_CalculateCovarianceMatrix(cublasHandle_t* cublasHandle, const floa
 	//	AKA. signal * (signal)T, where T = transpose, which will give you a (sampleNumber x sampleNumber) matrix as a result
 
 	//Take the outer product of the signal with itself
-	float alpha = 1.0f / h_numberOfSamples;
+	float alpha = 1.0f / RFIMStruct->h_numberOfSamples;
 	float beta = -1.0f;
 
 	cublasStatus_t cublasError;
-	cublasError = cublasSsyrk_v2(*cublasHandle, CUBLAS_FILL_MODE_UPPER, CUBLAS_OP_N, h_valuesPerSample, h_numberOfSamples,
-			&alpha, d_signalMatrix, h_valuesPerSample, &beta, d_covarianceMatrix, h_valuesPerSample);
+
+	//At this point RFIMStruct->d_upperTriangularCovarianceMatrix is actually the upper triangular mean matrix,
+	//this is done to get better performance out of the cublas API
+	cublasError = cublasSsyrk_v2(*RFIMStruct->cublasHandle, CUBLAS_FILL_MODE_UPPER, CUBLAS_OP_N, RFIMStruct->h_valuesPerSample,
+			RFIMStruct->h_numberOfSamples,
+			&alpha, d_signalMatrix, RFIMStruct->h_valuesPerSample,
+			&beta, RFIMStruct->d_upperTriangularCovarianceMatrix, RFIMStruct->h_valuesPerSample);
 
 	if(cublasError != CUBLAS_STATUS_SUCCESS)
 	{
@@ -110,200 +169,54 @@ float* Device_CalculateCovarianceMatrix(cublasHandle_t* cublasHandle, const floa
 		exit(1);
 	}
 
+	//Calculate the full symmetric covariance matrix
+	//1. Transpose the covariance matrix
+	Device_MatrixTranspose(RFIMStruct->cublasHandle, RFIMStruct->d_upperTriangularCovarianceMatrix, RFIMStruct->d_upperTriangularTransposedMatrix,
+			RFIMStruct->h_valuesPerSample, RFIMStruct->h_valuesPerSample);
+
+	//2. Set the transposed covariance matrix diagonal to zero
+	dim3 blockDim(32);
+	dim3 gridDim(1, ceilf(RFIMStruct->h_valuesPerSample / (float)32));
+	setDiagonalToZero<<<gridDim, blockDim>>> (RFIMStruct->d_upperTriangularTransposedMatrix, RFIMStruct->h_valuesPerSample);
 
 
+	//3. Add the two matrices together
 
-	return d_covarianceMatrix;
-}
-
-
-
-
-
-
-
-
-
-
-//Private functions implementation
-//----------------------------------
-
-float* CalculateMeanMatrix(cublasHandle_t* cublasHandle, const float* d_signalMatrix, uint64_t h_valuesPerSample, uint64_t h_numberOfSamples)
-{
-
-	/*
-	//TODO: DEBUG - REMOVE
-	float* h_signal = CudaUtility_CopySignalToHost(d_signalMatrix, 6 * sizeof(float));
-	for(int i = 0; i < 6; ++i)
-	{
-		printf("h_signal %d: %f\n", i, h_signal[i]);
-	}
-	//-----------------------
-	*/
-
-	//Setup the one matrix
-	//1 x n matrix or n x 1 matrix (doesn't matter in this case) containing only ones
-	//--------------------------------------
-	float* h_oneMatrix;
-	float* d_oneMatrix;
-
-	uint64_t oneMatrixByteSize = sizeof(float) * h_numberOfSamples;
-
-	//Setup memory
-	h_oneMatrix = (float*)malloc(oneMatrixByteSize);
-	if(cudaMalloc(&d_oneMatrix, oneMatrixByteSize) != cudaSuccess)
-	{
-		fprintf(stderr, "CalculateMeanMatrix: error allocating %llu bytes for d_oneMatrix\n", oneMatrixByteSize);
-		exit(1);
-	}
-
-	//Set the matrix on the host
-	for(uint64_t i = 0; i < h_numberOfSamples; ++i)
-	{
-		h_oneMatrix[i] = 1.0f;
-	}
-
-	//Copy it over to the device
-	d_oneMatrix = CudaUtility_CopySignalToDevice(h_oneMatrix, oneMatrixByteSize);
-
-	//--------------------------------------
-
-	/*
-	//TODO: DEBUG - REMOVE
-	h_oneMatrix = CudaUtility_CopySignalToHost(d_oneMatrix, oneMatrixByteSize);
-	for(int i = 0; i < h_numberOfSamples; ++i)
-	{
-		printf("oneMatrix %d: %f\n", i, h_oneMatrix[i]);
-	}
-	//-----------------------
-	*/
-
-
-
-	//Setup the mean vec
-	//
-	float* d_meanVec;
-	uint64_t meanVecByteSize = sizeof(float) * h_valuesPerSample;
-
-	if(cudaMalloc(&d_meanVec, meanVecByteSize) != cudaSuccess)
-	{
-		fprintf(stderr, "CalculateMeanMatrix: error allocating %llu bytes for the d_meanVec\n", meanVecByteSize);
-		exit(1);
-	}
-
-	//Setup the meanMatrix
-	//--------------------------------------
-	float* d_meanMatrix;
-	uint64_t meanMatrixByteSize = h_valuesPerSample * h_valuesPerSample * sizeof(float);
-
-	if( cudaMalloc(&d_meanMatrix, meanMatrixByteSize) != cudaSuccess)
-	{
-		fprintf(stderr, "CalculateMeanMatrix: error allocating %llu bytes for the d_meanMatrix\n", meanMatrixByteSize);
-		exit(1);
-	}
-
-	if(cudaMemset(d_meanMatrix, 0, meanMatrixByteSize) != cudaSuccess)
-	{
-		fprintf(stderr, "CalculateMeanMatrix: error when setting d_meanMatrix to zero\n");
-		exit(1);
-	}
-
-	//--------------------------------------
-
-
-	//Calculate d_meanVec
-	//d_meanVec = d_oneMatrix (1 x h_numberOfSamples) * d_signal (transposed) (h_numberOfSamples x h_valuesPerSample ) matrix = 1 * h_valuesPerSample matrix
-	//This each of the beams added up. It adds up the columns of transposed d_signal
-	//---------------------------
-	cublasStatus_t cublasError;
-
-
-	float alpha = 1.0f / h_numberOfSamples;
-	float beta = 0;
-
-	cublasError = cublasSgemm_v2(*cublasHandle, CUBLAS_OP_N, CUBLAS_OP_T, 1, h_valuesPerSample, h_numberOfSamples,
-			&alpha, d_oneMatrix, 1, d_signalMatrix, h_valuesPerSample, &beta, d_meanVec, 1);
-
-	if(cublasError != CUBLAS_STATUS_SUCCESS)
-	{
-		fprintf(stderr, "CalculateMeanMatrix: An error occured while computing d_meanVec\n");
-		exit(1);
-	}
-
-	//--------------------------------------
-
-	/*
-	//TODO: DEBUG - REMOVE
-	float* h_meanVec = (float*)malloc(meanVecByteSize);
-	h_meanVec = CudaUtility_CopySignalToHost(d_meanVec, meanVecByteSize);
-	for(int i = 0; i < h_valuesPerSample; ++i)
-	{
-		printf("meanVec %d: %f\n", i, h_meanVec[i]);
-	}
-	//-----------------------
-	*/
-
-
-
-	//Calculate mean matrix
-	//mean matrix = outer product of the transposed d_meanVec with itself
-	//d_meanMatrix = d_meanVec_Transposed (h_valuesPerSample x 1) * d_meanVec (1 x h_valuesPerSample)
-	//--------------------------------------
+	//TODO: Look into whether or not I need to do this. This memory is reused each time around
+	cudaMemset(RFIMStruct->d_fullSymmetricCovarianceMatrix, 0, sizeof(float) * RFIMStruct->h_valuesPerSample * RFIMStruct->h_valuesPerSample);
 
 	alpha = 1.0f;
+	beta = 1.0f;
 
-	cublasError = cublasSsyrk_v2(*cublasHandle, CUBLAS_FILL_MODE_UPPER, CUBLAS_OP_T, h_valuesPerSample, 1,
-			&alpha, d_meanVec, 1, &beta, d_meanMatrix, h_valuesPerSample);
+	cublasError = cublasSgeam(*RFIMStruct->cublasHandle, CUBLAS_OP_N, CUBLAS_OP_N, RFIMStruct->h_valuesPerSample, RFIMStruct->h_valuesPerSample,
+				&alpha, RFIMStruct->d_upperTriangularCovarianceMatrix, RFIMStruct->h_valuesPerSample,
+				&beta, RFIMStruct->d_upperTriangularTransposedMatrix, RFIMStruct->h_valuesPerSample,
+				RFIMStruct->d_fullSymmetricCovarianceMatrix, RFIMStruct->h_valuesPerSample);
+
 
 	if(cublasError != CUBLAS_STATUS_SUCCESS)
 	{
-		fprintf(stderr, "CalculateMeanMatrix: An error occured while computing d_meanMatrix\n");
+		fprintf(stderr, "Device_CalculateCovarianceMatrix: cublasSgeam call failed\n");
 		exit(1);
 	}
-
-	//--------------------------------------
-
-	//Free d_oneMatrix and d_meanVec
-	cudaFree(d_oneMatrix);
-	cudaFree(d_meanVec);
-
-	free(h_oneMatrix);
-
-	return d_meanMatrix;
 }
 
 
 
-float* Device_MatrixTranspose(const float* d_matrix, uint64_t rowNum, uint64_t colNum)
+
+void Device_MatrixTranspose(cublasHandle_t* cublasHandle, const float* d_matrix, float* d_matrixTransposed, uint64_t rowNum, uint64_t colNum)
 {
-
-	float* d_transposedMatrix;
-
-	cudaError_t cudaError;
-	cudaError = cudaMalloc(&d_transposedMatrix, rowNum * colNum * sizeof(float));
-
-	if(cudaError != cudaSuccess)
-	{
-		fprintf(stderr, "Device_MatrixTranspose: Failed to allocate %llu bytes\n", rowNum * colNum * sizeof(float));
-		exit(1);
-	}
-
-
-	cublasHandle_t cublasHandle;
-	cublasCreate_v2(&cublasHandle);
 
 	cublasStatus_t cublasStatus;
 
 	float alpha = 1;
 	float beta = 0;
 
-	//cublasSgeam(handle, CUBLAS_OP_T, CUBLAS_OP_N, N, M, &alpha, d_matrix, M, &beta, d_matrix, N, d_matrixT, N);
 
-
-	cublasStatus = cublasSgeam(cublasHandle, CUBLAS_OP_T, CUBLAS_OP_N, colNum, rowNum,
+	cublasStatus = cublasSgeam(*cublasHandle, CUBLAS_OP_T, CUBLAS_OP_N, colNum, rowNum,
 			&alpha, d_matrix, rowNum,
 			&beta, d_matrix, rowNum,
-			d_transposedMatrix, colNum);
+			d_matrixTransposed, colNum);
 
 
 	if(cublasStatus != CUBLAS_STATUS_SUCCESS)
@@ -312,14 +225,11 @@ float* Device_MatrixTranspose(const float* d_matrix, uint64_t rowNum, uint64_t c
 		exit(1);
 	}
 
-	cublasDestroy_v2(cublasHandle);
-
-	return d_transposedMatrix;
 }
 
 
 
-
+/*
 float* Device_FullSymmetricMatrix(cublasHandle_t* cublasHandle, const float* d_triangularMatrix, uint64_t rowAndColNum)
 {
 	float* d_fullMatrix;
@@ -359,7 +269,7 @@ float* Device_FullSymmetricMatrix(cublasHandle_t* cublasHandle, const float* d_t
 	//return the result
 	return d_fullMatrix;
 }
-
+*/
 
 
 
@@ -411,7 +321,7 @@ void Device_EigenvalueSolver(cublasHandle_t* cublasHandle, cusolverDnHandle_t* c
 
 
 
-
+/*
 float* DEBUG_CALCULATE_MEAN_MATRIX(float* d_signalMatrix, uint64_t h_valuesPerSample, uint64_t h_numberOfSamples)
 {
 	cublasHandle_t cublasHandle;
@@ -423,5 +333,6 @@ float* DEBUG_CALCULATE_MEAN_MATRIX(float* d_signalMatrix, uint64_t h_valuesPerSa
 
 	return d_meanMatrix;
 }
+*/
 
 

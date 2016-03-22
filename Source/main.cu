@@ -62,12 +62,8 @@ int main(int argc, char **argv)
 
 	float* d_whiteNoiseSignalMatrix = Device_GenerateWhiteNoiseSignal(&rngGen, h_valuesPerSample, h_numberOfSamples);
 
-	//Destroy the RNG
-	if(curandDestroyGenerator(rngGen) != CURAND_STATUS_SUCCESS)
-	{
-		fprintf(stderr, "main: Error in destroying the RNG generator \n");
-		exit(1);
-	}
+
+	/*
 
 	//----------------------------------
 
@@ -198,6 +194,15 @@ int main(int argc, char **argv)
 		fprintf(stderr, "Main: Error destroying a cublas handle\n");
 		exit(1);
 	}
+
+
+	//Destroy the RNG
+	if(curandDestroyGenerator(rngGen) != CURAND_STATUS_SUCCESS)
+	{
+		fprintf(stderr, "main: Error in destroying the RNG generator \n");
+		exit(1);
+	}
+	*/
 
 	//----------------------------------
 

@@ -14,6 +14,7 @@
 #include <cublas.h>
 #include <cusolverDn.h>
 
+#include "../Header/RFIMMemoryStruct.h"
 
 
 
@@ -64,8 +65,7 @@ float* Device_GenerateWhiteNoiseSignal(curandGenerator_t* rngGen, uint64_t h_val
 		Only the upper trianglar contains values, the lower trianglar part is just zero (memory is allocated to store the zeroes and the lower trianglar part is set to zero)
 
 */
-float* Device_CalculateCovarianceMatrix(cublasHandle_t* cublasHandle, const float* d_signalMatrix,
-		uint64_t h_valuesPerSample, uint64_t h_numberOfSamples);
+void Device_CalculateCovarianceMatrix(RFIMMemoryStruct* RFIMStruct, const float* d_signalMatrix);
 
 
 
@@ -87,10 +87,10 @@ float* Device_CalculateCovarianceMatrix(cublasHandle_t* cublasHandle, const floa
 		Device pointer to the transposed matrix. Remember to free this when you are done with it.
 
  */
-float* Device_MatrixTranspose(const float* d_matrix, uint64_t rowNum, uint64_t colNum);
+void Device_MatrixTranspose(cublasHandle_t* cublasHandle, const float* d_matrix, float* d_matrixTransposed, uint64_t rowNum, uint64_t colNum);
 
 
-float* Device_FullSymmetricMatrix(cublasHandle_t* cublasHandle, const float* d_triangularMatrix, uint64_t rowAndColNum);
+//float* Device_FullSymmetricMatrix(cublasHandle_t* cublasHandle, const float* d_triangularMatrix, uint64_t rowAndColNum);
 
 
 void Device_EigenvalueSolver(cublasHandle_t* cublasHandle, cusolverDnHandle_t* cusolverHandle, float* d_fullCovarianceMatrix, float* d_U, float* d_S, float* d_VT,
