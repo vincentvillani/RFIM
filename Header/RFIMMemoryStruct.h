@@ -16,8 +16,8 @@ typedef struct RFIMMemoryStruct
 {
 
 	//Signals
-	float* d_originalSignal; //The original signal on the device
-	float* d_filteredSignal; //The filtered signal as a result of RFIM
+	//float* d_originalSignal; //The original signal on the device
+	//float* d_filteredSignal; //The filtered signal as a result of RFIM
 
 	//Signal attributes, these need to be set before use
 	uint32_t h_valuesPerSample;

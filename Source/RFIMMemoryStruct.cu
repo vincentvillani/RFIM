@@ -38,8 +38,8 @@ RFIMMemoryStruct* RFIMMemoryStructCreate(uint32_t h_valuesPerSample, uint32_t h_
 
 	//Allocate memory for the filtered signal
 	//Set the original signal to NULL originally
-	result->d_originalSignal = NULL; //The RFIM routine will exit if this is set to NULL upon entry
-	cudaMalloc(&(result->d_filteredSignal), sizeof(float) * h_valuesPerSample * h_numberOfSamples);
+	//result->d_originalSignal = NULL; //The RFIM routine will exit if this is set to NULL upon entry
+	//cudaMalloc(&(result->d_filteredSignal), sizeof(float) * h_valuesPerSample * h_numberOfSamples);
 
 
 	//Setup the mean working memory
@@ -114,6 +114,35 @@ RFIMMemoryStruct* RFIMMemoryStructCreate(uint32_t h_valuesPerSample, uint32_t h_
 
 void RFIMMemoryStructDestroy(RFIMMemoryStruct* RFIMStruct)
 {
+	//Destroy the cuda library contexts
+	cublasDestroy_v2(*RFIMStruct->cublasHandle);
+	cusolverDnDestroy(*RFIMStruct->cusolverHandle);
+
+	//Deallocate the mean working memory
+	cudaFree(RFIMStruct->d_oneVec);
+	cudaFree(RFIMStruct->d_meanVec);
+	cudaFree(RFIMStruct->d_meanMatrix);
+
+	//Deallocate covariance working memory
+	cudaFree(RFIMStruct->d_upperTriangularCovarianceMatrix);
+	cudaFree(RFIMStruct->d_upperTriangularTransposedMatrix);
+	cudaFree(RFIMStruct->d_fullSymmetricCovarianceMatrix);
+
+	//Deallocate eigenvector/value working memory
+	cudaFree(RFIMStruct->d_U);
+	cudaFree(RFIMStruct->d_S);
+	cudaFree(RFIMStruct->d_VT);
+	cudaFree(RFIMStruct->d_devInfo);
+	cudaFree(RFIMStruct->d_U);
+	cudaFree(RFIMStruct->d_eigWorkingSpace);
+
+	cudaFree(RFIMStruct->d_reducedEigenVecMatrix);
+	cudaFree(RFIMStruct->d_reducedEigenVecMatrixTranspose);
+	cudaFree(RFIMStruct->d_reducedEigenMatrixOuterProduct);
+
+
+	//Deallocate the struct memory on the host
+	free(RFIMStruct);
 
 }
 
