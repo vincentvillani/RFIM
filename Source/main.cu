@@ -26,7 +26,6 @@
 #include "../Header/UtilityFunctions.h"
 
 
-//TODO: Make the construction of a full covariance matrix a function and use that for the unit test
 //TODO: Look at ways to reuse allocated memory if possible
 //TODO: Make sure memory that can be used again, is still in a valid state after the first execution
 //TODO: Move everything over to GEMM because of the solver?
@@ -129,27 +128,9 @@ int main(int argc, char **argv)
 	}
 
 	//Create a full covariance matrix
+	float* d_fullCovarianceMatrix = Device_FullSymmetricMatrix(&cublasHandle, d_triangularCovarianceMatrix,
+			h_valuesPerSample);
 
-	//Set the d_triangularCovarianceMatrixTranspose diagonal elements to zero
-	dim3 blockDim(32);
-	dim3 gridDim(1, ceil(h_valuesPerSample / (float)32));
-	setDiagonalToZero<<<gridDim, blockDim>>>(d_triangularCovarianceMatrixTranspose, h_valuesPerSample);
-
-	//Add the two matrices together to get a full covariance matrix
-	float* d_fullCovarianceMatrix;
-	cudaMalloc(&d_fullCovarianceMatrix, sizeof(float) * h_valuesPerSample * h_valuesPerSample);
-
-	float alpha = 1.0f;
-	float beta = 1.0f;
-
-	cublasStatus = cublasSgeam(cublasHandle, CUBLAS_OP_N, CUBLAS_OP_N, h_valuesPerSample, h_valuesPerSample, &alpha, d_triangularCovarianceMatrix, h_valuesPerSample,
-				&beta, d_triangularCovarianceMatrixTranspose, h_valuesPerSample, d_fullCovarianceMatrix, h_valuesPerSample);
-
-	if(cublasStatus != CUBLAS_STATUS_SUCCESS)
-	{
-		fprintf(stderr, "main: Error when adding the two triangular covariance matrices together\n");
-		exit(1);
-	}
 
 	//Write the full covariance matrix to file, just to check
 	float* h_fullCovarianceMatrix = CudaUtility_CopySignalToHost(d_fullCovarianceMatrix, sizeof(float) * h_valuesPerSample * h_valuesPerSample);

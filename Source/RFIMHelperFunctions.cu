@@ -12,6 +12,8 @@
 
 
 #include "../Header/CudaUtilityFunctions.h"
+#include "../Header/Kernels.h"
+#include "../Header/CudaMacros.h"
 
 
 //Private helper functions
@@ -318,17 +320,52 @@ float* Device_MatrixTranspose(const float* d_matrix, uint64_t rowNum, uint64_t c
 
 
 
+float* Device_FullSymmetricMatrix(cublasHandle_t* cublasHandle, const float* d_triangularMatrix, uint64_t rowAndColNum)
+{
+	float* d_fullMatrix;
+
+	//Transpose the d_triangularMatrix
+	//Transpose the matrix
+	float* d_triangularMatrixTransposed = Device_MatrixTranspose(d_triangularMatrix, rowAndColNum, rowAndColNum);
+
+	//Set the transposes diagonal to zero
+	dim3 blockDim(32);
+	dim3 gridDim(1, ceilf(rowAndColNum / (float)32));
+	setDiagonalToZero<<<gridDim, blockDim>>>(d_triangularMatrixTransposed, rowAndColNum);
+
+	//TODO: Debug, remove this. It will affect performance
+	CudaCheckError();
+
+
+	//Add the triangular matrices together
+	float alpha = 1.0f;
+	float beta = 1.0f;
+
+	//Allocate memory for the full matrix
+	cudaMalloc(&d_fullMatrix, sizeof(float) * rowAndColNum * rowAndColNum);
+
+	cublasStatus_t cublasStatus = cublasSgeam(*cublasHandle, CUBLAS_OP_N, CUBLAS_OP_N, rowAndColNum, rowAndColNum,
+			&alpha, d_triangularMatrix, rowAndColNum, &beta, d_triangularMatrixTransposed, rowAndColNum, d_fullMatrix, rowAndColNum);
+
+	if(cublasStatus != CUBLAS_STATUS_SUCCESS)
+	{
+		fprintf(stderr, "Device_FullSymmetricMatrix: cublasSgeam call failed\n");
+		exit(1);
+	}
+
+	//Free the transposed matrix
+	cudaFree(d_triangularMatrixTransposed);
+
+	//return the result
+	return d_fullMatrix;
+}
+
+
+
+
 void Device_EigenvalueSolver(cublasHandle_t* cublasHandle, cusolverDnHandle_t* cusolverHandle, float* d_fullCovarianceMatrix, float* d_U, float* d_S, float* d_VT,
 		float* d_Lworkspace, float* d_Rworkspace, int workspaceLength, int* d_devInfo, int h_valuesPerSample)
 {
-
-	//make the upper triangular symmetric matrix a full symmetric matrix
-
-	//Transpose it
-
-	//Set it's diagonals to zero
-
-	//Add them together to get a full matrix
 
 
 	cusolverStatus_t cusolverStatus;

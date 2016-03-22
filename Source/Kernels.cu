@@ -184,8 +184,10 @@ __global__ void setDiagonalToZero(float* d_matrix, uint64_t columnsAndRows)
 	if(absoluteThreadIdx >= columnsAndRows)
 		return;
 
-	//set diag element to zero
+	//set diagonal element to zero
 	int matrixIndex = absoluteThreadIdx * columnsAndRows + absoluteThreadIdx;
 	d_matrix[matrixIndex] = 0;
 }
+
+
 
