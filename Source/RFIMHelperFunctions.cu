@@ -35,9 +35,6 @@ void CalculateMeanMatrix(RFIMMemoryStruct* RFIMStruct, const float* d_signalMatr
 	//---------------------------
 	cublasStatus_t cublasError;
 
-	//TODO: Look into whether or not I need to do this. This memory is reused each time around
-	cudaMemset(RFIMStruct->d_meanVec, 0, sizeof(float) * RFIMStruct->h_valuesPerSample);
-
 
 	float alpha = 1.0f / RFIMStruct->h_numberOfSamples;
 	float beta = 0;
@@ -53,16 +50,6 @@ void CalculateMeanMatrix(RFIMMemoryStruct* RFIMStruct, const float* d_signalMatr
 
 	//--------------------------------------
 
-	/*
-	//TODO: DEBUG - REMOVE
-	float* h_meanVec = (float*)malloc(meanVecByteSize);
-	h_meanVec = CudaUtility_CopySignalToHost(d_meanVec, meanVecByteSize);
-	for(int i = 0; i < h_valuesPerSample; ++i)
-	{
-		printf("meanVec %d: %f\n", i, h_meanVec[i]);
-	}
-	//-----------------------
-	*/
 
 	//Calculate mean matrix
 	//mean matrix = outer product of the transposed d_meanVec with itself
@@ -70,9 +57,6 @@ void CalculateMeanMatrix(RFIMMemoryStruct* RFIMStruct, const float* d_signalMatr
 	//--------------------------------------
 
 	alpha = 1.0f;
-
-	//TODO: Look into whether or not I need to do this. This memory is reused each time around
-	cudaMemset(RFIMStruct->d_upperTriangularCovarianceMatrix, 0, sizeof(float) * RFIMStruct->h_valuesPerSample * RFIMStruct->h_valuesPerSample);
 
 	cublasError = cublasSsyrk_v2(RFIMStruct->cublasHandle, CUBLAS_FILL_MODE_UPPER, CUBLAS_OP_T, RFIMStruct->h_valuesPerSample, 1,
 			&alpha, RFIMStruct->d_meanVec, 1, &beta, RFIMStruct->d_upperTriangularCovarianceMatrix, RFIMStruct->h_valuesPerSample);
