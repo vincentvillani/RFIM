@@ -420,7 +420,7 @@ void EigendecompProduction()
 void RunAllUnitTests()
 {
 	MeanCublasProduction();
-	CovarianceCublasProduction();
+	//CovarianceCublasProduction();
 
 	/*
 	TransposeProduction();

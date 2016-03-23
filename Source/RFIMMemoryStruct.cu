@@ -10,13 +10,15 @@ RFIMMemoryStruct* RFIMMemoryStructCreate(uint32_t h_valuesPerSample, uint32_t h_
 {
 	RFIMMemoryStruct* result = (RFIMMemoryStruct*)malloc(sizeof(RFIMMemoryStruct));
 
+	result->cublasHandle = (cublasHandle_t*)malloc(sizeof(cublasHandle_t));
+	result->cusolverHandle = (cusolverDnHandle_t*)malloc(sizeof(cusolverDnHandle_t));
 
 	cublasStatus_t cublasStatus;
 	cusolverStatus_t cusolverStatus;
 
 	//Create the contexts for each library
-	cublasStatus = cublasCreate_v2( &result->cublasHandle );
-	cusolverStatus = cusolverDnCreate( &result->cusolverHandle );
+	cublasStatus = cublasCreate_v2( result->cublasHandle );
+	cusolverStatus = cusolverDnCreate( result->cusolverHandle );
 
 	//Check the contexts started up ok
 	if(cublasStatus != CUBLAS_STATUS_SUCCESS)
@@ -100,13 +102,13 @@ RFIMMemoryStruct* RFIMMemoryStructCreate(uint32_t h_valuesPerSample, uint32_t h_
 	//Ask cusolver for the needed buffer size
 	result->h_eigWorkingSpaceLength = 0;
 
-	cusolverStatus = cusolverDnSgesvd_bufferSize(result->cusolverHandle, h_valuesPerSample, h_valuesPerSample, &(result->h_eigWorkingSpaceLength));
+	cusolverStatus = cusolverDnSgesvd_bufferSize(*result->cusolverHandle, h_valuesPerSample, h_valuesPerSample, &(result->h_eigWorkingSpaceLength));
 
 	//Check if it went well
 	if(cusolverStatus != CUSOLVER_STATUS_SUCCESS)
 	{
 		fprintf(stderr, "RFIMMemory::RFIMMemory(): Error finding eigenvalue working buffer size\n");
-		exit(1);
+		//exit(1);
 	}
 
 	//Allocate memory for it
@@ -145,8 +147,9 @@ RFIMMemoryStruct* RFIMMemoryStructCreate(uint32_t h_valuesPerSample, uint32_t h_
 void RFIMMemoryStructDestroy(RFIMMemoryStruct* RFIMStruct)
 {
 	//Destroy the cuda library contexts
-	cublasDestroy_v2(RFIMStruct->cublasHandle);
-	cusolverDnDestroy(RFIMStruct->cusolverHandle);
+	cublasDestroy_v2(*RFIMStruct->cublasHandle);
+	cusolverDnDestroy(*RFIMStruct->cusolverHandle);
+
 
 	//Deallocate the mean working memory
 	cudaFree(RFIMStruct->d_oneVec);
@@ -163,12 +166,12 @@ void RFIMMemoryStructDestroy(RFIMMemoryStruct* RFIMStruct)
 	cudaFree(RFIMStruct->d_S);
 	cudaFree(RFIMStruct->d_VT);
 	cudaFree(RFIMStruct->d_devInfo);
-	cudaFree(RFIMStruct->d_U);
 	cudaFree(RFIMStruct->d_eigWorkingSpace);
 
 	cudaFree(RFIMStruct->d_reducedEigenVecMatrix);
 	cudaFree(RFIMStruct->d_reducedEigenVecMatrixTranspose);
 	cudaFree(RFIMStruct->d_reducedEigenMatrixOuterProduct);
+
 
 
 	//Deallocate the struct memory on the host

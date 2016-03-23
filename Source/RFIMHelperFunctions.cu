@@ -39,7 +39,7 @@ void CalculateMeanMatrix(RFIMMemoryStruct* RFIMStruct, const float* d_signalMatr
 	float alpha = 1.0f / RFIMStruct->h_numberOfSamples;
 	float beta = 0;
 
-	cublasError = cublasSgemm_v2(RFIMStruct->cublasHandle, CUBLAS_OP_N, CUBLAS_OP_T, 1, RFIMStruct->h_valuesPerSample, RFIMStruct->h_numberOfSamples,
+	cublasError = cublasSgemm_v2(*RFIMStruct->cublasHandle, CUBLAS_OP_N, CUBLAS_OP_T, 1, RFIMStruct->h_valuesPerSample, RFIMStruct->h_numberOfSamples,
 			&alpha, RFIMStruct->d_oneVec, 1, d_signalMatrix, RFIMStruct->h_valuesPerSample, &beta, RFIMStruct->d_meanVec, 1);
 
 	if(cublasError != CUBLAS_STATUS_SUCCESS)
@@ -58,7 +58,7 @@ void CalculateMeanMatrix(RFIMMemoryStruct* RFIMStruct, const float* d_signalMatr
 
 	alpha = 1.0f;
 
-	cublasError = cublasSsyrk_v2(RFIMStruct->cublasHandle, CUBLAS_FILL_MODE_UPPER, CUBLAS_OP_T, RFIMStruct->h_valuesPerSample, 1,
+	cublasError = cublasSsyrk_v2(*RFIMStruct->cublasHandle, CUBLAS_FILL_MODE_UPPER, CUBLAS_OP_T, RFIMStruct->h_valuesPerSample, 1,
 			&alpha, RFIMStruct->d_meanVec, 1, &beta, RFIMStruct->d_upperTriangularCovarianceMatrix, RFIMStruct->h_valuesPerSample);
 
 	if(cublasError != CUBLAS_STATUS_SUCCESS)
@@ -159,7 +159,7 @@ void Device_CalculateCovarianceMatrix(RFIMMemoryStruct* RFIMStruct, const float*
 
 	//At this point RFIMStruct->d_upperTriangularCovarianceMatrix is actually the upper triangular mean matrix,
 	//this is done to get better performance out of the cublas API
-	cublasError = cublasSsyrk_v2(RFIMStruct->cublasHandle, CUBLAS_FILL_MODE_UPPER, CUBLAS_OP_N, RFIMStruct->h_valuesPerSample,
+	cublasError = cublasSsyrk_v2(*RFIMStruct->cublasHandle, CUBLAS_FILL_MODE_UPPER, CUBLAS_OP_N, RFIMStruct->h_valuesPerSample,
 			RFIMStruct->h_numberOfSamples,
 			&alpha, d_signalMatrix, RFIMStruct->h_valuesPerSample,
 			&beta, RFIMStruct->d_upperTriangularCovarianceMatrix, RFIMStruct->h_valuesPerSample);

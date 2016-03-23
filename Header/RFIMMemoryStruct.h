@@ -54,8 +54,8 @@ typedef struct RFIMMemoryStruct
 	uint32_t h_eigenVectorDimensionsToReduce;
 
 	//Library handles
-	cublasHandle_t cublasHandle;
-	cusolverDnHandle_t cusolverHandle;
+	cublasHandle_t* cublasHandle;
+	cusolverDnHandle_t* cusolverHandle;
 
 
 }RFIMMemoryStruct;
