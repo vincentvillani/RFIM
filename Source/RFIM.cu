@@ -18,7 +18,7 @@ float* RFIM(RFIMMemoryStruct* RFIMStruct, float* d_columnMajorSignalMatrix, uint
 	if(RFIMStruct->h_valuesPerSample != h_valuesPerSample || RFIMStruct->h_numberOfSamples != h_numberOfSamples)
 	{
 		fprintf(stderr, "RFIM: RFIMStruct->h_valuesPerSample != h_valuesPerSample OR RFIMStruct->h_numberOfSamples != h_numberOfSamples");
-		exit(1);
+		//exit(1);
 	}
 
 

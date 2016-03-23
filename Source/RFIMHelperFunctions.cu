@@ -45,7 +45,7 @@ void CalculateMeanMatrix(RFIMMemoryStruct* RFIMStruct, const float* d_signalMatr
 	if(cublasError != CUBLAS_STATUS_SUCCESS)
 	{
 		fprintf(stderr, "CalculateMeanMatrix: An error occured while computing d_meanVec\n");
-		exit(1);
+		//exit(1);
 	}
 
 	//--------------------------------------
@@ -64,7 +64,7 @@ void CalculateMeanMatrix(RFIMMemoryStruct* RFIMStruct, const float* d_signalMatr
 	if(cublasError != CUBLAS_STATUS_SUCCESS)
 	{
 		fprintf(stderr, "CalculateMeanMatrix: An error occured while computing d_meanMatrix\n");
-		exit(1);
+		//exit(1);
 	}
 
 }
@@ -90,7 +90,7 @@ float* Device_GenerateWhiteNoiseSignal(curandGenerator_t* rngGen, uint64_t h_val
 	if(error != cudaSuccess)
 	{
 		fprintf(stderr, "Device_GenerateWhiteNoiseSignal: Unable to allocate %llu bytes of memory on the device\n", totalSignalByteSize);
-		exit(1);
+		//exit(1);
 	}
 
 
@@ -102,7 +102,7 @@ float* Device_GenerateWhiteNoiseSignal(curandGenerator_t* rngGen, uint64_t h_val
 	if(curandGenerateNormal(*rngGen, d_signal, totalSignalLength, 0.0f, 1.0f) != CURAND_STATUS_SUCCESS)
 	{
 		fprintf(stderr, "Device_GenerateWhiteNoiseSignal: Error when generating the signal\n");
-		exit(1);
+		//exit(1);
 	}
 
 
@@ -126,8 +126,12 @@ void Device_CalculateCovarianceMatrix(RFIMMemoryStruct* RFIMStruct, const float*
 
 	CalculateMeanMatrix(RFIMStruct, d_signalMatrix);
 
+
 	//TODO: DEBUGGGGG
-	float* h_meanMatrix = CudaUtility_CopySignalToHost(RFIMStruct->d_upperTriangularCovarianceMatrix,
+	float* h_meanMatrix = (float*)malloc(sizeof(float) * RFIMStruct->h_valuesPerSample *  RFIMStruct->h_valuesPerSample);
+
+
+			CudaUtility_CopySignalToHost(RFIMStruct->d_upperTriangularCovarianceMatrix, &h_meanMatrix,
 			sizeof(float) * RFIMStruct->h_valuesPerSample * RFIMStruct->h_valuesPerSample);
 
 
@@ -151,6 +155,8 @@ void Device_CalculateCovarianceMatrix(RFIMMemoryStruct* RFIMStruct, const float*
 
 	cublasStatus_t cublasError;
 
+
+
 	//At this point RFIMStruct->d_upperTriangularCovarianceMatrix is actually the upper triangular mean matrix,
 	//this is done to get better performance out of the cublas API
 	cublasError = cublasSsyrk_v2(RFIMStruct->cublasHandle, CUBLAS_FILL_MODE_UPPER, CUBLAS_OP_N, RFIMStruct->h_valuesPerSample,
@@ -161,7 +167,7 @@ void Device_CalculateCovarianceMatrix(RFIMMemoryStruct* RFIMStruct, const float*
 	if(cublasError != CUBLAS_STATUS_SUCCESS)
 	{
 		fprintf(stderr, "Device_CalculateCovarianceMatrix: error calculating the covariance matrix\n");
-		exit(1);
+		//exit(1);
 	}
 
 	/*
@@ -235,7 +241,7 @@ void Device_MatrixTranspose(cublasHandle_t* cublasHandle, const float* d_matrix,
 	if(cublasStatus != CUBLAS_STATUS_SUCCESS)
 	{
 		fprintf(stderr, "Device_InplaceMatrixTranspose: Transposition of the matrix failed!\n");
-		exit(1);
+		//exit(1);
 	}
 
 }
@@ -306,7 +312,7 @@ void Device_EigenvalueSolver(cublasHandle_t* cublasHandle, cusolverDnHandle_t* c
 	if(*h_devInfo != 0)
 	{
 		fprintf(stderr, "Device_EigenvalueSolver: Error with the %dth parameter\n", *h_devInfo);
-		exit(1);
+		//exit(1);
 	}
 
 	if(cusolverStatus != CUSOLVER_STATUS_SUCCESS)

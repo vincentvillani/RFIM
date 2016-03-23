@@ -48,14 +48,14 @@ int main(int argc, char **argv)
 	if( curandCreateGenerator(&rngGen, CURAND_RNG_PSEUDO_DEFAULT) != CURAND_STATUS_SUCCESS)
 	{
 		fprintf(stderr, "main: Unable to start cuRand library\n");
-		exit(1);
+		//exit(1);
 	}
 
 	//Set the RNG seed
 	if((curandSetPseudoRandomGeneratorSeed(rngGen, 1)) != CURAND_STATUS_SUCCESS)
 	{
 		fprintf(stderr, "main: Unable to set the RNG Seed value\n");
-		exit(1);
+		//exit(1);
 	}
 
 

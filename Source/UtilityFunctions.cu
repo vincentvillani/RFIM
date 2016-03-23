@@ -20,7 +20,7 @@ void Utility_WriteSignalMatrixToFile(const std::string filename, const float* h_
 	if(signalFile == NULL)
 	{
 		fprintf(stderr, "WriteSignalMatrixToFile: failed to open %s file\n", filename.c_str());
-		exit(1);
+		//exit(1);
 	}
 
 

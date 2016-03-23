@@ -52,8 +52,11 @@ RFIMMemoryStruct* RFIMMemoryStructCreate(uint32_t h_valuesPerSample, uint32_t h_
 	}
 
 
+	cudaMalloc(&result->d_oneVec, sizeof(float) * h_valuesPerSample);
+	cudaMemset(result->d_oneVec, 0, sizeof(float) * h_valuesPerSample);
+
 	//Copy the one vec to the device
-	result->d_oneVec = CudaUtility_CopySignalToDevice(h_oneVec, sizeof(float) * h_valuesPerSample);
+	CudaUtility_CopySignalToDevice(h_oneVec, &result->d_oneVec,  sizeof(float) * h_valuesPerSample);
 
 	//Free the host memory, don't need it anymore
 	free(h_oneVec);
@@ -62,20 +65,37 @@ RFIMMemoryStruct* RFIMMemoryStructCreate(uint32_t h_valuesPerSample, uint32_t h_
 
 	//Allocate working space for the other mean
 	cudaMalloc(&(result->d_meanVec), sizeof(float) * h_valuesPerSample);
+	cudaMemset(result->d_meanVec, 0, sizeof(float) * h_valuesPerSample);
 	//cudaMalloc(&(result->d_meanMatrix), sizeof(float) * h_valuesPerSample * h_valuesPerSample);
 
 
 	//Allocate space for the covariance matrix
 	cudaMalloc(&(result->d_upperTriangularCovarianceMatrix), sizeof(float) * h_valuesPerSample * h_valuesPerSample);
+	cudaMemset(result->d_upperTriangularCovarianceMatrix, 0, sizeof(float) * h_valuesPerSample * h_valuesPerSample);
+
 	cudaMalloc(&(result->d_upperTriangularTransposedMatrix), sizeof(float) * h_valuesPerSample * h_valuesPerSample);
+	cudaMemset(result->d_upperTriangularTransposedMatrix, 0, sizeof(float) * h_valuesPerSample * h_valuesPerSample);
+
 	cudaMalloc(&(result->d_fullSymmetricCovarianceMatrix), sizeof(float) * h_valuesPerSample * h_valuesPerSample);
+	cudaMemset(result->d_fullSymmetricCovarianceMatrix, 0, sizeof(float) * h_valuesPerSample * h_valuesPerSample);
+
 
 
 	//Allocate working space for the eigenvector/value solver
 	cudaMalloc(&(result->d_U), sizeof(float) * h_valuesPerSample * h_valuesPerSample);
+	cudaMemset(result->d_U, 0, sizeof(float) * h_valuesPerSample * h_valuesPerSample);
+
+
 	cudaMalloc(&(result->d_S), sizeof(float) * h_valuesPerSample);
+	cudaMemset(result->d_S, 0, sizeof(float) * h_valuesPerSample);
+
+
 	cudaMalloc(&(result->d_VT), sizeof(float) * h_valuesPerSample * h_valuesPerSample);
+	cudaMemset(result->d_VT, 0, sizeof(float) * h_valuesPerSample * h_valuesPerSample);
+
 	cudaMalloc(&(result->d_devInfo), sizeof(int));
+	cudaMemset(result->d_devInfo, 0, sizeof(int));
+
 
 	//Ask cusolver for the needed buffer size
 	result->h_eigWorkingSpaceLength = 0;
@@ -91,6 +111,7 @@ RFIMMemoryStruct* RFIMMemoryStructCreate(uint32_t h_valuesPerSample, uint32_t h_
 
 	//Allocate memory for it
 	cudaMalloc( &(result->d_eigWorkingSpace), result->h_eigWorkingSpaceLength);
+	cudaMemset(result->d_eigWorkingSpace, 0, result->h_eigWorkingSpaceLength);
 
 
 	//Eigenvectors dimensions to reduce, chosen arbitrarily for now
@@ -100,12 +121,20 @@ RFIMMemoryStruct* RFIMMemoryStructCreate(uint32_t h_valuesPerSample, uint32_t h_
 	//Allocate memory for the reduced Eigenvector matrix and it's transpose
 	cudaMalloc(&(result->d_reducedEigenVecMatrix), sizeof(float) * h_valuesPerSample *
 			(h_valuesPerSample - result->h_eigenVectorDimensionsToReduce));
+	cudaMemset(result->d_reducedEigenVecMatrix, 0, sizeof(float) * h_valuesPerSample *
+			(h_valuesPerSample - result->h_eigenVectorDimensionsToReduce));
+
+
 
 	cudaMalloc(&(result->d_reducedEigenVecMatrixTranspose), sizeof(float) * h_valuesPerSample *
+			(h_valuesPerSample - result->h_eigenVectorDimensionsToReduce));
+	cudaMemset(result->d_reducedEigenVecMatrixTranspose, 0, sizeof(float) * h_valuesPerSample *
 			(h_valuesPerSample - result->h_eigenVectorDimensionsToReduce));
 
 	//Outer product returns the matrix back to it's original dimensionality
 	cudaMalloc(&(result->d_reducedEigenMatrixOuterProduct), sizeof(float) * h_valuesPerSample * h_valuesPerSample);
+	cudaMemset(result->d_reducedEigenMatrixOuterProduct, 0, sizeof(float) * h_valuesPerSample *
+				(h_valuesPerSample - result->h_eigenVectorDimensionsToReduce));
 
 
 	return result;

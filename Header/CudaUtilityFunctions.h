@@ -13,10 +13,10 @@
 #include <cuda.h>
 
 //Copies data from the host to the device and returns a device pointer
-float* CudaUtility_CopySignalToDevice(float* h_signal, uint64_t signalByteSize);
+void CudaUtility_CopySignalToDevice(float* h_signal, float** d_destination, uint64_t signalByteSize);
 
 //Copies data from the device to the host and returns a host pointer
-float* CudaUtility_CopySignalToHost(float* d_signal, uint64_t signalByteSize);
+void CudaUtility_CopySignalToHost(float* d_signal, float** h_destination, uint64_t signalByteSize);
 
 
 
