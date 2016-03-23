@@ -49,7 +49,7 @@ float* Device_GenerateWhiteNoiseSignal(curandGenerator_t* rngGen, uint64_t h_val
 	if(error != cudaSuccess)
 	{
 		fprintf(stderr, "Device_GenerateWhiteNoiseSignal: Unable to allocate %llu bytes of memory on the device\n", totalSignalByteSize);
-		//exit(1);
+		exit(1);
 	}
 
 
@@ -61,7 +61,7 @@ float* Device_GenerateWhiteNoiseSignal(curandGenerator_t* rngGen, uint64_t h_val
 	if(curandGenerateNormal(*rngGen, d_signal, totalSignalLength, 0.0f, 1.0f) != CURAND_STATUS_SUCCESS)
 	{
 		fprintf(stderr, "Device_GenerateWhiteNoiseSignal: Error when generating the signal\n");
-		//exit(1);
+		exit(1);
 	}
 
 
@@ -88,10 +88,12 @@ void Device_CalculateMeanMatrix(RFIMMemoryStruct* RFIMStruct, const float* d_sig
 	cublasError = cublasSgemm_v2(*RFIMStruct->cublasHandle, CUBLAS_OP_N, CUBLAS_OP_T, 1, RFIMStruct->h_valuesPerSample, RFIMStruct->h_numberOfSamples,
 			&alpha, RFIMStruct->d_oneVec, 1, d_signalMatrix, RFIMStruct->h_valuesPerSample, &beta, RFIMStruct->d_meanVec, 1);
 
+
+
 	if(cublasError != CUBLAS_STATUS_SUCCESS)
 	{
 		fprintf(stderr, "CalculateMeanMatrix: An error occured while computing d_meanVec\n");
-		//exit(1);
+		exit(1);
 	}
 
 	//--------------------------------------
@@ -110,7 +112,7 @@ void Device_CalculateMeanMatrix(RFIMMemoryStruct* RFIMStruct, const float* d_sig
 	if(cublasError != CUBLAS_STATUS_SUCCESS)
 	{
 		fprintf(stderr, "CalculateMeanMatrix: An error occured while computing d_meanMatrix\n");
-		//exit(1);
+		exit(1);
 	}
 
 }
@@ -130,20 +132,6 @@ void Device_CalculateCovarianceMatrix(RFIMMemoryStruct* RFIMStruct, float* d_sig
 	Device_CalculateMeanMatrix(RFIMStruct, d_signalMatrix);
 
 
-	//TODO: DEBUGGGGG
-	float* h_meanMatrix = (float*)malloc(sizeof(float) * RFIMStruct->h_valuesPerSample *  RFIMStruct->h_valuesPerSample);
-
-
-	CudaUtility_CopySignalToHost(RFIMStruct->d_upperTriangularCovarianceMatrix, &h_meanMatrix,
-			sizeof(float) * RFIMStruct->h_valuesPerSample * RFIMStruct->h_valuesPerSample);
-
-
-	//TODO: DEBUGGGGG
-	for(int i = 0; i < RFIMStruct->h_valuesPerSample * RFIMStruct->h_valuesPerSample; ++i)
-	{
-		printf("Intermediate mean %d: %f\n", i, h_meanMatrix[i]);
-	}
-
 	//--------------------------------
 
 
@@ -154,21 +142,10 @@ void Device_CalculateCovarianceMatrix(RFIMMemoryStruct* RFIMStruct, float* d_sig
 
 	//Take the outer product of the signal with itself
 	float alpha = 1.0f / RFIMStruct->h_numberOfSamples;
-	float beta = -1.0f;
+	float beta = -1;
 
 	cublasStatus_t cublasError;
 
-	//TODO: DEBUGGGGGGGG
-	float* h_signalMatrix = (float*)malloc(sizeof(float) * RFIMStruct->h_valuesPerSample * RFIMStruct->h_numberOfSamples);
-
-	//TODO: DEBUGGGGGGGG
-	CudaUtility_CopySignalToHost(d_signalMatrix, &h_signalMatrix, sizeof(float) * RFIMStruct->h_valuesPerSample * RFIMStruct->h_numberOfSamples);
-
-	//TODO: DEBUGGGGGGGG
-	for(int i = 0; i < RFIMStruct->h_valuesPerSample * RFIMStruct->h_numberOfSamples; ++i)
-	{
-		printf("signal %d: %f\n", i, h_signalMatrix[i]);
-	}
 
 
 	//At this point RFIMStruct->d_upperTriangularCovarianceMatrix is actually the upper triangular mean matrix,
@@ -181,21 +158,9 @@ void Device_CalculateCovarianceMatrix(RFIMMemoryStruct* RFIMStruct, float* d_sig
 	if(cublasError != CUBLAS_STATUS_SUCCESS)
 	{
 		fprintf(stderr, "Device_CalculateCovarianceMatrix: error calculating the covariance matrix\n");
-		//exit(1);
+		exit(1);
 	}
 
-	/*
-	//TODO: DEBUGGGGG
-	float* h_covarMatrix = CudaUtility_CopySignalToHost(RFIMStruct->d_upperTriangularCovarianceMatrix,
-			sizeof(float) * RFIMStruct->h_valuesPerSample * RFIMStruct->h_valuesPerSample);
-
-	//TODO: DEBUGGGGG
-	for(int i = 0; i < RFIMStruct->h_valuesPerSample * RFIMStruct->h_valuesPerSample; ++i)
-	{
-		printf("Intermediate covar %d: %f\n", i, h_covarMatrix[i]);
-	}
-
-	*/
 
 
 

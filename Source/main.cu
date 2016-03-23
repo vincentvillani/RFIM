@@ -41,7 +41,7 @@ int main(int argc, char **argv)
 	//----------------------------------
 
 
-
+	/*
 	//Start cuda rand library
 	curandGenerator_t rngGen;
 
@@ -61,6 +61,8 @@ int main(int argc, char **argv)
 
 
 	float* d_whiteNoiseSignalMatrix = Device_GenerateWhiteNoiseSignal(&rngGen, h_valuesPerSample, h_numberOfSamples);
+
+	*/
 
 
 	/*

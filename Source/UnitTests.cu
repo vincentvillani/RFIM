@@ -18,6 +18,7 @@
 #include <cublas.h>
 
 #include <assert.h>
+#include <cmath>
 #include <string>
 
 
@@ -67,42 +68,42 @@ void MeanCublasProduction()
 	float* h_meanMatrix = (float*)malloc(sizeof(float) * valuesPerSample * valuesPerSample);
 	CudaUtility_CopySignalToHost(RFIMStruct->d_upperTriangularCovarianceMatrix, &h_meanMatrix, valuesPerSample * valuesPerSample * sizeof(float));
 
-
+	/*
 	//Print out the result
 	for(uint32_t i = 0; i < valuesPerSample * valuesPerSample; ++i)
 	{
 		printf("final: %u: %f\n", i, h_meanMatrix[i]);
 	}
-
+	*/
 
 
 
 	bool failed = false;
 
-	if(h_meanMatrix[0] - 6.25f > 0.000001f)
+	if(fabsf(h_meanMatrix[0] - 6.25f) > 0.000001f)
 		failed = true;
-	if(h_meanMatrix[1] > 0.000001f)
+	if(fabsf(h_meanMatrix[1]) > 0.000001f)
 		failed = true;
-	if(h_meanMatrix[2] > 0.000001f)
+	if(fabsf(h_meanMatrix[2]) > 0.000001f)
 		failed = true;
-	if(h_meanMatrix[3] - 8.75f > 0.000001f)
+	if(fabsf(h_meanMatrix[3] - 8.75f) > 0.000001f)
 		failed = true;
-	if(h_meanMatrix[4] - 12.25f > 0.000001f)
+	if(fabsf(h_meanMatrix[4] - 12.25f) > 0.000001f)
 		failed = true;
-	if(h_meanMatrix[5] > 0.000001f)
+	if(fabsf(h_meanMatrix[5]) > 0.000001f)
 		failed = true;
-	if(h_meanMatrix[6] - 11.25f > 0.000001f)
+	if(fabsf(h_meanMatrix[6] - 11.25f) > 0.000001f)
 		failed = true;
-	if(h_meanMatrix[7] - 15.75f > 0.000001f)
+	if(fabsf(h_meanMatrix[7] - 15.75f) > 0.000001f)
 		failed = true;
-	if(h_meanMatrix[8] - 20.25f > 0.000001f)
+	if(fabsf(h_meanMatrix[8] - 20.25f) > 0.000001f)
 		failed = true;
 
 
 	if(failed)
 	{
 		fprintf(stderr, "MeanCublasProduction failed!\n");
-		//exit(1);
+		exit(1);
 	}
 
 	RFIMMemoryStructDestroy(RFIMStruct);
@@ -134,7 +135,7 @@ void CovarianceCublasProduction()
 	cudaMalloc(&d_signal, sizeof(float) * valuesPerSample * sampleNum);
 
 	CudaUtility_CopySignalToDevice(h_signal, &d_signal, sizeof(float) * valuesPerSample * sampleNum);
-	//free(h_signal);
+	free(h_signal);
 
 	//Calculate the covariance matrix
 	Device_CalculateCovarianceMatrix(RFIMStruct, d_signal);
@@ -146,46 +147,71 @@ void CovarianceCublasProduction()
 
 	CudaUtility_CopySignalToHost(RFIMStruct->d_upperTriangularCovarianceMatrix, &h_upperTriCovarMatrix, valuesPerSample * valuesPerSample * sizeof(float));
 
-
+	/*
 	for(int i = 0; i < valuesPerSample * valuesPerSample; ++i)
 	{
-		printf("%d: %f\n", i, h_upperTriCovarMatrix[i]);
+		printf("Covar %d: %f\n", i, h_upperTriCovarMatrix[i]);
 	}
-
+	*/
 
 
 	bool failed = false;
 
-	if(h_upperTriCovarMatrix[0] - 10.75f > 0.000001f)
+
+	if(fabsf(h_upperTriCovarMatrix[0] - 2.25f) > 0.000001f)
+	{
 		failed = true;
-	if(h_upperTriCovarMatrix[1] - 0.0f > 0.000001f)
+	}
+
+	if(fabsf(h_upperTriCovarMatrix[1] - 0.0f) > 0.000001f)
+	{
 		failed = true;
-	if(h_upperTriCovarMatrix[2] - 0.0f > 0.000001f)
+	}
+
+	if(fabsf(h_upperTriCovarMatrix[2] - 0.0f) > 0.000001f)
+	{
 		failed = true;
-	if(h_upperTriCovarMatrix[3] - 13.25f > 0.000001f)
+	}
+
+	if(fabsf(h_upperTriCovarMatrix[3] - 2.25f) > 0.000001f)
+	{
 		failed = true;
-	if(h_upperTriCovarMatrix[4] - 16.75f > 0.000001f)
+	}
+
+	if(fabsf(h_upperTriCovarMatrix[4] - 2.25f) > 0.000001f)
+	{
 		failed = true;
-	if(h_upperTriCovarMatrix[5] - 0.0f > 0.000001f)
+	}
+
+	if(fabsf(h_upperTriCovarMatrix[5] - 0.0f) > 0.000001f)
+	{
 		failed = true;
-	if(h_upperTriCovarMatrix[6] - 15.75f > 0.000001f)
+	}
+
+	if(fabsf(h_upperTriCovarMatrix[6] - 2.25f) > 0.000001f)
+	{
 		failed = true;
-	if(h_upperTriCovarMatrix[7] - 20.25f > 0.000001f)
+	}
+
+	if(fabsf(h_upperTriCovarMatrix[7] - 2.25f) > 0.000001f)
+	{
 		failed = true;
-	if(h_upperTriCovarMatrix[8] - 24.75f > 0.000001f)
+	}
+
+	if(fabsf(h_upperTriCovarMatrix[8] - 2.25f) > 0.000001f)
+	{
 		failed = true;
+	}
 
 	if(failed)
 	{
 		fprintf(stderr, "CovarianceCublasProduction Unit test failed!\n");
-		//exit(1);
+		exit(1);
 	}
-
-
 
 	RFIMMemoryStructDestroy(RFIMStruct);
 
-	//free(h_upperTriCovarMatrix);
+	free(h_upperTriCovarMatrix);
 	cudaFree(d_signal);
 }
 
@@ -433,8 +459,9 @@ void RunAllUnitTests()
 	CovarianceMatrixCUBLAS();
 	CovarianceMatrixCUBLASSsyrk_v2();
 
+	*/
 
 	printf("All tests passed!\n");
-	*/
+
 }
 

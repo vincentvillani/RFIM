@@ -150,6 +150,8 @@ void RFIMMemoryStructDestroy(RFIMMemoryStruct* RFIMStruct)
 	cublasDestroy_v2(*RFIMStruct->cublasHandle);
 	cusolverDnDestroy(*RFIMStruct->cusolverHandle);
 
+	free(RFIMStruct->cublasHandle);
+	free(RFIMStruct->cusolverHandle);
 
 	//Deallocate the mean working memory
 	cudaFree(RFIMStruct->d_oneVec);
