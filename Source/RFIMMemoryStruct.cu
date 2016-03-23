@@ -24,13 +24,13 @@ RFIMMemoryStruct* RFIMMemoryStructCreate(uint32_t h_valuesPerSample, uint32_t h_
 	if(cublasStatus != CUBLAS_STATUS_SUCCESS)
 	{
 		fprintf(stderr, "RFIMMemory::RFIMMemory(): Error starting cublas context\n");
-		exit(1);
+		//exit(1);
 	}
 
 	if(cusolverStatus != CUSOLVER_STATUS_SUCCESS)
 	{
 		fprintf(stderr, "RFIMMemory::RFIMMemory(): Error starting cusolver context\n");
-		exit(1);
+		//exit(1);
 	}
 
 

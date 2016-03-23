@@ -38,6 +38,8 @@
 float* Device_GenerateWhiteNoiseSignal(curandGenerator_t* rngGen, uint64_t h_valuesPerSample, uint64_t h_numberOfSamples);
 
 
+void Device_CalculateMeanMatrix(RFIMMemoryStruct* RFIMStruct, const float* d_signalMatrix);
+
 
 /*
 	Description:
@@ -65,7 +67,7 @@ float* Device_GenerateWhiteNoiseSignal(curandGenerator_t* rngGen, uint64_t h_val
 		Only the upper trianglar contains values, the lower trianglar part is just zero (memory is allocated to store the zeroes and the lower trianglar part is set to zero)
 
 */
-void Device_CalculateCovarianceMatrix(RFIMMemoryStruct* RFIMStruct, const float* d_signalMatrix);
+void Device_CalculateCovarianceMatrix(RFIMMemoryStruct* RFIMStruct, float* d_signalMatrix);
 
 
 
@@ -96,10 +98,6 @@ void Device_MatrixTranspose(cublasHandle_t* cublasHandle, const float* d_matrix,
 void Device_EigenvalueSolver(cublasHandle_t* cublasHandle, cusolverDnHandle_t* cusolverHandle, float* d_fullCovarianceMatrix, float* d_U, float* d_S, float* d_VT,
 		float* d_Lworkspace, float* d_Rworkspace, int workspaceLength, int* d_devInfo, int h_valuesPerSample);
 
-
-
-//TODO: Debug - Remove this
-void DEBUG_CALCULATE_MEAN_MATRIX(RFIMMemoryStruct* RFIMStruct, float* d_signalMatrix);
 
 
 
