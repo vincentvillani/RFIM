@@ -49,8 +49,8 @@ typedef struct RFIMMemoryStruct
 	int* d_devInfo;
 
 	float* d_reducedEigenVecMatrix;
-	float* d_reducedEigenVecMatrixTranspose;
-	float* d_reducedEigenMatrixOuterProduct;
+	//float* d_reducedEigenVecMatrixTranspose;
+	//float* d_reducedEigenMatrixOuterProduct;
 	uint32_t h_eigenVectorDimensionsToReduce;
 
 	//Library handles

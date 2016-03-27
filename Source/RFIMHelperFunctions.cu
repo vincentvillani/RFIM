@@ -319,3 +319,48 @@ void Device_EigenvalueSolver(RFIMMemoryStruct* RFIMStruct)
 
 
 
+//Eigenvector reduction and signal projection/filtering
+//All matrices are column-major
+
+//h_eigenVectorDimensionsToReduce is the number of eigenvectors to remove from the eigenvector matrix, for now it's 2
+
+//Os = Original signal matrix
+//A column-major matrix containing the signal
+//It has dimensionality: h_valuesPerSample * h_numberOfSamples, which will probably be 26 x 1024?
+
+//Er = Reduced Eigenvector matrix.
+//The eigenvectors of the fully symmetrical covariance matrix, with some of the eigenvectors removed.
+//It has dimensions: h_valuesPerSample x (h_valuesPerSample - h_eigenVectorDimensionsToReduce), probably 26 x 24?
+
+//Ps = Projected signal matrix.
+//The original data projected along the reduced eigenvector axis's
+//This matrix will have dimensions: (h_valuesPerSample - h_eigenVectorDimensionsToReduce) x h_numberOfSamples, probably 24 x 1024?
+
+//Fs = Final signal matrix
+//This is the original data projected into the lower reduced eigenvector dimensionality, then back into the original dimensionality. This has the effect of flattening data along the removed dimensions. It may add correlations were there was previously none?
+//But should also hopefully remove some RFI
+//It will have dimensions: h_valuesPerSample * h_numberOfSamples, probably 26 x 1024?
+
+
+//Equations!
+// Ps = (Er Transposed) * Os
+// Fs = Er * Ps      Note that the inverse of Er should just be its transpose, even if you remove some of the eigenvectors. This is because all the eigenvectors are orthogonal unit vectors (or should be anyway...)
+
+
+//Steps
+//1. Remove RFIMStruct->h_eigenVectorDimensionsToReduce dimensions from the eigenvector matrix (this is done via pointer arithmetic rather than actually removing the data) THIS WON'T WORK IF THE COLUMNS TO REMOVE ARE NOT ALL NEXT TO EACH OTHER!
+//2. Compute the matrix Ps
+//3. Compute the matrix Fs (final signal matrix)
+//4. Pass on Fs, down the line? Keep it on the GPU? Copy it to the host? Write it to a file in the file system? Dunno.
+
+
+/*
+float* Device_EigenReductionAndFiltering(RFIMMemoryStruct* RFIMStruct, float* d_originalSignalMatrix)
+{
+	cublasStatus_t cublasStatus;
+
+
+}
+*/
+
+

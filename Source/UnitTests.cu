@@ -270,8 +270,11 @@ void EigendecompProduction()
 
 
 	//Check to see that everything is correct
-	//float* h_eigenvalues = CudaUtility_CopySignalToHost(d_S,  sizeof(float) * valuesPerSample);
-	//float* h_eigenvectorMatrix = CudaUtility_CopySignalToHost(d_U, sizeof(float) * valuesPerSample * valuesPerSample);
+	float* h_eigenvalues = (float*)malloc(sizeof(float) * valuesPerSample);
+	float* h_eigenvectorMatrix = (float*)malloc(sizeof(float) * valuesPerSample * valuesPerSample);
+
+	CudaUtility_CopySignalToHost(RFIM->d_S, &h_eigenvalues, sizeof(float) * valuesPerSample);
+	CudaUtility_CopySignalToHost(RFIM->d_U, &h_eigenvectorMatrix, sizeof(float) * valuesPerSample * valuesPerSample);
 
 	/*
 	for(int i = 0; i < valuesPerSample; ++i)
@@ -285,6 +288,7 @@ void EigendecompProduction()
 	{
 		printf("Eigenvec %d: %f\n", i, h_eigenvectorMatrix[i]);
 	}
+	*/
 
 
 	bool failed = false;
@@ -300,13 +304,13 @@ void EigendecompProduction()
 		exit(1);
 	}
 
-	if(h_eigenvectorMatrix[0] + 0.707107 > 0.000001f)
+	if(fabs(h_eigenvectorMatrix[0] + 0.707107) > 0.000001f)
 		failed = true;
-	if(h_eigenvectorMatrix[1] + 0.707107 > 0.000001f)
+	if(fabs(h_eigenvectorMatrix[1] + 0.707107) > 0.000001f)
 		failed = true;
-	if(h_eigenvectorMatrix[2] + 0.707107 > 0.000001f)
+	if(fabs(h_eigenvectorMatrix[2] + 0.707107) > 0.000001f)
 		failed = true;
-	if(h_eigenvectorMatrix[3] - 0.707107 > 0.000001f)
+	if(fabs(h_eigenvectorMatrix[3] - 0.707107) > 0.000001f)
 		failed = true;
 
 	if(failed)
@@ -315,21 +319,10 @@ void EigendecompProduction()
 		exit(1);
 	}
 
-	free(h_covarianceMatrix);
 	free(h_eigenvalues);
 	free(h_eigenvectorMatrix);
-	cudaFree(d_covarianceMatrix);
-	cudaFree(d_fullySymmetricCovarianceMatrix);
-	cudaFree(d_S);
-	cudaFree(d_U);
-	cudaFree(d_VT);
-	cudaFree(d_Lworkspace);
-	cudaFree(d_Rworkspace);
-	cudaFree(d_devInfo);
 
-	cusolverDnDestroy(handle);
-	cublasDestroy_v2(cublasHandle);
-	*/
+	RFIMMemoryStructDestroy(RFIM);
 
 }
 
@@ -439,12 +432,11 @@ void RunAllUnitTests()
 {
 	MeanCublasProduction();
 	CovarianceCublasProduction();
+	EigendecompProduction();
 
 	/*
 	TransposeProduction();
 	//GraphProduction();
-	EigendecompProduction();
-
 	ParallelMeanUnitTest();
 	ParallelMeanCublas();
 

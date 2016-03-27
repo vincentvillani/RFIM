@@ -98,6 +98,8 @@ void Device_MatrixTranspose(cublasHandle_t* cublasHandle, const float* d_matrix,
 void Device_EigenvalueSolver(RFIMMemoryStruct* RFIMStruct);
 
 
+float* Device_EigenReductionAndFiltering(RFIMMemoryStruct* RFIMStruct, float* d_originalSignalMatrix);
+
 
 
 

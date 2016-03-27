@@ -127,7 +127,7 @@ RFIMMemoryStruct* RFIMMemoryStructCreate(uint32_t h_valuesPerSample, uint32_t h_
 			(h_valuesPerSample - result->h_eigenVectorDimensionsToReduce));
 
 
-
+	/*
 	cudaMalloc(&(result->d_reducedEigenVecMatrixTranspose), sizeof(float) * h_valuesPerSample *
 			(h_valuesPerSample - result->h_eigenVectorDimensionsToReduce));
 	cudaMemset(result->d_reducedEigenVecMatrixTranspose, 0, sizeof(float) * h_valuesPerSample *
@@ -137,6 +137,8 @@ RFIMMemoryStruct* RFIMMemoryStructCreate(uint32_t h_valuesPerSample, uint32_t h_
 	cudaMalloc(&(result->d_reducedEigenMatrixOuterProduct), sizeof(float) * h_valuesPerSample * h_valuesPerSample);
 	cudaMemset(result->d_reducedEigenMatrixOuterProduct, 0, sizeof(float) * h_valuesPerSample *
 				(h_valuesPerSample - result->h_eigenVectorDimensionsToReduce));
+
+	*/
 
 
 	return result;
@@ -171,8 +173,8 @@ void RFIMMemoryStructDestroy(RFIMMemoryStruct* RFIMStruct)
 	cudaFree(RFIMStruct->d_eigWorkingSpace);
 
 	cudaFree(RFIMStruct->d_reducedEigenVecMatrix);
-	cudaFree(RFIMStruct->d_reducedEigenVecMatrixTranspose);
-	cudaFree(RFIMStruct->d_reducedEigenMatrixOuterProduct);
+	//cudaFree(RFIMStruct->d_reducedEigenVecMatrixTranspose);
+	//cudaFree(RFIMStruct->d_reducedEigenMatrixOuterProduct);
 
 
 
