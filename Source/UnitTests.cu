@@ -143,6 +143,7 @@ void CovarianceCublasProduction()
 	//Copy the data back to the device and print it
 
 
+	//Test the upper tricovariance matrix
 	float* h_upperTriCovarMatrix = (float*)malloc(sizeof(float) * valuesPerSample * valuesPerSample);
 
 	CudaUtility_CopySignalToHost(RFIMStruct->d_upperTriangularCovarianceMatrix, &h_upperTriCovarMatrix, valuesPerSample * valuesPerSample * sizeof(float));
@@ -209,9 +210,34 @@ void CovarianceCublasProduction()
 		exit(1);
 	}
 
+
+
+	//Test the full matrix
+	float* h_fullCovarianceMatrix = (float*)malloc(sizeof(float) * valuesPerSample * valuesPerSample);
+	CudaUtility_CopySignalToHost(RFIMStruct->d_fullSymmetricCovarianceMatrix, &h_fullCovarianceMatrix, sizeof(float) * valuesPerSample * valuesPerSample);
+
+
+	for(int i = 0; i < valuesPerSample * valuesPerSample; ++i)
+	{
+		if(h_fullCovarianceMatrix[i] - 2.25f > 0.000001f)
+			failed = true;
+
+
+		//printf("Full covar %d: %f\n", i, h_fullCovarianceMatrix[i]);
+	}
+
+
+	if(failed)
+	{
+		fprintf(stderr, "CovarianceCublasProduction Unit test at generating the correct full covariance matrix!\n");
+		exit(1);
+	}
+
+
 	RFIMMemoryStructDestroy(RFIMStruct);
 
 	free(h_upperTriCovarMatrix);
+	free(h_fullCovarianceMatrix);
 	cudaFree(d_signal);
 }
 

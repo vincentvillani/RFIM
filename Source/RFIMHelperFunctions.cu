@@ -135,6 +135,7 @@ void Device_CalculateCovarianceMatrix(RFIMMemoryStruct* RFIMStruct, float* d_sig
 	//--------------------------------
 
 
+
 	//Calculate the covariance matrix
 	//-------------------------------
 	//1. Calculate the outer product of the signal (sampleElements x sampleNumber) * ( sampleNumber x sampleElements)
@@ -164,10 +165,10 @@ void Device_CalculateCovarianceMatrix(RFIMMemoryStruct* RFIMStruct, float* d_sig
 
 
 
-	/*
+
 	//Calculate the full symmetric covariance matrix
 	//1. Transpose the covariance matrix
-	Device_MatrixTranspose(&RFIMStruct->cublasHandle, RFIMStruct->d_upperTriangularCovarianceMatrix, RFIMStruct->d_upperTriangularTransposedMatrix,
+	Device_MatrixTranspose(RFIMStruct->cublasHandle, RFIMStruct->d_upperTriangularCovarianceMatrix, RFIMStruct->d_upperTriangularTransposedMatrix,
 			RFIMStruct->h_valuesPerSample, RFIMStruct->h_valuesPerSample);
 
 	//2. Set the transposed covariance matrix diagonal to zero
@@ -179,12 +180,12 @@ void Device_CalculateCovarianceMatrix(RFIMMemoryStruct* RFIMStruct, float* d_sig
 	//3. Add the two matrices together
 
 	//TODO: Look into whether or not I need to do this. This memory is reused each time around
-	cudaMemset(RFIMStruct->d_fullSymmetricCovarianceMatrix, 0, sizeof(float) * RFIMStruct->h_valuesPerSample * RFIMStruct->h_valuesPerSample);
+	//cudaMemset(RFIMStruct->d_fullSymmetricCovarianceMatrix, 0, sizeof(float) * RFIMStruct->h_valuesPerSample * RFIMStruct->h_valuesPerSample);
 
 	alpha = 1.0f;
 	beta = 1.0f;
 
-	cublasError = cublasSgeam(RFIMStruct->cublasHandle, CUBLAS_OP_N, CUBLAS_OP_N, RFIMStruct->h_valuesPerSample, RFIMStruct->h_valuesPerSample,
+	cublasError = cublasSgeam(*RFIMStruct->cublasHandle, CUBLAS_OP_N, CUBLAS_OP_N, RFIMStruct->h_valuesPerSample, RFIMStruct->h_valuesPerSample,
 				&alpha, RFIMStruct->d_upperTriangularCovarianceMatrix, RFIMStruct->h_valuesPerSample,
 				&beta, RFIMStruct->d_upperTriangularTransposedMatrix, RFIMStruct->h_valuesPerSample,
 				RFIMStruct->d_fullSymmetricCovarianceMatrix, RFIMStruct->h_valuesPerSample);
@@ -196,7 +197,7 @@ void Device_CalculateCovarianceMatrix(RFIMMemoryStruct* RFIMStruct, float* d_sig
 		exit(1);
 	}
 
-	*/
+
 }
 
 
