@@ -95,8 +95,7 @@ void Device_MatrixTranspose(cublasHandle_t* cublasHandle, const float* d_matrix,
 //float* Device_FullSymmetricMatrix(cublasHandle_t* cublasHandle, const float* d_triangularMatrix, uint64_t rowAndColNum);
 
 
-void Device_EigenvalueSolver(cublasHandle_t* cublasHandle, cusolverDnHandle_t* cusolverHandle, float* d_fullCovarianceMatrix, float* d_U, float* d_S, float* d_VT,
-		float* d_Lworkspace, float* d_Rworkspace, int workspaceLength, int* d_devInfo, int h_valuesPerSample);
+void Device_EigenvalueSolver(RFIMMemoryStruct* RFIMStruct);
 
 
 

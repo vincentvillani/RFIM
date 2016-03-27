@@ -272,8 +272,7 @@ float* Device_FullSymmetricMatrix(cublasHandle_t* cublasHandle, const float* d_t
 
 
 
-void Device_EigenvalueSolver(cublasHandle_t* cublasHandle, cusolverDnHandle_t* cusolverHandle, float* d_fullCovarianceMatrix, float* d_U, float* d_S, float* d_VT,
-		float* d_Lworkspace, float* d_Rworkspace, int workspaceLength, int* d_devInfo, int h_valuesPerSample)
+void Device_EigenvalueSolver(RFIMMemoryStruct* RFIMStruct)
 {
 
 
@@ -281,13 +280,13 @@ void Device_EigenvalueSolver(cublasHandle_t* cublasHandle, cusolverDnHandle_t* c
 
 
 
-	cusolverStatus = cusolverDnSgesvd(*cusolverHandle, 'A', 'A', h_valuesPerSample, h_valuesPerSample,
-			d_fullCovarianceMatrix, h_valuesPerSample, d_S, d_U, h_valuesPerSample, d_VT, h_valuesPerSample,
-			d_Lworkspace, workspaceLength, d_Rworkspace, d_devInfo);
+	cusolverStatus = cusolverDnSgesvd(*RFIMStruct->cusolverHandle, 'A', 'A', RFIMStruct->h_valuesPerSample, RFIMStruct->h_valuesPerSample,
+			RFIMStruct->d_fullSymmetricCovarianceMatrix, RFIMStruct->h_valuesPerSample, RFIMStruct->d_S,  RFIMStruct->d_U, RFIMStruct->h_valuesPerSample, RFIMStruct->d_VT, RFIMStruct->h_valuesPerSample,
+			RFIMStruct->d_eigWorkingSpace, RFIMStruct->h_eigWorkingSpaceLength, NULL, RFIMStruct->d_devInfo);
 
 
 	int* h_devInfo = (int*)malloc(sizeof(int));
-	cudaMemcpy(h_devInfo, d_devInfo, sizeof(int), cudaMemcpyDeviceToHost);
+	cudaMemcpy(h_devInfo, RFIMStruct->d_devInfo, sizeof(int), cudaMemcpyDeviceToHost);
 
 	if(*h_devInfo != 0)
 	{
