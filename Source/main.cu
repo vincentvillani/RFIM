@@ -22,6 +22,7 @@
 //#include "../Header/CudaUtilityFunctions.h"
 #include "../Header/UtilityFunctions.h"
 #include "../Header/RFIM.h"
+#include "../Header/Benchmark.h"
 
 
 //TODO: Look at ways to reuse allocated memory if possible
@@ -41,9 +42,6 @@ int main(int argc, char **argv)
 
 	//1. Generate a signal on the device
 	//----------------------------------
-
-
-
 	//Start cuda rand library
 	curandGenerator_t rngGen;
 
@@ -60,12 +58,10 @@ int main(int argc, char **argv)
 		//exit(1);
 	}
 
-
-
 	float* d_whiteNoiseSignalMatrix = Device_GenerateWhiteNoiseSignal(&rngGen, h_valuesPerSample, h_numberOfSamples);
 
 	//TODO: Debug remove this
-	Utility_DeviceWriteSignalMatrixToFile("signal.txt", d_whiteNoiseSignalMatrix, h_valuesPerSample, h_numberOfSamples, false);
+	//Utility_DeviceWriteSignalMatrixToFile("signal.txt", d_whiteNoiseSignalMatrix, h_valuesPerSample, h_numberOfSamples, false);
 
 
 	//2. Create a RFIM Struct
@@ -78,12 +74,14 @@ int main(int argc, char **argv)
 
 
 
-	//3. Run RFIM
+	//3. Run RFIM benchmark
 	//--------------------------
+	Benchmark(RFIMStruct, d_whiteNoiseSignalMatrix, d_filteredSignal, 10000, 100);
 
-	RFIMRoutine(RFIMStruct, d_whiteNoiseSignalMatrix, d_filteredSignal);
+	//RFIMRoutine(RFIMStruct, d_whiteNoiseSignalMatrix, d_filteredSignal);
 
 	//TODO: Debug remove this
+	/*
 	Utility_DeviceWriteSignalMatrixToFile("meanVec.txt", RFIMStruct->d_meanVec, h_valuesPerSample, 1, false);
 	Utility_DeviceWriteSignalMatrixToFile("upperTriangularCovariance.txt", RFIMStruct->d_upperTriangularCovarianceMatrix, h_valuesPerSample, h_valuesPerSample, false);
 	Utility_DeviceWriteSignalMatrixToFile("lowerTriangularCovariance.txt", RFIMStruct->d_upperTriangularTransposedMatrix, h_valuesPerSample, h_valuesPerSample, false);
@@ -91,154 +89,16 @@ int main(int argc, char **argv)
 	Utility_DeviceWriteSignalMatrixToFile("eigenvalues.txt", RFIMStruct->d_S, h_valuesPerSample, 1, false);
 	Utility_DeviceWriteSignalMatrixToFile("eigenvectorMatrix.txt", RFIMStruct->d_U, h_valuesPerSample, h_valuesPerSample, false);
 	Utility_DeviceWriteSignalMatrixToFile("filteredSignal.txt", d_filteredSignal, h_valuesPerSample, h_numberOfSamples, false);
-
-
-	//Free the RFIM Struct
-	RFIMMemoryStructDestroy(RFIMStruct);
-	cudaFree(d_filteredSignal);
-
-	/*
-
-	//----------------------------------
-
-	//2.Calculate the covariance matrix of this signal
-	//----------------------------------
-
-	//Setup the cublas library
-	cublasHandle_t cublasHandle;
-	cublasStatus_t cublasStatus = cublasCreate_v2(&cublasHandle);
-
-	if(cublasStatus != CUBLAS_STATUS_SUCCESS)
-	{
-		fprintf(stderr, "Main: Error creating a cublas handle\n");
-		exit(1);
-	}
-
-	//Calculate the covariance matrix
-	float* d_triangularCovarianceMatrix = Device_CalculateCovarianceMatrix(&cublasHandle, d_whiteNoiseSignalMatrix, h_valuesPerSample, h_numberOfSamples);
-
-
-
-
-	//----------------------------------
-
-	//3. Graph the covariance matrix
-	//----------------------------------
-
-	//Transpose it to row-major (simplify writing to file)
-	float* d_triangularCovarianceMatrixTranspose = Device_MatrixTranspose(d_triangularCovarianceMatrix, h_valuesPerSample, h_valuesPerSample);
-
-	//Copy the signal to host memory
-	float* h_triangularCovarianceMatrixTranspose = CudaUtility_CopySignalToHost(d_triangularCovarianceMatrixTranspose,
-			h_valuesPerSample * h_valuesPerSample * sizeof(float));
-
-	//Write the signal to file
-	Utility_WriteSignalMatrixToFile(std::string("signal.txt"), h_triangularCovarianceMatrixTranspose, h_valuesPerSample, h_valuesPerSample);
-
-	//Graph it via python on own computer!
-
-	//----------------------------------
-
-
-	//4. Calculate the eigenvectors and eigenvalues
-	//----------------------------------
-
-	//Create a cusolver handle
-	cusolverDnHandle_t cusolverHandle;
-	cusolverStatus_t cusolverStatus;
-
-	cusolverStatus = cusolverDnCreate(&cusolverHandle);
-
-	if(cusolverStatus != CUSOLVER_STATUS_SUCCESS)
-	{
-		fprintf(stderr, "main: error in creating a cusolver handle\n");
-		exit(1);
-	}
-
-	//Create a full covariance matrix
-	float* d_fullCovarianceMatrix = Device_FullSymmetricMatrix(&cublasHandle, d_triangularCovarianceMatrix,
-			h_valuesPerSample);
-
-
-	//Write the full covariance matrix to file, just to check
-	float* h_fullCovarianceMatrix = CudaUtility_CopySignalToHost(d_fullCovarianceMatrix, sizeof(float) * h_valuesPerSample * h_valuesPerSample);
-	Utility_WriteSignalMatrixToFile(std::string("fullCovarianceMatrix.txt"), h_fullCovarianceMatrix, h_valuesPerSample, h_valuesPerSample);
-
-
-	//Allocate memory for the eigenvalue solver
-	float* d_U;
-	float* d_S;
-	float* d_VT;
-	float* d_Lworkspace;
-	int workspaceLength;
-	int* d_devInfo;
-
-	cudaMalloc(&d_U, sizeof(float) * h_valuesPerSample * h_valuesPerSample);
-	cudaMalloc(&d_S, sizeof(float) * h_valuesPerSample);
-	cudaMalloc(&d_VT, sizeof(float) * h_valuesPerSample * h_valuesPerSample);
-	cusolverDnSgesvd_bufferSize(cusolverHandle, h_valuesPerSample, h_valuesPerSample, &workspaceLength);
-	cudaMalloc(&d_Lworkspace, workspaceLength);
-	cudaMalloc(&d_devInfo, sizeof(int));
-
-
-	//Run the solver
-	Device_EigenvalueSolver(&cublasHandle, &cusolverHandle, d_fullCovarianceMatrix, d_U, d_S, d_VT, d_Lworkspace, NULL, workspaceLength, d_devInfo, h_valuesPerSample);
-
-
-	//Copy the eigenvalues to the host
-	float* h_eigenvalues = CudaUtility_CopySignalToHost(d_S, sizeof(float) * h_valuesPerSample);
-
-
-	//print the values
-	for(uint32_t i = 0; i < h_valuesPerSample; ++i)
-	{
-		printf("eigenvalue %d: %f\n", i, h_eigenvalues[i]);
-	}
-
-	//Write the eigenvalues to file
-	Utility_WriteSignalMatrixToFile(std::string("eigenvalues.txt"), h_eigenvalues, h_valuesPerSample, 1);
-
-	cusolverDnDestroy(cusolverHandle);
-
-	free(h_eigenvalues);
-
-	cudaFree(d_fullCovarianceMatrix);
-	cudaFree(d_U);
-	cudaFree(d_S);
-	cudaFree(d_VT);
-	cudaFree(d_Lworkspace);
-	cudaFree(d_devInfo);
-
-	//----------------------------------
-
-	//Free all memory
-	//----------------------------------
-
-	free(h_triangularCovarianceMatrixTranspose);
-
-	cudaFree(d_whiteNoiseSignalMatrix);
-	cudaFree(d_triangularCovarianceMatrix);
-	cudaFree(d_triangularCovarianceMatrixTranspose);
-
-	//Destroy the cublas handle
-	cublasStatus = cublasDestroy_v2(cublasHandle);
-
-	if(cublasStatus != CUBLAS_STATUS_SUCCESS)
-	{
-		fprintf(stderr, "Main: Error destroying a cublas handle\n");
-		exit(1);
-	}
-
-
-	//Destroy the RNG
-	if(curandDestroyGenerator(rngGen) != CURAND_STATUS_SUCCESS)
-	{
-		fprintf(stderr, "main: Error in destroying the RNG generator \n");
-		exit(1);
-	}
 	*/
 
-	//----------------------------------
+
+	//4. Free everything
+	//--------------------------
+	//Free the RFIM Struct
+	RFIMMemoryStructDestroy(RFIMStruct);
+	cudaFree(d_whiteNoiseSignalMatrix);
+	cudaFree(d_filteredSignal);
+
 
 	return 0;
 }
