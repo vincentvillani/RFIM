@@ -16,6 +16,7 @@
 void RFIMRoutine(RFIMMemoryStruct* RFIMStruct, float* d_columnMajorSignalMatrix, float* d_columnMajorFilteredSignalMatrix)
 {
 
+	/*
 	//If we reduce everything, we will have nothing left...
 	if(RFIMStruct->h_eigenVectorDimensionsToReduce >= RFIMStruct->h_valuesPerSample)
 	{
@@ -33,6 +34,6 @@ void RFIMRoutine(RFIMMemoryStruct* RFIMStruct, float* d_columnMajorSignalMatrix,
 
 	//Project the signal against the reduced eigenvector matrix and back again to the original dimensions
 	Device_EigenReductionAndFiltering(RFIMStruct, d_columnMajorSignalMatrix, d_columnMajorFilteredSignalMatrix);
-
+	*/
 }
 

@@ -31,7 +31,7 @@
 
 //--------------------------
 
-
+/*
 float* Device_GenerateWhiteNoiseSignal(curandGenerator_t* rngGen, uint64_t h_valuesPerSample, uint64_t h_numberOfSamples)
 {
 
@@ -282,7 +282,7 @@ float* Device_FullSymmetricMatrix(cublasHandle_t* cublasHandle, const float* d_t
 	//return the result
 	return d_fullMatrix;
 }
-*/
+
 
 
 
@@ -310,7 +310,7 @@ void Device_EigenvalueSolver(RFIMMemoryStruct* RFIMStruct)
 	}
 
 	free(h_devInfo);
-	*/
+
 
 
 	if(cusolverStatus != CUSOLVER_STATUS_SUCCESS)
@@ -415,5 +415,6 @@ void Device_EigenReductionAndFiltering(RFIMMemoryStruct* RFIMStruct, float* d_or
 
 }
 
+*/
 
 

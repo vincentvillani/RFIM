@@ -38,6 +38,7 @@ int main(int argc, char **argv)
 	uint32_t h_valuesPerSample = 26;
 	uint32_t h_numberOfSamples = 1024;
 
+	/*
 
 
 	//1. Generate a signal on the device
@@ -80,16 +81,7 @@ int main(int argc, char **argv)
 
 	//RFIMRoutine(RFIMStruct, d_whiteNoiseSignalMatrix, d_filteredSignal);
 
-	//TODO: Debug remove this
-	/*
-	Utility_DeviceWriteSignalMatrixToFile("meanVec.txt", RFIMStruct->d_meanVec, h_valuesPerSample, 1, false);
-	Utility_DeviceWriteSignalMatrixToFile("upperTriangularCovariance.txt", RFIMStruct->d_upperTriangularCovarianceMatrix, h_valuesPerSample, h_valuesPerSample, false);
-	Utility_DeviceWriteSignalMatrixToFile("lowerTriangularCovariance.txt", RFIMStruct->d_upperTriangularTransposedMatrix, h_valuesPerSample, h_valuesPerSample, false);
-	Utility_DeviceWriteSignalMatrixToFile("covarianceMatrix.txt", RFIMStruct->d_fullSymmetricCovarianceMatrix, h_valuesPerSample, h_valuesPerSample, false);
-	Utility_DeviceWriteSignalMatrixToFile("eigenvalues.txt", RFIMStruct->d_S, h_valuesPerSample, 1, false);
-	Utility_DeviceWriteSignalMatrixToFile("eigenvectorMatrix.txt", RFIMStruct->d_U, h_valuesPerSample, h_valuesPerSample, false);
-	Utility_DeviceWriteSignalMatrixToFile("filteredSignal.txt", d_filteredSignal, h_valuesPerSample, h_numberOfSamples, false);
-	*/
+
 
 
 	//4. Free everything
@@ -99,6 +91,6 @@ int main(int argc, char **argv)
 	cudaFree(d_whiteNoiseSignalMatrix);
 	cudaFree(d_filteredSignal);
 
-
+*/
 	return 0;
 }

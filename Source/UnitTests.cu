@@ -38,7 +38,7 @@ void FilteringProduction();
 
 //Production
 //-------------------------------------
-
+/*
 void MeanCublasProduction()
 {
 
@@ -69,13 +69,13 @@ void MeanCublasProduction()
 	float* h_meanMatrix = (float*)malloc(sizeof(float) * valuesPerSample * valuesPerSample);
 	CudaUtility_CopySignalToHost(RFIMStruct->d_upperTriangularCovarianceMatrix, &h_meanMatrix, valuesPerSample * valuesPerSample * sizeof(float));
 
-	/*
+
 	//Print out the result
 	for(uint32_t i = 0; i < valuesPerSample * valuesPerSample; ++i)
 	{
 		printf("final: %u: %f\n", i, h_meanMatrix[i]);
 	}
-	*/
+
 
 
 
@@ -149,12 +149,12 @@ void CovarianceCublasProduction()
 
 	CudaUtility_CopySignalToHost(RFIMStruct->d_upperTriangularCovarianceMatrix, &h_upperTriCovarMatrix, valuesPerSample * valuesPerSample * sizeof(float));
 
-	/*
+
 	for(int i = 0; i < valuesPerSample * valuesPerSample; ++i)
 	{
 		printf("Covar %d: %f\n", i, h_upperTriCovarMatrix[i]);
 	}
-	*/
+
 
 
 	bool failed = false;
@@ -277,7 +277,7 @@ void EigendecompProduction()
 	CudaUtility_CopySignalToHost(RFIM->d_S, &h_eigenvalues, sizeof(float) * valuesPerSample);
 	CudaUtility_CopySignalToHost(RFIM->d_U, &h_eigenvectorMatrix, sizeof(float) * valuesPerSample * valuesPerSample);
 
-	/*
+
 	for(int i = 0; i < valuesPerSample; ++i)
 	{
 		printf("Eigenvalue %d: %f\n", i, h_eigenvalues[i]);
@@ -289,7 +289,7 @@ void EigendecompProduction()
 	{
 		printf("Eigenvec %d: %f\n", i, h_eigenvectorMatrix[i]);
 	}
-	*/
+
 
 
 	bool failed = false;
@@ -417,4 +417,4 @@ void RunAllUnitTests()
 	printf("All tests passed!\n");
 
 }
-
+*/
