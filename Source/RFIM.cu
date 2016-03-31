@@ -32,6 +32,12 @@ float* RFIMRoutine(RFIMMemoryStruct* RFIMStruct, float* d_columnMajorSignalMatri
 	Device_CalculateCovarianceMatrix(RFIMStruct, d_columnMajorSignalMatrix);
 
 
+	//Calculate the eigenvectors/values
+	Device_EigenvalueSolver(RFIMStruct);
+
+	//Device_EigenReductionAndFiltering(RFIMStruct, d_columnMajorSignalMatrix);
+
+
 
 	return d_filteredSignal;
 }

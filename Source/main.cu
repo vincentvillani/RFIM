@@ -65,7 +65,7 @@ int main(int argc, char **argv)
 	float* d_whiteNoiseSignalMatrix = Device_GenerateWhiteNoiseSignal(&rngGen, h_valuesPerSample, h_numberOfSamples);
 
 	//TODO: Debug remove this
-	Utility_DeviceWriteSignalMatrixToFile("signal.txt", d_whiteNoiseSignalMatrix, h_valuesPerSample, h_numberOfSamples);
+	Utility_DeviceWriteSignalMatrixToFile("signal.txt", d_whiteNoiseSignalMatrix, h_valuesPerSample, h_numberOfSamples, false);
 
 
 	//2. Create a RFIM Struct
@@ -80,10 +80,12 @@ int main(int argc, char **argv)
 	RFIMRoutine(RFIMStruct, d_whiteNoiseSignalMatrix);
 
 	//TODO: Debug remove this
-	Utility_DeviceWriteSignalMatrixToFile("meanVec.txt", RFIMStruct->d_meanVec, h_valuesPerSample, 1);
-	Utility_DeviceWriteSignalMatrixToFile("upperTriangularCovariance.txt", RFIMStruct->d_upperTriangularCovarianceMatrix, h_valuesPerSample, h_valuesPerSample);
-	Utility_DeviceWriteSignalMatrixToFile("lowerTriangularCovariance.txt", RFIMStruct->d_upperTriangularTransposedMatrix, h_valuesPerSample, h_valuesPerSample);
-	Utility_DeviceWriteSignalMatrixToFile("covarianceMatrix.txt", RFIMStruct->d_fullSymmetricCovarianceMatrix, h_valuesPerSample, h_valuesPerSample);
+	Utility_DeviceWriteSignalMatrixToFile("meanVec.txt", RFIMStruct->d_meanVec, h_valuesPerSample, 1, false);
+	Utility_DeviceWriteSignalMatrixToFile("upperTriangularCovariance.txt", RFIMStruct->d_upperTriangularCovarianceMatrix, h_valuesPerSample, h_valuesPerSample, false);
+	Utility_DeviceWriteSignalMatrixToFile("lowerTriangularCovariance.txt", RFIMStruct->d_upperTriangularTransposedMatrix, h_valuesPerSample, h_valuesPerSample, false);
+	Utility_DeviceWriteSignalMatrixToFile("covarianceMatrix.txt", RFIMStruct->d_fullSymmetricCovarianceMatrix, h_valuesPerSample, h_valuesPerSample, false);
+	Utility_DeviceWriteSignalMatrixToFile("eigenvalues.txt", RFIMStruct->d_S, h_valuesPerSample, 1, false);
+	Utility_DeviceWriteSignalMatrixToFile("eigenvectorMatrix.txt", RFIMStruct->d_U, h_valuesPerSample, h_valuesPerSample, false);
 
 
 	//Free the RFIM Struct

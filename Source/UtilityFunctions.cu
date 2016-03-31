@@ -8,6 +8,7 @@
 #include "../Header/UtilityFunctions.h"
 #include "../Header/RFIMHelperFunctions.h"
 #include "../Header/CudaUtilityFunctions.h"
+#include <cublas.h>
 
 
 //Write a host signal matrix to a file
@@ -45,16 +46,36 @@ void Utility_WriteSignalMatrixToFile(const std::string filename, float* h_rowMaj
 }
 
 
-void Utility_DeviceWriteSignalMatrixToFile(const std::string filename, float* d_rowMajorSignalMatrix, uint64_t rows, uint64_t columns)
+void Utility_DeviceWriteSignalMatrixToFile(const std::string filename, float* d_rowMajorSignalMatrix, uint64_t rows, uint64_t columns, bool transpose)
 {
-	//Copy the matrix to the device
-	float* h_rowMajorSignalMatrix = (float*)malloc(sizeof(float) * rows * columns);
+	uint32_t matrixByteSize = sizeof(float) * rows * columns;
 
-	CudaUtility_CopySignalToHost(d_rowMajorSignalMatrix, &h_rowMajorSignalMatrix, sizeof(float) * rows * columns);
+	//Copy the matrix to the device
+	float* h_rowMajorSignalMatrix = (float*)malloc(matrixByteSize);
+	float* d_transposedMatrix = d_rowMajorSignalMatrix;
+
+	cublasHandle_t cublasHandle;
+
+	if(transpose)
+	{
+		cublasCreate_v2(&cublasHandle);
+		cudaMalloc(&d_transposedMatrix, matrixByteSize);
+
+		//Transpose the matrix
+		Device_MatrixTranspose(&cublasHandle, d_rowMajorSignalMatrix, d_transposedMatrix, rows, columns);
+	}
+
+	CudaUtility_CopySignalToHost(d_transposedMatrix, &h_rowMajorSignalMatrix, sizeof(float) * rows * columns);
 
 	//Call the host version of this function
 	Utility_WriteSignalMatrixToFile(filename, h_rowMajorSignalMatrix, rows, columns);
 
 	free(h_rowMajorSignalMatrix);
+
+	if(transpose)
+	{
+		cublasDestroy(cublasHandle);
+		cudaFree(d_transposedMatrix);
+	}
 }
 
