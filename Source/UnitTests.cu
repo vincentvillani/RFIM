@@ -15,7 +15,7 @@
 #include "../Header/UtilityFunctions.h"
 #include "../Header/RFIMMemoryStruct.h"
 
-#include <cublas.h>
+#include <cublas_v2.h>
 
 #include <assert.h>
 #include <cmath>

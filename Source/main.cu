@@ -36,7 +36,7 @@ int main(int argc, char **argv)
 
 
 	uint32_t h_valuesPerSample = 26;
-	uint32_t h_numberOfSamples = 1024;
+	uint32_t h_numberOfSamples = 4096;
 
 
 

@@ -178,6 +178,7 @@ void Device_CalculateCovarianceMatrix(RFIMMemoryStruct* RFIMStruct, float* d_sig
 	dim3 gridDim(1, ceilf(RFIMStruct->h_valuesPerSample / (float)32));
 	setDiagonalToZero<<<gridDim, blockDim>>> (RFIMStruct->d_upperTriangularTransposedMatrix, RFIMStruct->h_valuesPerSample);
 
+	/*
 	cudaDeviceSynchronize();
 	cudaError_t cudaError = cudaGetLastError();
 
@@ -188,6 +189,7 @@ void Device_CalculateCovarianceMatrix(RFIMMemoryStruct* RFIMStruct, float* d_sig
 		fprintf(stderr, "cudaError: %s", cudaGetErrorString(cudaError));
 		exit(1);
 	}
+	*/
 
 	//3. Add the two matrices together
 

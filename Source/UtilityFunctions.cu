@@ -8,7 +8,7 @@
 #include "../Header/UtilityFunctions.h"
 #include "../Header/RFIMHelperFunctions.h"
 #include "../Header/CudaUtilityFunctions.h"
-#include <cublas.h>
+#include <cublas_v2.h>
 
 
 //Write a host signal matrix to a file

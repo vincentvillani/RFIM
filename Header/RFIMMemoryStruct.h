@@ -8,7 +8,7 @@
 #ifndef RFIMMEMORYSTRUCT_H_
 #define RFIMMEMORYSTRUCT_H_
 
-#include <cublas.h>
+#include <cublas_v2.h>
 #include <cusolverDn.h>
 #include <stdint.h>
 
