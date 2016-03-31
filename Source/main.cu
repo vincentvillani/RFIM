@@ -70,14 +70,18 @@ int main(int argc, char **argv)
 
 	//2. Create a RFIM Struct
 	//--------------------------
-	RFIMMemoryStruct* RFIMStruct = RFIMMemoryStructCreate(h_valuesPerSample, h_numberOfSamples);
+	RFIMMemoryStruct* RFIMStruct = RFIMMemoryStructCreate(h_valuesPerSample, h_numberOfSamples, 2);
+
+	//Create space to store the filtered signal
+	float* d_filteredSignal;
+	cudaMalloc(&d_filteredSignal, sizeof(float) * h_valuesPerSample * h_numberOfSamples);
 
 
 
 	//3. Run RFIM
 	//--------------------------
 
-	RFIMRoutine(RFIMStruct, d_whiteNoiseSignalMatrix);
+	RFIMRoutine(RFIMStruct, d_whiteNoiseSignalMatrix, d_filteredSignal);
 
 	//TODO: Debug remove this
 	Utility_DeviceWriteSignalMatrixToFile("meanVec.txt", RFIMStruct->d_meanVec, h_valuesPerSample, 1, false);
@@ -86,10 +90,12 @@ int main(int argc, char **argv)
 	Utility_DeviceWriteSignalMatrixToFile("covarianceMatrix.txt", RFIMStruct->d_fullSymmetricCovarianceMatrix, h_valuesPerSample, h_valuesPerSample, false);
 	Utility_DeviceWriteSignalMatrixToFile("eigenvalues.txt", RFIMStruct->d_S, h_valuesPerSample, 1, false);
 	Utility_DeviceWriteSignalMatrixToFile("eigenvectorMatrix.txt", RFIMStruct->d_U, h_valuesPerSample, h_valuesPerSample, false);
+	Utility_DeviceWriteSignalMatrixToFile("filteredSignal.txt", d_filteredSignal, h_valuesPerSample, h_numberOfSamples, false);
 
 
 	//Free the RFIM Struct
 	RFIMMemoryStructDestroy(RFIMStruct);
+	cudaFree(d_filteredSignal);
 
 	/*
 

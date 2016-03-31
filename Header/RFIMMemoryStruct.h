@@ -49,9 +49,9 @@ typedef struct RFIMMemoryStruct
 	int* d_devInfo;
 
 	float* d_reducedEigenVecMatrix;
-	//float* d_reducedEigenVecMatrixTranspose;
-	//float* d_reducedEigenMatrixOuterProduct;
 	uint32_t h_eigenVectorDimensionsToReduce;
+
+	float* d_projectedSignalMatrix;
 
 	//Library handles
 	cublasHandle_t* cublasHandle;
@@ -61,7 +61,7 @@ typedef struct RFIMMemoryStruct
 }RFIMMemoryStruct;
 
 
-RFIMMemoryStruct* RFIMMemoryStructCreate(uint32_t h_valuesPerSample, uint32_t h_numberOfSamples);
+RFIMMemoryStruct* RFIMMemoryStructCreate(uint32_t h_valuesPerSample, uint32_t h_numberOfSamples, uint32_t dimensionToReduce);
 void RFIMMemoryStructDestroy(RFIMMemoryStruct* RFIMStruct);
 
 

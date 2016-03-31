@@ -358,13 +358,50 @@ void Device_EigenvalueSolver(RFIMMemoryStruct* RFIMStruct)
 //4. Pass on Fs, down the line? Keep it on the GPU? Copy it to the host? Write it to a file in the file system? Dunno.
 
 
-/*
-float* Device_EigenReductionAndFiltering(RFIMMemoryStruct* RFIMStruct, float* d_originalSignalMatrix)
+
+void Device_EigenReductionAndFiltering(RFIMMemoryStruct* RFIMStruct, float* d_originalSignalMatrix, float* d_filteredSignal)
 {
+
 	cublasStatus_t cublasStatus;
 
+	//Projected signal matrix
+	//Ps = (Er Transposed) * Os
+	float alpha = 1;
+	float beta = 0;
+
+	uint32_t reducedDimension = RFIMStruct->h_valuesPerSample - RFIMStruct->h_eigenVectorDimensionsToReduce;
+	uint32_t eigenvectorPointerOffset = RFIMStruct->h_valuesPerSample * RFIMStruct->h_eigenVectorDimensionsToReduce;
+
+	cublasStatus = cublasSgemm_v2(*RFIMStruct->cublasHandle, CUBLAS_OP_T, CUBLAS_OP_N,
+			reducedDimension, RFIMStruct->h_numberOfSamples, RFIMStruct->h_valuesPerSample,
+			&alpha,  RFIMStruct->d_U + eigenvectorPointerOffset, RFIMStruct->h_valuesPerSample,
+			d_originalSignalMatrix, RFIMStruct->h_valuesPerSample, &beta,
+			RFIMStruct->d_projectedSignalMatrix, reducedDimension);
+
+	if(cublasStatus != CUBLAS_STATUS_SUCCESS)
+	{
+		fprintf(stderr, "Device_EigenReductionAndFiltering: error calculating the projected signal\n");
+		exit(1);
+	}
+
+
+	//final signal matrix
+	// Fs = Er * Ps
+
+	cublasStatus = cublasSgemm_v2(*RFIMStruct->cublasHandle, CUBLAS_OP_N, CUBLAS_OP_N,
+			RFIMStruct->h_valuesPerSample, RFIMStruct->h_numberOfSamples, reducedDimension,
+			&alpha, RFIMStruct->d_U + eigenvectorPointerOffset, RFIMStruct->h_valuesPerSample,
+			RFIMStruct->d_projectedSignalMatrix, reducedDimension, &beta,
+			d_filteredSignal, RFIMStruct->h_valuesPerSample);
+
+
+	if(cublasStatus != CUBLAS_STATUS_SUCCESS)
+	{
+		fprintf(stderr, "Device_EigenReductionAndFiltering: error calculating the filtered signal\n");
+		exit(1);
+	}
 
 }
-*/
+
 
 

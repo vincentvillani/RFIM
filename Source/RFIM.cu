@@ -13,12 +13,8 @@
 
 #include <stdio.h>
 
-float* RFIMRoutine(RFIMMemoryStruct* RFIMStruct, float* d_columnMajorSignalMatrix)
+void RFIMRoutine(RFIMMemoryStruct* RFIMStruct, float* d_columnMajorSignalMatrix, float* d_columnMajorFilteredSignalMatrix)
 {
-
-	//The filtered signal to return
-	float* d_filteredSignal = NULL;
-
 
 	//If we reduce everything, we will have nothing left...
 	if(RFIMStruct->h_eigenVectorDimensionsToReduce >= RFIMStruct->h_valuesPerSample)
@@ -35,10 +31,8 @@ float* RFIMRoutine(RFIMMemoryStruct* RFIMStruct, float* d_columnMajorSignalMatri
 	//Calculate the eigenvectors/values
 	Device_EigenvalueSolver(RFIMStruct);
 
-	//Device_EigenReductionAndFiltering(RFIMStruct, d_columnMajorSignalMatrix);
+	//Project the signal against the reduced eigenvector matrix and back again to the original dimensions
+	Device_EigenReductionAndFiltering(RFIMStruct, d_columnMajorSignalMatrix, d_columnMajorFilteredSignalMatrix);
 
-
-
-	return d_filteredSignal;
 }
 

@@ -15,11 +15,15 @@
 //Copies data from the host to the device and returns a device pointer
 void CudaUtility_CopySignalToDevice(float* h_signal, float** d_destination, uint64_t signalByteSize)
 {
+	cudaError_t cudaError;
+
+	cudaError = cudaMemcpy(*d_destination, h_signal, signalByteSize, cudaMemcpyHostToDevice);
 
 	//copy data from host to device
-	if( cudaMemcpy(*d_destination, h_signal, signalByteSize, cudaMemcpyHostToDevice) != cudaSuccess)
+	if( cudaError != cudaSuccess)
 	{
 		fprintf(stderr, "CopySignalToDevice: error copying memory to the device\n");
+		fprintf(stderr, "Cuda error code: %s\n", cudaGetErrorString(cudaError));
 		//exit(1);
 	}
 
@@ -28,10 +32,14 @@ void CudaUtility_CopySignalToDevice(float* h_signal, float** d_destination, uint
 //Copies data from the device to the host and returns a host pointer
 void CudaUtility_CopySignalToHost(float* d_signal, float** h_destination, uint64_t signalByteSize)
 {
+	cudaError_t cudaError;
+
+	cudaError = cudaMemcpy(*h_destination, d_signal, signalByteSize, cudaMemcpyDeviceToHost);
 	//copy data from host to device
-	if( cudaMemcpy(*h_destination, d_signal, signalByteSize, cudaMemcpyDeviceToHost) != cudaSuccess)
+	if( cudaError != cudaSuccess)
 	{
 		fprintf(stderr, "CopySignalToHost: error copying memory to the host\n");
+		fprintf(stderr, "Cuda error code: %s\n", cudaGetErrorString(cudaError));
 		//exit(1);
 	}
 

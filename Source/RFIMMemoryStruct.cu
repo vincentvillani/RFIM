@@ -6,7 +6,7 @@
 #include <stdio.h>
 
 
-RFIMMemoryStruct* RFIMMemoryStructCreate(uint32_t h_valuesPerSample, uint32_t h_numberOfSamples)
+RFIMMemoryStruct* RFIMMemoryStructCreate(uint32_t h_valuesPerSample, uint32_t h_numberOfSamples, uint32_t dimensionToReduce)
 {
 	RFIMMemoryStruct* result = (RFIMMemoryStruct*)malloc(sizeof(RFIMMemoryStruct));
 
@@ -118,7 +118,7 @@ RFIMMemoryStruct* RFIMMemoryStructCreate(uint32_t h_valuesPerSample, uint32_t h_
 
 	//Eigenvectors dimensions to reduce, chosen arbitrarily for now
 	//TODO: Come back to this. This will probably change
-	result->h_eigenVectorDimensionsToReduce = 2;
+	result->h_eigenVectorDimensionsToReduce = dimensionToReduce;
 
 	//Allocate memory for the reduced Eigenvector matrix and it's transpose
 	cudaMalloc(&(result->d_reducedEigenVecMatrix), sizeof(float) * h_valuesPerSample *
@@ -126,6 +126,11 @@ RFIMMemoryStruct* RFIMMemoryStructCreate(uint32_t h_valuesPerSample, uint32_t h_
 	cudaMemset(result->d_reducedEigenVecMatrix, 0, sizeof(float) * h_valuesPerSample *
 			(h_valuesPerSample - result->h_eigenVectorDimensionsToReduce));
 
+
+	cudaMalloc(&(result->d_projectedSignalMatrix),
+			sizeof(float) * (h_valuesPerSample - result->h_eigenVectorDimensionsToReduce) * h_numberOfSamples);
+	cudaMemset(result->d_projectedSignalMatrix, 0,
+			sizeof(float) * (h_valuesPerSample - result->h_eigenVectorDimensionsToReduce) * h_numberOfSamples);
 
 	/*
 	cudaMalloc(&(result->d_reducedEigenVecMatrixTranspose), sizeof(float) * h_valuesPerSample *
@@ -173,8 +178,8 @@ void RFIMMemoryStructDestroy(RFIMMemoryStruct* RFIMStruct)
 	cudaFree(RFIMStruct->d_eigWorkingSpace);
 
 	cudaFree(RFIMStruct->d_reducedEigenVecMatrix);
-	//cudaFree(RFIMStruct->d_reducedEigenVecMatrixTranspose);
-	//cudaFree(RFIMStruct->d_reducedEigenMatrixOuterProduct);
+
+	cudaFree(RFIMStruct->d_projectedSignalMatrix);
 
 
 

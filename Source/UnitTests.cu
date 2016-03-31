@@ -26,6 +26,7 @@
 void MeanCublasProduction();
 void CovarianceCublasProduction();
 void EigendecompProduction();
+void FilteringProduction();
 //void TransposeProduction();
 //void GraphProduction();
 
@@ -44,7 +45,7 @@ void MeanCublasProduction()
 	uint32_t valuesPerSample = 3;
 	uint32_t sampleNum = 2;
 
-	RFIMMemoryStruct* RFIMStruct = RFIMMemoryStructCreate(valuesPerSample, sampleNum);
+	RFIMMemoryStruct* RFIMStruct = RFIMMemoryStructCreate(valuesPerSample, sampleNum, 2);
 
 
 	float* h_signal = (float*)malloc(sizeof(float) * valuesPerSample * sampleNum);
@@ -118,7 +119,7 @@ void CovarianceCublasProduction()
 	uint64_t valuesPerSample = 3;
 	uint64_t sampleNum = 2;
 
-	RFIMMemoryStruct* RFIMStruct = RFIMMemoryStructCreate(valuesPerSample, sampleNum);
+	RFIMMemoryStruct* RFIMStruct = RFIMMemoryStructCreate(valuesPerSample, sampleNum, 2);
 
 	float* h_signal; //Column first signal (3, 2), 3 == valuesPerSample, 2 == sampleNum
 
@@ -250,7 +251,7 @@ void EigendecompProduction()
 
 
 
-	RFIMMemoryStruct* RFIM = RFIMMemoryStructCreate(valuesPerSample, valuesPerSample);
+	RFIMMemoryStruct* RFIM = RFIMMemoryStructCreate(valuesPerSample, valuesPerSample, 2);
 
 
 	//Create small full covariance matrix
@@ -328,100 +329,78 @@ void EigendecompProduction()
 
 
 
-
-/*
-void TransposeProduction()
+//Doesn't actually prove that the filter itself works, just that the math functions are working as you would expected
+//By removing 0 dimensions we should get the same signal back
+void FilteringProduction()
 {
-	uint64_t valuesPerSample = 3;
-	uint64_t sampleNum = 2;
+	int valuesPerSample = 2;
+	int signalByteSize = sizeof(float) * valuesPerSample * valuesPerSample;
 
-	float* h_signal; //Column first signal (3, 2), 3 == valuesPerSample, 2 == sampleNum
+	//REDUCE NOTHING! This should give us back the same signal
+	RFIMMemoryStruct* RFIM = RFIMMemoryStructCreate(valuesPerSample, valuesPerSample, 0);
 
-	h_signal = (float*)malloc( sizeof(float) * 6);
 
+	//Create small full covariance matrix
+	float* h_signal = (float*)malloc( signalByteSize );
+
+	h_signal[0] = 1.0f;
+	h_signal[1] = 2.0f;
+	h_signal[2] = 7.0f;
+	h_signal[3] = -8.0f;
+
+	//Copy signal to the device
 	float* d_signal;
-	float* d_transposedSignal;
+	cudaMalloc(&d_signal, signalByteSize);
+	CudaUtility_CopySignalToDevice(h_signal, &d_signal, signalByteSize);
 
-	//Set the host signal
-	for(uint32_t i = 0; i < 6; ++i)
-	{
-		h_signal[i] = i + 1;
-	}
+	//Calculate the covariance matrix
+	Device_CalculateCovarianceMatrix(RFIM, d_signal);
 
-	d_signal = CudaUtility_CopySignalToDevice(h_signal, sizeof(float) * 6);
+	//Calculate the eigenvectors
+	Device_EigenvalueSolver(RFIM);
 
-	//Transpose the matrix
-	d_transposedSignal = Device_MatrixTranspose(d_signal, valuesPerSample, sampleNum);
+	//Setup the signal output
+	float* d_filteredSignal;
+	cudaMalloc(&d_filteredSignal, signalByteSize);
 
 
-	free(h_signal);
-	h_signal = CudaUtility_CopySignalToHost(d_transposedSignal, 6 * sizeof(float));
+	//Do the projection
+	Device_EigenReductionAndFiltering(RFIM, d_signal, d_filteredSignal);
 
-	/*
-	for(int i = 0; i < 6; ++i)
-	{
-		printf("%d: %f\n", i, h_signal[i]);
-	}
 
+	//Copy the signal back to the host
+	float* h_filteredSignal = (float*)malloc(signalByteSize);
+	CudaUtility_CopySignalToHost(d_filteredSignal, &h_filteredSignal, signalByteSize);
 
 	bool failed = false;
 
-	if(h_signal[0] - 1.0f > 0.000001f)
-		failed = true;
-	else if(h_signal[1] - 4.0f > 0.000001f)
-		failed = true;
-	else if(h_signal[2] - 2.0f > 0.000001f)
-		failed = true;
-	else if(h_signal[3] - 5.0f > 0.000001f)
-		failed = true;
-	else if(h_signal[4] - 3.0f > 0.000001f)
-		failed = true;
-	else if(h_signal[5] - 6.0f > 0.000001f)
-		failed = true;
+	//Make sure we got the same signal back
+	for(uint32_t i = 0; i < valuesPerSample * valuesPerSample; ++i)
+	{
+		//print the signal
+		//printf("Orig %d: %f, filt %d: %f\n", i, h_signal[i], i, h_filteredSignal[i]);
+
+		if(fabs(h_signal[i]) - fabs(h_filteredSignal[i]) > 0.0000001f)
+		{
+			failed = true;
+		}
+	}
+
+
 
 	if(failed)
 	{
-		fprintf(stderr, "TransposeProduction unit test failed!\n");
+		fprintf(stderr, "FilteringProduction: Unit test failed!\n");
 		exit(1);
 	}
 
 
-
+	RFIMMemoryStructDestroy(RFIM);
 	free(h_signal);
-
+	free(h_filteredSignal);
 	cudaFree(d_signal);
-	cudaFree(d_transposedSignal);
+	cudaFree(d_filteredSignal);
 }
-
-
-
-
-void GraphProduction()
-{
-	uint64_t valuesPerSample = 3;
-	uint64_t sampleNum = 2;
-
-	float* h_signal; //Column first signal (3, 2), 3 == valuesPerSample, 2 == sampleNum
-
-	h_signal = (float*)malloc( sizeof(float) * 6);
-
-	//Set the host signal
-	for(uint32_t i = 0; i < 6; ++i)
-	{
-		h_signal[i] = i + 1;
-	}
-
-	//Write it to file
-	Utility_WriteSignalMatrixToFile(std::string( "signal.txt"), h_signal, valuesPerSample, sampleNum);
-
-}
-
-
-
-
-
-*/
-
 
 
 
@@ -433,18 +412,7 @@ void RunAllUnitTests()
 	MeanCublasProduction();
 	CovarianceCublasProduction();
 	EigendecompProduction();
-
-	/*
-	TransposeProduction();
-	//GraphProduction();
-	ParallelMeanUnitTest();
-	ParallelMeanCublas();
-
-	CovarianceMatrixUsingMyCodeUnitTest();
-	CovarianceMatrixCUBLAS();
-	CovarianceMatrixCUBLASSsyrk_v2();
-
-	*/
+	FilteringProduction();
 
 	printf("All tests passed!\n");
 
