@@ -32,7 +32,7 @@
 int main(int argc, char **argv)
 {
 	//Run all the unit tests
-	RunAllUnitTests();
+	//RunAllUnitTests();
 
 
 	uint32_t h_valuesPerSample = 26;
@@ -76,7 +76,7 @@ int main(int argc, char **argv)
 
 	//3. Run RFIM benchmark
 	//--------------------------
-	Benchmark(RFIMStruct, d_whiteNoiseSignalMatrix, d_filteredSignal, 10000, 100);
+	Benchmark(RFIMStruct, d_whiteNoiseSignalMatrix, d_filteredSignal, 200, 1);
 
 	//RFIMRoutine(RFIMStruct, d_whiteNoiseSignalMatrix, d_filteredSignal);
 

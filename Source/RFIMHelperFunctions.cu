@@ -178,6 +178,16 @@ void Device_CalculateCovarianceMatrix(RFIMMemoryStruct* RFIMStruct, float* d_sig
 	dim3 gridDim(1, ceilf(RFIMStruct->h_valuesPerSample / (float)32));
 	setDiagonalToZero<<<gridDim, blockDim>>> (RFIMStruct->d_upperTriangularTransposedMatrix, RFIMStruct->h_valuesPerSample);
 
+	cudaDeviceSynchronize();
+	cudaError_t cudaError = cudaGetLastError();
+
+	if(cudaError != cudaSuccess)
+	{
+		fprintf(stderr, "Device_CalculateCovarianceMatrix: error when starting the kernel setDiagonalToZero\n");
+		fprintf(stderr, "Grid size: (%u, %u) Block size: (%u, %u)\n", gridDim.x, gridDim.y, blockDim.x, blockDim.y);
+		fprintf(stderr, "cudaError: %s", cudaGetErrorString(cudaError));
+		exit(1);
+	}
 
 	//3. Add the two matrices together
 
@@ -289,6 +299,7 @@ void Device_EigenvalueSolver(RFIMMemoryStruct* RFIMStruct)
 			RFIMStruct->d_eigWorkingSpace, RFIMStruct->h_eigWorkingSpaceLength, NULL, RFIMStruct->d_devInfo);
 
 
+	/*
 	int* h_devInfo = (int*)malloc(sizeof(int));
 	cudaMemcpy(h_devInfo, RFIMStruct->d_devInfo, sizeof(int), cudaMemcpyDeviceToHost);
 
@@ -298,9 +309,13 @@ void Device_EigenvalueSolver(RFIMMemoryStruct* RFIMStruct)
 		//exit(1);
 	}
 
+	free(h_devInfo);
+	*/
+
+
 	if(cusolverStatus != CUSOLVER_STATUS_SUCCESS)
 	{
-		/*
+
 		if(cusolverStatus == CUSOLVER_STATUS_NOT_INITIALIZED)
 			printf("1\n");
 		if(cusolverStatus == CUSOLVER_STATUS_INVALID_VALUE)
@@ -309,15 +324,12 @@ void Device_EigenvalueSolver(RFIMMemoryStruct* RFIMStruct)
 			printf("3\n");
 		if(cusolverStatus == CUSOLVER_STATUS_INTERNAL_ERROR)
 			printf("4\n");
-		*/
+
 
 
 		fprintf(stderr, "Device_EigenvalueSolver: Error solving eigenvalues\n");
 		exit(1);
 	}
-
-
-	free(h_devInfo);
 
 }
 
