@@ -45,20 +45,20 @@ RFIMMemoryStruct* RFIMMemoryStructCreate(uint32_t h_valuesPerSample, uint32_t h_
 
 
 	//Setup the mean working memory
-	float* h_oneVec = (float*)malloc(sizeof(float) * h_valuesPerSample);
+	float* h_oneVec = (float*)malloc(sizeof(float) * h_numberOfSamples);
 
 	//Fill the one vec with ones
-	for(uint32_t i = 0; i < h_valuesPerSample; ++i)
+	for(uint32_t i = 0; i < h_numberOfSamples; ++i)
 	{
 		h_oneVec[i] = 1;
 	}
 
 
-	cudaMalloc(&result->d_oneVec, sizeof(float) * h_valuesPerSample);
-	cudaMemset(result->d_oneVec, 0, sizeof(float) * h_valuesPerSample);
+	cudaMalloc(&result->d_oneVec, sizeof(float) * h_numberOfSamples);
+	cudaMemset(result->d_oneVec, 0, sizeof(float) * h_numberOfSamples);
 
 	//Copy the one vec to the device
-	CudaUtility_CopySignalToDevice(h_oneVec, &result->d_oneVec,  sizeof(float) * h_valuesPerSample);
+	CudaUtility_CopySignalToDevice(h_oneVec, &result->d_oneVec,  sizeof(float) * h_numberOfSamples);
 
 	//Free the host memory, don't need it anymore
 	free(h_oneVec);

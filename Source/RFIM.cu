@@ -7,20 +7,29 @@
 
 #include "../Header/RFIM.h"
 
+#include "../Header/CudaUtilityFunctions.h"
+#include "../Header/UtilityFunctions.h"
+#include "../Header/RFIMHelperFunctions.h"
+
 #include <stdio.h>
 
-float* RFIM(RFIMMemoryStruct* RFIMStruct, float* d_columnMajorSignalMatrix, uint32_t h_valuesPerSample, uint32_t h_numberOfSamples)
+float* RFIMRoutine(RFIMMemoryStruct* RFIMStruct, float* d_columnMajorSignalMatrix)
 {
-	//The filtered signal to return
-	float* d_filteredSignal;
 
-	//if these are mismatched the program will probably crash
-	if(RFIMStruct->h_valuesPerSample != h_valuesPerSample || RFIMStruct->h_numberOfSamples != h_numberOfSamples)
+	//The filtered signal to return
+	float* d_filteredSignal = NULL;
+
+
+	//If we reduce everything, we will have nothing left...
+	if(RFIMStruct->h_eigenVectorDimensionsToReduce >= RFIMStruct->h_valuesPerSample)
 	{
-		fprintf(stderr, "RFIM: RFIMStruct->h_valuesPerSample != h_valuesPerSample OR RFIMStruct->h_numberOfSamples != h_numberOfSamples");
-		//exit(1);
+		fprintf(stderr, "RFIMStruct->h_eigenVectorDimensionsToReduce >= RFIMStruct->h_valuesPerSample\n");
+		exit(1);
 	}
 
+
+	//Calculate covariance matrix for this signal
+	Device_CalculateCovarianceMatrix(RFIMStruct, d_columnMajorSignalMatrix);
 
 
 

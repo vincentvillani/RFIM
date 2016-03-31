@@ -11,10 +11,10 @@
 #include <stdint.h>
 
 #include "RFIMMemoryStruct.h"
-#include "RFIMHelperFunctions.h"
+
 
 
 //Does RFIM mitigation and returns the filtered signal matrix device pointer
-float* RFIM(RFIMMemoryStruct* RFIMStruct, float* d_columnMajorSignalMatrix, uint32_t h_valuesPerSample, uint32_t h_numberOfSamples);
+float* RFIMRoutine(RFIMMemoryStruct* RFIMStruct, float* d_columnMajorSignalMatrix);
 
 #endif /* RFIM_H_ */

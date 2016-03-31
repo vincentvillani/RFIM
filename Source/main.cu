@@ -10,16 +10,18 @@
  */
 #include <stdio.h>
 #include <stdlib.h>
+#include <curand.h>
 
 #include <string>
 #include <stdint.h>
 
-#include "../Header/Kernels.h"
+//#include "../Header/Kernels.h"
 #include "../Header/UnitTests.h"
-#include "../Header/CudaMacros.h"
+//#include "../Header/CudaMacros.h"
 #include "../Header/RFIMHelperFunctions.h"
-#include "../Header/CudaUtilityFunctions.h"
+//#include "../Header/CudaUtilityFunctions.h"
 #include "../Header/UtilityFunctions.h"
+#include "../Header/RFIM.h"
 
 
 //TODO: Look at ways to reuse allocated memory if possible
@@ -41,7 +43,7 @@ int main(int argc, char **argv)
 	//----------------------------------
 
 
-	/*
+
 	//Start cuda rand library
 	curandGenerator_t rngGen;
 
@@ -62,8 +64,30 @@ int main(int argc, char **argv)
 
 	float* d_whiteNoiseSignalMatrix = Device_GenerateWhiteNoiseSignal(&rngGen, h_valuesPerSample, h_numberOfSamples);
 
-	*/
+	//TODO: Debug remove this
+	Utility_DeviceWriteSignalMatrixToFile("signal.txt", d_whiteNoiseSignalMatrix, h_valuesPerSample, h_numberOfSamples);
 
+
+	//2. Create a RFIM Struct
+	//--------------------------
+	RFIMMemoryStruct* RFIMStruct = RFIMMemoryStructCreate(h_valuesPerSample, h_numberOfSamples);
+
+
+
+	//3. Run RFIM
+	//--------------------------
+
+	RFIMRoutine(RFIMStruct, d_whiteNoiseSignalMatrix);
+
+	//TODO: Debug remove this
+	Utility_DeviceWriteSignalMatrixToFile("meanVec.txt", RFIMStruct->d_meanVec, h_valuesPerSample, 1);
+	Utility_DeviceWriteSignalMatrixToFile("upperTriangularCovariance.txt", RFIMStruct->d_upperTriangularCovarianceMatrix, h_valuesPerSample, h_valuesPerSample);
+	Utility_DeviceWriteSignalMatrixToFile("lowerTriangularCovariance.txt", RFIMStruct->d_upperTriangularTransposedMatrix, h_valuesPerSample, h_valuesPerSample);
+	Utility_DeviceWriteSignalMatrixToFile("covarianceMatrix.txt", RFIMStruct->d_fullSymmetricCovarianceMatrix, h_valuesPerSample, h_valuesPerSample);
+
+
+	//Free the RFIM Struct
+	RFIMMemoryStructDestroy(RFIMStruct);
 
 	/*
 

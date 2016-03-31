@@ -86,7 +86,9 @@ void Device_CalculateMeanMatrix(RFIMMemoryStruct* RFIMStruct, const float* d_sig
 	float beta = 0;
 
 	cublasError = cublasSgemm_v2(*RFIMStruct->cublasHandle, CUBLAS_OP_N, CUBLAS_OP_T, 1, RFIMStruct->h_valuesPerSample, RFIMStruct->h_numberOfSamples,
-			&alpha, RFIMStruct->d_oneVec, 1, d_signalMatrix, RFIMStruct->h_valuesPerSample, &beta, RFIMStruct->d_meanVec, 1);
+			&alpha, RFIMStruct->d_oneVec, 1,
+			d_signalMatrix, RFIMStruct->h_valuesPerSample, &beta,
+			RFIMStruct->d_meanVec, 1);
 
 
 
@@ -189,6 +191,8 @@ void Device_CalculateCovarianceMatrix(RFIMMemoryStruct* RFIMStruct, float* d_sig
 				&alpha, RFIMStruct->d_upperTriangularCovarianceMatrix, RFIMStruct->h_valuesPerSample,
 				&beta, RFIMStruct->d_upperTriangularTransposedMatrix, RFIMStruct->h_valuesPerSample,
 				RFIMStruct->d_fullSymmetricCovarianceMatrix, RFIMStruct->h_valuesPerSample);
+
+
 
 
 	if(cublasError != CUBLAS_STATUS_SUCCESS)

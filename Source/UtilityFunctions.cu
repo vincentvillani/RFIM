@@ -11,7 +11,7 @@
 
 
 //Write a host signal matrix to a file
-void Utility_WriteSignalMatrixToFile(const std::string filename, const float* h_rowMajorSignalMatrix, uint64_t rows, uint64_t columns)
+void Utility_WriteSignalMatrixToFile(const std::string filename, float* h_rowMajorSignalMatrix, uint64_t rows, uint64_t columns)
 {
 
 
@@ -43,3 +43,18 @@ void Utility_WriteSignalMatrixToFile(const std::string filename, const float* h_
 
 	fclose(signalFile);
 }
+
+
+void Utility_DeviceWriteSignalMatrixToFile(const std::string filename, float* d_rowMajorSignalMatrix, uint64_t rows, uint64_t columns)
+{
+	//Copy the matrix to the device
+	float* h_rowMajorSignalMatrix = (float*)malloc(sizeof(float) * rows * columns);
+
+	CudaUtility_CopySignalToHost(d_rowMajorSignalMatrix, &h_rowMajorSignalMatrix, sizeof(float) * rows * columns);
+
+	//Call the host version of this function
+	Utility_WriteSignalMatrixToFile(filename, h_rowMajorSignalMatrix, rows, columns);
+
+	free(h_rowMajorSignalMatrix);
+}
+
