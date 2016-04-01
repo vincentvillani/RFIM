@@ -21,6 +21,10 @@ void CudaUtility_CopySignalToHost(float* d_signal, float** h_destination, uint64
 float** CudaUtility_BatchAllocateDeviceArrays(uint32_t numberOfArrays, uint64_t arrayByteSize);
 void CudaUtility_BatchDeallocateDeviceArrays(float** d_arrays, uint32_t numberOfArrays);
 
+float** CudaUtility_BatchAllocateHostArrays(uint32_t numberOfArrays, uint64_t arrayByteSize);
+void CudaUtility_BatchDeallocateHostArrays(float** h_arrays, uint32_t numberOfArrays);
+
 void CudaUtility_BatchCopyArraysHostToDevice(float** d_arrays, float** h_arrays, uint32_t numberOfArrays, uint64_t arrayByteSize);
+void CudaUtility_BatchCopyArraysDeviceToHost(float** d_arrays, float** h_arrays, uint32_t numberOfArrays, uint64_t arrayByteSize);
 
 #endif /* CUDAUTILITYFUNCTIONS_H_ */

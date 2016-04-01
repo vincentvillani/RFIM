@@ -48,7 +48,7 @@ RFIMMemoryStruct* RFIMMemoryStructCreate(uint32_t h_valuesPerSample, uint32_t h_
 	float* h_oneVec = (float*)malloc(oneVecByteSize);
 	float** h_oneVecPointerArray = (float**)malloc(sizeof(float*) * h_batchSize);
 
-	printf("0\n");
+	//printf("0\n");
 
 	//Fill the one vec with ones
 	for(uint32_t i = 0; i < h_numberOfSamples; ++i)
@@ -56,7 +56,7 @@ RFIMMemoryStruct* RFIMMemoryStructCreate(uint32_t h_valuesPerSample, uint32_t h_
 		h_oneVec[i] = 1;
 	}
 
-	printf("0.5\n");
+	//printf("0.5\n");
 
 	//Set each pointer to point to the same array
 	for(uint32_t i = 0; i < h_batchSize; ++i)
@@ -64,7 +64,7 @@ RFIMMemoryStruct* RFIMMemoryStructCreate(uint32_t h_valuesPerSample, uint32_t h_
 		h_oneVecPointerArray[i] = h_oneVec;
 	}
 
-	printf("0.75\n");
+	//printf("0.75\n");
 
 
 	//Allocate one array on the device, everything in the pointer array will point to this
@@ -91,15 +91,16 @@ RFIMMemoryStruct* RFIMMemoryStructCreate(uint32_t h_valuesPerSample, uint32_t h_
 	}
 	uint32_t projectedSignalMatrixByteSize = sizeof(float) * ((h_valuesPerSample - result->h_eigenVectorDimensionsToReduce) * h_numberOfSamples);
 
-	printf("1\n");
+	//printf("1\n");
 
 	//Allocate 2D pointers on the device
 	result->d_oneVec = CudaUtility_BatchAllocateDeviceArrays(h_batchSize, oneVecByteSize);
 	CudaUtility_BatchCopyArraysHostToDevice(result->d_oneVec, h_oneVecPointerArray, h_batchSize, oneVecByteSize); //Copy the oneVec data to the 2D array
 
 	result->d_meanVec = CudaUtility_BatchAllocateDeviceArrays(h_batchSize, meanVecByteSize);
+	result->d_covarianceMatrix = CudaUtility_BatchAllocateDeviceArrays(h_batchSize, covarianceMatrixByteSize);
 
-	printf("2\n");
+	//printf("2\n");
 
 
 	//Free memory
@@ -107,7 +108,7 @@ RFIMMemoryStruct* RFIMMemoryStructCreate(uint32_t h_valuesPerSample, uint32_t h_
 	free(h_oneVec);
 	free(h_oneVecPointerArray);
 
-	printf("3\n");
+	//printf("3\n");
 
 	return result;
 }
@@ -123,32 +124,9 @@ void RFIMMemoryStructDestroy(RFIMMemoryStruct* RFIMStruct)
 	free(RFIMStruct->cublasHandle);
 	free(RFIMStruct->cusolverHandle);
 
-	//Free the device array in on the GPU for the one vec, once (all pointers point to the same array)
-	cudaFree(RFIMStruct->d_oneVec[0]);
-
-
-	//Free all batched arrays
-	for(uint32_t i = 0; i < RFIMStruct->h_batchSize; ++i)
-	{
-		cudaFree(RFIMStruct->d_meanVec[i]);
-		cudaFree(RFIMStruct->d_covarianceMatrix[i]);
-		cudaFree(RFIMStruct->d_U[i]);
-		cudaFree(RFIMStruct->d_S[i]);
-		cudaFree(RFIMStruct->d_VT[i]);
-		cudaFree(RFIMStruct->d_devInfo[i]);
-		cudaFree(RFIMStruct->d_projectedSignalMatrix[i]);
-	}
-
-
-	//Free arrays of pointers
-	cudaFree(RFIMStruct->d_oneVec); //Free the array of pointers
-	cudaFree(RFIMStruct->d_meanVec);
-	cudaFree(RFIMStruct->d_covarianceMatrix);
-	cudaFree(RFIMStruct->d_U);
-	cudaFree(RFIMStruct->d_S);
-	cudaFree(RFIMStruct->d_VT);
-	cudaFree(RFIMStruct->d_devInfo);
-	cudaFree(RFIMStruct->d_projectedSignalMatrix);
+	CudaUtility_BatchDeallocateDeviceArrays(RFIMStruct->d_oneVec, RFIMStruct->h_batchSize);
+	CudaUtility_BatchDeallocateDeviceArrays(RFIMStruct->d_meanVec, RFIMStruct->h_batchSize);
+	CudaUtility_BatchDeallocateDeviceArrays(RFIMStruct->d_covarianceMatrix, RFIMStruct->h_batchSize);
 
 
 	//Deallocate the struct memory on the host
