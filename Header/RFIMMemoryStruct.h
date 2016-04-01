@@ -42,7 +42,6 @@ typedef struct RFIMMemoryStruct
 	int h_eigWorkingSpaceLength;
 	int** d_devInfo;
 
-	float** d_reducedEigenVecMatrix;
 	uint32_t h_eigenVectorDimensionsToReduce;
 
 	float** d_projectedSignalMatrix;
