@@ -45,3 +45,48 @@ void CudaUtility_CopySignalToHost(float* d_signal, float** h_destination, uint64
 
 }
 
+
+float** CudaUtility_BatchAllocateDeviceArrays(uint32_t numberOfArrays, uint64_t arrayByteSize)
+{
+	//Allocate space for the pointers
+	float** h_resultDevicePointers = (float**)malloc(sizeof(float*) * numberOfArrays);
+	float** d_result;
+	cudaMalloc(&d_result, sizeof(float*) * numberOfArrays);
+
+
+	//Allocate space for each pointer and copy it's address into h_resultDevicePointers + i
+	for(uint32_t i = 0; i < numberOfArrays; ++i)
+	{
+		//Allocate each array's memory and store pointers to it on the host
+		cudaMalloc(&(h_resultDevicePointers + i), arrayByteSize);
+	}
+
+	//Copy all the pointers into device memory
+	cudaMemcpy(d_result, h_resultDevicePointers, sizeof(float*) * numberOfArrays, cudaMemcpyHostToDevice);
+
+	free(h_result);
+
+	return result;
+}
+
+
+
+void CudaUtility_BatchDeallocateDeviceArrays(float** d_arrays, uint32_t numberOfArrays)
+{
+	//Copy the pointers to the host
+	float** h_arraysDevicePointers = (float**)malloc(sizeof(float*) * numberOfArrays);
+	cudaMemcpy(h_arraysDevicePointers, d_arrays, sizeof(float*) * numberOfArrays, cudaMemcpyDeviceToHost);
+
+	for(uint32_t i = 0; i < numberOfArrays; ++i)
+	{
+		//Free each array
+		cudaFree(h_arraysDevicePointers[i]);
+	}
+
+	//Free the device pointers
+	cudaFree(d_arrays);
+
+	//Free memory on the host
+	free(h_arraysDevicePointers);
+}
+

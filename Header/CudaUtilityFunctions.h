@@ -18,6 +18,6 @@ void CudaUtility_CopySignalToDevice(float* h_signal, float** d_destination, uint
 //Copies data from the device to the host and returns a host pointer
 void CudaUtility_CopySignalToHost(float* d_signal, float** h_destination, uint64_t signalByteSize);
 
-
+float** CudaUtility_BatchAllocateArrays(uint32_t numberOfArrays, uint64_t arrayByteSize);
 
 #endif /* CUDAUTILITYFUNCTIONS_H_ */

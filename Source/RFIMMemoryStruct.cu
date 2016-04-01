@@ -95,7 +95,9 @@ RFIMMemoryStruct* RFIMMemoryStructCreate(uint32_t h_valuesPerSample, uint32_t h_
 	//------------------------
 	for(uint32_t i = 0; i < h_batchSize; ++i)
 	{
+		/*
 		result->d_oneVec[i] = d_oneVec;
+
 
 		cudaMalloc(&(result->d_meanVec[i]), meanVecByteSize);
 		cudaMalloc(&(result->d_covarianceMatrix[i]), covarianceMatrixByteSize);
@@ -105,6 +107,7 @@ RFIMMemoryStruct* RFIMMemoryStructCreate(uint32_t h_valuesPerSample, uint32_t h_
 		cudaMalloc(&(result->d_devInfo[i]), devInfoByteSize);
 		cudaMalloc(&(result->d_eigWorkingSpace[i]), result->h_eigWorkingSpaceLength);
 		cudaMalloc(&(result->d_projectedSignalMatrix[i]), projectedSignalMatrixByteSize);
+		*/
 	}
 
 	//Free memory
