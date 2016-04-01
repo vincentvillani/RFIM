@@ -46,6 +46,9 @@ RFIMMemoryStruct* RFIMMemoryStructCreate(uint32_t h_valuesPerSample, uint32_t h_
 	//------------------------
 	uint32_t oneVecByteSize = sizeof(float) * h_numberOfSamples;
 	float* h_oneVec = (float*)malloc(oneVecByteSize);
+	float** h_oneVecPointerArray = (float**)malloc(sizeof(float*) * h_batchSize);
+
+	printf("0\n");
 
 	//Fill the one vec with ones
 	for(uint32_t i = 0; i < h_numberOfSamples; ++i)
@@ -53,31 +56,29 @@ RFIMMemoryStruct* RFIMMemoryStructCreate(uint32_t h_valuesPerSample, uint32_t h_
 		h_oneVec[i] = 1;
 	}
 
-	//Allocate the pointers to the array
-	cudaMalloc(&result->d_oneVec, sizeof(float*) * h_batchSize);
+	printf("0.5\n");
+
+	//Set each pointer to point to the same array
+	for(uint32_t i = 0; i < h_batchSize; ++i)
+	{
+		h_oneVecPointerArray[i] = h_oneVec;
+	}
+
+	printf("0.75\n");
+
 
 	//Allocate one array on the device, everything in the pointer array will point to this
-	float* d_oneVec;
-	cudaMalloc(&d_oneVec, oneVecByteSize);
-	cudaMemcpy(d_oneVec, h_oneVec, oneVecByteSize, cudaMemcpyHostToDevice);
-
-	//Allocate space for the pointers
-	//------------------------
-	cudaMalloc(&(result->d_meanVec),  sizeof(float*) * h_batchSize);
-	cudaMalloc(&(result->d_covarianceMatrix), sizeof(float*) * h_batchSize);
-	cudaMalloc(&(result->d_U), sizeof(float*) * h_batchSize);
-	cudaMalloc(&(result->d_S), sizeof(float*) * h_batchSize);
-	cudaMalloc(&(result->d_VT), sizeof(float*) * h_batchSize);
-	cudaMalloc(&(result->d_devInfo), sizeof(int*) * h_batchSize);
-	cudaMalloc(&(result->d_eigWorkingSpace), sizeof(float*) * h_batchSize);
-	cudaMalloc(&(result->d_projectedSignalMatrix), sizeof(float*) * h_batchSize);
+	//float* d_oneVec;
+	//cudaMalloc(&d_oneVec, oneVecByteSize);
+	//cudaMemcpy(d_oneVec, h_oneVec, oneVecByteSize, cudaMemcpyHostToDevice);
 
 
-	uint32_t meanVecByteSize = sizeof(float) * h_valuesPerSample;
-	uint32_t covarianceMatrixByteSize = sizeof(float) * h_valuesPerSample * h_valuesPerSample;
-	uint32_t UByteSize = sizeof(float) * h_valuesPerSample * h_valuesPerSample;
-	uint32_t SByteSize = sizeof(float) * h_valuesPerSample;
-	uint32_t VTByteSize = sizeof(float) * h_valuesPerSample * h_valuesPerSample;
+
+	uint64_t meanVecByteSize = sizeof(float) * h_valuesPerSample;
+	uint64_t covarianceMatrixByteSize = sizeof(float) * h_valuesPerSample * h_valuesPerSample;
+	uint64_t UByteSize = sizeof(float) * h_valuesPerSample * h_valuesPerSample;
+	uint64_t SByteSize = sizeof(float) * h_valuesPerSample;
+	uint64_t VTByteSize = sizeof(float) * h_valuesPerSample * h_valuesPerSample;
 	uint32_t devInfoByteSize = sizeof(int);
 	//Ask cusolver for the needed buffer size
 	result->h_eigWorkingSpaceLength = 0;
@@ -90,30 +91,23 @@ RFIMMemoryStruct* RFIMMemoryStructCreate(uint32_t h_valuesPerSample, uint32_t h_
 	}
 	uint32_t projectedSignalMatrixByteSize = sizeof(float) * ((h_valuesPerSample - result->h_eigenVectorDimensionsToReduce) * h_numberOfSamples);
 
+	printf("1\n");
 
-	//set/allocate memory for all batching arrays
-	//------------------------
-	for(uint32_t i = 0; i < h_batchSize; ++i)
-	{
-		/*
-		result->d_oneVec[i] = d_oneVec;
+	//Allocate 2D pointers on the device
+	result->d_oneVec = CudaUtility_BatchAllocateDeviceArrays(h_batchSize, oneVecByteSize);
+	CudaUtility_BatchCopyArraysHostToDevice(result->d_oneVec, h_oneVecPointerArray, h_batchSize, oneVecByteSize); //Copy the oneVec data to the 2D array
 
+	result->d_meanVec = CudaUtility_BatchAllocateDeviceArrays(h_batchSize, meanVecByteSize);
 
-		cudaMalloc(&(result->d_meanVec[i]), meanVecByteSize);
-		cudaMalloc(&(result->d_covarianceMatrix[i]), covarianceMatrixByteSize);
-		cudaMalloc(&(result->d_U[i]), UByteSize);
-		cudaMalloc(&(result->d_S[i]), SByteSize);
-		cudaMalloc(&(result->d_VT[i]), VTByteSize);
-		cudaMalloc(&(result->d_devInfo[i]), devInfoByteSize);
-		cudaMalloc(&(result->d_eigWorkingSpace[i]), result->h_eigWorkingSpaceLength);
-		cudaMalloc(&(result->d_projectedSignalMatrix[i]), projectedSignalMatrixByteSize);
-		*/
-	}
+	printf("2\n");
+
 
 	//Free memory
 	//-----------------------------
 	free(h_oneVec);
+	free(h_oneVecPointerArray);
 
+	printf("3\n");
 
 	return result;
 }

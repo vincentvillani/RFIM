@@ -27,7 +27,7 @@
 int main(int argc, char **argv)
 {
 	//Run all the unit tests
-	RunAllUnitTests();
+	//RunAllUnitTests();
 
 
 	uint32_t h_valuesPerSample = 26;
@@ -35,8 +35,9 @@ int main(int argc, char **argv)
 	uint32_t h_batchSize = 512;
 
 
+	RFIMMemoryStruct* RFIMStruct = RFIMMemoryStructCreate(h_valuesPerSample, h_numberOfSamples, 2, h_batchSize);
 
-
+	/*
 	//1. Generate a signal on the device
 	//----------------------------------
 	//Start cuda rand library
@@ -105,6 +106,7 @@ int main(int argc, char **argv)
 	cudaFree(d_signalMatrices);
 	cudaFree(d_whiteNoiseSignalMatrix);
 	cudaFree(d_filteredSignals);
+	*/
 
 
 	return 0;
