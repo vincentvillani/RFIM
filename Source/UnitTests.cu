@@ -38,15 +38,15 @@ void FilteringProduction();
 
 //Production
 //-------------------------------------
-/*
+
 void MeanCublasProduction()
 {
 
 	uint32_t valuesPerSample = 3;
 	uint32_t sampleNum = 2;
+	uint32_t batchSize = 5;
 
-	RFIMMemoryStruct* RFIMStruct = RFIMMemoryStructCreate(valuesPerSample, sampleNum, 2);
-
+	RFIMMemoryStruct* RFIMStruct = RFIMMemoryStructCreate(valuesPerSample, sampleNum, 0, batchSize);
 
 	float* h_signal = (float*)malloc(sizeof(float) * valuesPerSample * sampleNum);
 	float* d_signal;
@@ -58,17 +58,45 @@ void MeanCublasProduction()
 		h_signal[i] = i + 1;
 	}
 
+	//Copy to the device
 	CudaUtility_CopySignalToDevice(h_signal, &d_signal,  sizeof(float) * valuesPerSample * sampleNum);
 
+	float** d_signalMatrices;
+	cudaMalloc(&d_signalMatrices, sizeof(float*) * batchSize); //Allocate memory for the pointers
+
+	//Make each signal pointer point to the same memory
+	for(uint32_t i = 0; i < batchSize; ++i)
+	{
+		d_signalMatrices[i] = d_signal;
+	}
+
 	//Calculate the mean matrix
-	Device_CalculateMeanMatrix(RFIMStruct, d_signal);
+	Device_CalculateMeanMatrices(RFIMStruct, d_signalMatrices);
 
 
 	//Copy it back to the host
 	//At this point d_upperTriangularCovarianceMatrix is the mean matrix
-	float* h_meanMatrix = (float*)malloc(sizeof(float) * valuesPerSample * valuesPerSample);
-	CudaUtility_CopySignalToHost(RFIMStruct->d_upperTriangularCovarianceMatrix, &h_meanMatrix, valuesPerSample * valuesPerSample * sizeof(float));
+	float** h_meanMatrices = (float**)malloc(sizeof(float*) * batchSize);
+	uint32_t meanMatrixByteSize = sizeof(float) * valuesPerSample * valuesPerSample;
 
+	for(uint32_t i = 0; i < batchSize; ++i)
+	{
+		//Allocate memory for each mean matrix on the host
+		h_meanMatrices[i] = (float*)malloc(meanMatrixByteSize);
+		CudaUtility_CopySignalToHost(d_signalMatrices[i], &(h_meanMatrices[i]), meanMatrixByteSize);
+	}
+
+
+	//Check/print the results
+	for(uint32_t i = 0; i < batchSize; ++i)
+	{
+		for(uint32_t j = 0; j < valuesPerSample; ++j)
+		{
+			printf("MeanMatrix[%u][%u] = %f\n", i, j, h_meanMatrices[i][j]);
+		}
+	}
+
+	/*
 
 	//Print out the result
 	for(uint32_t i = 0; i < valuesPerSample * valuesPerSample; ++i)
@@ -106,13 +134,24 @@ void MeanCublasProduction()
 		fprintf(stderr, "MeanCublasProduction failed!\n");
 		exit(1);
 	}
+	*/
+
+	cudaFree(d_signal); //Free the actual signal data
+	cudaFree(d_signalMatrices); //Free the signal pointer array
+	free(h_signal);
+
+	for(uint32_t i = 0; i < batchSize; ++i)
+	{
+		free(h_meanMatrices[i]); //Free the mean matrices
+	}
+	free(h_meanMatrices); //Free the pointers
 
 	RFIMMemoryStructDestroy(RFIMStruct);
 
 }
 
 
-
+/*
 
 void CovarianceCublasProduction()
 {
@@ -402,7 +441,7 @@ void FilteringProduction()
 	cudaFree(d_filteredSignal);
 }
 
-
+*/
 
 
 
@@ -410,11 +449,11 @@ void FilteringProduction()
 void RunAllUnitTests()
 {
 	MeanCublasProduction();
-	CovarianceCublasProduction();
-	EigendecompProduction();
-	FilteringProduction();
+	//CovarianceCublasProduction();
+	//EigendecompProduction();
+	//FilteringProduction();
 
 	printf("All tests passed!\n");
 
 }
-*/
+
