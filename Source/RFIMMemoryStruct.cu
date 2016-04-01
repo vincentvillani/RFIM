@@ -112,28 +112,6 @@ RFIMMemoryStruct* RFIMMemoryStructCreate(uint32_t h_valuesPerSample, uint32_t h_
 	free(h_oneVec);
 
 
-
-
-
-
-	/*
-
-
-
-
-	cudaMalloc(&(result->d_projectedSignalMatrix),
-			sizeof(float) * (h_valuesPerSample - result->h_eigenVectorDimensionsToReduce) * h_numberOfSamples);
-	cudaMemset(result->d_projectedSignalMatrix, 0,
-			sizeof(float) * (h_valuesPerSample - result->h_eigenVectorDimensionsToReduce) * h_numberOfSamples);
-
-				//Allocate memory for the reduced Eigenvector matrix and it's transpose
-	cudaMalloc(&(result->d_reducedEigenVecMatrix), sizeof(float) * h_valuesPerSample *
-			(h_valuesPerSample - result->h_eigenVectorDimensionsToReduce));
-	cudaMemset(result->d_reducedEigenVecMatrix, 0, sizeof(float) * h_valuesPerSample *
-			(h_valuesPerSample - result->h_eigenVectorDimensionsToReduce));
-
-	*/
-
 	return result;
 }
 
@@ -175,30 +153,6 @@ void RFIMMemoryStructDestroy(RFIMMemoryStruct* RFIMStruct)
 	cudaFree(RFIMStruct->d_devInfo);
 	cudaFree(RFIMStruct->d_projectedSignalMatrix);
 
-	/*
-
-	//Deallocate the mean working memory
-	cudaFree(RFIMStruct->d_oneVec);
-	cudaFree(RFIMStruct->d_meanVec);
-	//cudaFree(RFIMStruct->d_meanMatrix);
-
-	//Deallocate covariance working memory
-	cudaFree(RFIMStruct->d_upperTriangularCovarianceMatrix);
-	cudaFree(RFIMStruct->d_upperTriangularTransposedMatrix);
-	cudaFree(RFIMStruct->d_fullSymmetricCovarianceMatrix);
-
-	//Deallocate eigenvector/value working memory
-	cudaFree(RFIMStruct->d_U);
-	cudaFree(RFIMStruct->d_S);
-	cudaFree(RFIMStruct->d_VT);
-	cudaFree(RFIMStruct->d_devInfo);
-	cudaFree(RFIMStruct->d_eigWorkingSpace);
-
-	cudaFree(RFIMStruct->d_reducedEigenVecMatrix);
-
-	cudaFree(RFIMStruct->d_projectedSignalMatrix);
-
-	*/
 
 	//Deallocate the struct memory on the host
 	free(RFIMStruct);

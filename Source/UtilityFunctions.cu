@@ -54,9 +54,10 @@ void Utility_DeviceWriteSignalMatrixToFile(const std::string filename, float* d_
 	float* h_rowMajorSignalMatrix = (float*)malloc(matrixByteSize);
 	float* d_transposedMatrix = d_rowMajorSignalMatrix;
 
+	/*
 	cublasHandle_t cublasHandle;
 
-	/*
+
 	if(transpose)
 	{
 		cublasCreate_v2(&cublasHandle);

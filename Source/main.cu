@@ -15,19 +15,14 @@
 #include <string>
 #include <stdint.h>
 
-//#include "../Header/Kernels.h"
 #include "../Header/UnitTests.h"
-//#include "../Header/CudaMacros.h"
 #include "../Header/RFIMHelperFunctions.h"
-//#include "../Header/CudaUtilityFunctions.h"
 #include "../Header/UtilityFunctions.h"
 #include "../Header/RFIM.h"
 #include "../Header/Benchmark.h"
 
 
-//TODO: Look at ways to reuse allocated memory if possible
 //TODO: Make sure memory that can be used again, is still in a valid state after the first execution
-//TODO: Move everything over to GEMM because of the solver?
 
 int main(int argc, char **argv)
 {
@@ -37,8 +32,9 @@ int main(int argc, char **argv)
 
 	uint32_t h_valuesPerSample = 26;
 	uint32_t h_numberOfSamples = 1024;
+	uint32_t h_batchSize = 512;
 
-	/*
+
 
 
 	//1. Generate a signal on the device
@@ -59,25 +55,38 @@ int main(int argc, char **argv)
 		//exit(1);
 	}
 
+	//Allocate memory for the pointers to the signal matrices
+	float** d_signalMatrices;
+	cudaMalloc(&d_signalMatrices, sizeof(float*) * h_batchSize);
 	float* d_whiteNoiseSignalMatrix = Device_GenerateWhiteNoiseSignal(&rngGen, h_valuesPerSample, h_numberOfSamples);
 
-	//TODO: Debug remove this
-	//Utility_DeviceWriteSignalMatrixToFile("signal.txt", d_whiteNoiseSignalMatrix, h_valuesPerSample, h_numberOfSamples, false);
+	//Set each pointer to point to the same signal matrix for now
+	for(uint32_t i = 0; i < h_batchSize; ++i)
+	{
+		d_signalMatrices[i] = d_whiteNoiseSignalMatrix;
+	}
+
 
 
 	//2. Create a RFIM Struct
 	//--------------------------
-	RFIMMemoryStruct* RFIMStruct = RFIMMemoryStructCreate(h_valuesPerSample, h_numberOfSamples, 2);
+	RFIMMemoryStruct* RFIMStruct = RFIMMemoryStructCreate(h_valuesPerSample, h_numberOfSamples, 2, h_batchSize);
 
 	//Create space to store the filtered signal
-	float* d_filteredSignal;
-	cudaMalloc(&d_filteredSignal, sizeof(float) * h_valuesPerSample * h_numberOfSamples);
+	float** d_filteredSignals;
+	cudaMalloc(&d_filteredSignals, sizeof(float*) * h_batchSize); //Allocate space for the pointers
+	uint32_t filteredSignalByteSize = sizeof(float) * h_valuesPerSample * h_numberOfSamples;
+
+	for(uint32_t i = 0; i < h_batchSize; ++i)
+	{
+		cudaMalloc(&(d_filteredSignals[i]), filteredSignalByteSize);
+	}
 
 
 
 	//3. Run RFIM benchmark
 	//--------------------------
-	Benchmark(RFIMStruct, d_whiteNoiseSignalMatrix, d_filteredSignal, 200, 1);
+	//Benchmark(RFIMStruct, d_whiteNoiseSignalMatrix, d_filteredSignal, 200, 1);
 
 	//RFIMRoutine(RFIMStruct, d_whiteNoiseSignalMatrix, d_filteredSignal);
 
@@ -87,10 +96,16 @@ int main(int argc, char **argv)
 	//4. Free everything
 	//--------------------------
 	//Free the RFIM Struct
-	RFIMMemoryStructDestroy(RFIMStruct);
-	cudaFree(d_whiteNoiseSignalMatrix);
-	cudaFree(d_filteredSignal);
+	for(uint32_t i = 0; i < h_batchSize; ++i)
+	{
+		cudaFree(d_filteredSignals[i]);
+	}
 
-*/
+	RFIMMemoryStructDestroy(RFIMStruct);
+	cudaFree(d_signalMatrices);
+	cudaFree(d_whiteNoiseSignalMatrix);
+	cudaFree(d_filteredSignals);
+
+
 	return 0;
 }

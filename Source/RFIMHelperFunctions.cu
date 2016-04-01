@@ -31,7 +31,7 @@
 
 //--------------------------
 
-/*
+
 float* Device_GenerateWhiteNoiseSignal(curandGenerator_t* rngGen, uint64_t h_valuesPerSample, uint64_t h_numberOfSamples)
 {
 
@@ -72,7 +72,7 @@ float* Device_GenerateWhiteNoiseSignal(curandGenerator_t* rngGen, uint64_t h_val
 
 
 
-void Device_CalculateMeanMatrix(RFIMMemoryStruct* RFIMStruct, const float* d_signalMatrix)
+void Device_CalculateMeanMatrices(RFIMMemoryStruct* RFIMStruct, float** d_signalMatrices)
 {
 
 	//Calculate d_meanVec
@@ -85,16 +85,17 @@ void Device_CalculateMeanMatrix(RFIMMemoryStruct* RFIMStruct, const float* d_sig
 	float alpha = 1.0f / RFIMStruct->h_numberOfSamples;
 	float beta = 0;
 
-	cublasError = cublasSgemm_v2(*RFIMStruct->cublasHandle, CUBLAS_OP_N, CUBLAS_OP_T, 1, RFIMStruct->h_valuesPerSample, RFIMStruct->h_numberOfSamples,
-			&alpha, RFIMStruct->d_oneVec, 1,
-			d_signalMatrix, RFIMStruct->h_valuesPerSample, &beta,
-			RFIMStruct->d_meanVec, 1);
-
+	cublasError = cublasSgemmBatched(*RFIMStruct->cublasHandle, CUBLAS_OP_N, CUBLAS_OP_T,
+			1, RFIMStruct->h_valuesPerSample, RFIMStruct->h_numberOfSamples,
+			&alpha, (const float**)RFIMStruct->d_oneVec, 1,
+			(const float**)d_signalMatrices, RFIMStruct->h_valuesPerSample, &beta,
+			RFIMStruct->d_meanVec, 1,
+			RFIMStruct->h_batchSize);
 
 
 	if(cublasError != CUBLAS_STATUS_SUCCESS)
 	{
-		fprintf(stderr, "CalculateMeanMatrix: An error occured while computing d_meanVec\n");
+		fprintf(stderr, "Device_CalculateMeanMatrices: An error occured while computing d_meanVec\n");
 		exit(1);
 	}
 
@@ -108,18 +109,22 @@ void Device_CalculateMeanMatrix(RFIMMemoryStruct* RFIMStruct, const float* d_sig
 
 	alpha = 1.0f;
 
-	cublasError = cublasSsyrk_v2(*RFIMStruct->cublasHandle, CUBLAS_FILL_MODE_UPPER, CUBLAS_OP_T, RFIMStruct->h_valuesPerSample, 1,
-			&alpha, RFIMStruct->d_meanVec, 1, &beta, RFIMStruct->d_upperTriangularCovarianceMatrix, RFIMStruct->h_valuesPerSample);
+	cublasError = cublasSgemmBatched(*RFIMStruct->cublasHandle, CUBLAS_OP_N, CUBLAS_OP_T,
+			RFIMStruct->h_valuesPerSample, RFIMStruct->h_valuesPerSample, 1,
+			&alpha, (const float**)RFIMStruct->d_meanVec, RFIMStruct->h_valuesPerSample,
+			(const float**)RFIMStruct->d_meanVec, RFIMStruct->h_valuesPerSample, &beta,
+			RFIMStruct->d_covarianceMatrix, RFIMStruct->h_valuesPerSample,
+			RFIMStruct->h_batchSize);
 
 	if(cublasError != CUBLAS_STATUS_SUCCESS)
 	{
-		fprintf(stderr, "CalculateMeanMatrix: An error occured while computing d_meanMatrix\n");
+		fprintf(stderr, "Device_CalculateMeanMatrices: An error occurred while computing d_meanMatrix\n");
 		exit(1);
 	}
 
 }
 
-
+/*
 
 
 void Device_CalculateCovarianceMatrix(RFIMMemoryStruct* RFIMStruct, float* d_signalMatrix)

@@ -26,7 +26,6 @@ typedef struct RFIMMemoryStruct
 	//As a user you should be able to ignore everything below here
 	//-------------------------------------------------------------
 
-
 	//Mean working memory
 	float** d_oneVec; //A vector filled with ones, to calculate the mean
 	float** d_meanVec;
