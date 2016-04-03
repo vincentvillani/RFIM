@@ -124,10 +124,10 @@ void Device_CalculateMeanMatrices(RFIMMemoryStruct* RFIMStruct, float** d_signal
 
 }
 
-/*
 
 
-void Device_CalculateCovarianceMatrix(RFIMMemoryStruct* RFIMStruct, float* d_signalMatrix)
+
+void Device_CalculateCovarianceMatrix(RFIMMemoryStruct* RFIMStruct, float** d_signalMatrices)
 {
 	//d_signalMatrix should be column-major as CUBLAS is column-major library (indexes start at 1 also)
 	//Remember to take that into account!
@@ -135,9 +135,7 @@ void Device_CalculateCovarianceMatrix(RFIMMemoryStruct* RFIMStruct, float* d_sig
 
 	//Calculate the meanMatrix of the signal
 	//--------------------------------
-
-	Device_CalculateMeanMatrix(RFIMStruct, d_signalMatrix);
-
+	Device_CalculateMeanMatrices(RFIMStruct, d_signalMatrices);
 
 	//--------------------------------
 
@@ -155,13 +153,13 @@ void Device_CalculateCovarianceMatrix(RFIMMemoryStruct* RFIMStruct, float* d_sig
 	cublasStatus_t cublasError;
 
 
+	cublasError = cublasSgemmBatched(*RFIMStruct->cublasHandle, CUBLAS_OP_N, CUBLAS_OP_T,
+			RFIMStruct->h_valuesPerSample, RFIMStruct->h_valuesPerSample, RFIMStruct->h_numberOfSamples,
+			&alpha, (const float**)d_signalMatrices, RFIMStruct->h_valuesPerSample,
+			(const float**)d_signalMatrices, RFIMStruct->h_valuesPerSample, &beta,
+			RFIMStruct->d_covarianceMatrix, RFIMStruct->h_valuesPerSample,
+			RFIMStruct->h_batchSize);
 
-	//At this point RFIMStruct->d_upperTriangularCovarianceMatrix is actually the upper triangular mean matrix,
-	//this is done to get better performance out of the cublas API
-	cublasError = cublasSsyrk_v2(*RFIMStruct->cublasHandle, CUBLAS_FILL_MODE_UPPER, CUBLAS_OP_N, RFIMStruct->h_valuesPerSample,
-			RFIMStruct->h_numberOfSamples,
-			&alpha, d_signalMatrix, RFIMStruct->h_valuesPerSample,
-			&beta, RFIMStruct->d_upperTriangularCovarianceMatrix, RFIMStruct->h_valuesPerSample);
 
 	if(cublasError != CUBLAS_STATUS_SUCCESS)
 	{
@@ -170,57 +168,10 @@ void Device_CalculateCovarianceMatrix(RFIMMemoryStruct* RFIMStruct, float* d_sig
 	}
 
 
-
-
-
-	//Calculate the full symmetric covariance matrix
-	//1. Transpose the covariance matrix
-	Device_MatrixTranspose(RFIMStruct->cublasHandle, RFIMStruct->d_upperTriangularCovarianceMatrix, RFIMStruct->d_upperTriangularTransposedMatrix,
-			RFIMStruct->h_valuesPerSample, RFIMStruct->h_valuesPerSample);
-
-	//2. Set the transposed covariance matrix diagonal to zero
-	dim3 blockDim(32);
-	dim3 gridDim(1, ceilf(RFIMStruct->h_valuesPerSample / (float)32));
-	setDiagonalToZero<<<gridDim, blockDim>>> (RFIMStruct->d_upperTriangularTransposedMatrix, RFIMStruct->h_valuesPerSample);
-
-	cudaDeviceSynchronize();
-	cudaError_t cudaError = cudaGetLastError();
-
-	if(cudaError != cudaSuccess)
-	{
-		fprintf(stderr, "Device_CalculateCovarianceMatrix: error when starting the kernel setDiagonalToZero\n");
-		fprintf(stderr, "Grid size: (%u, %u) Block size: (%u, %u)\n", gridDim.x, gridDim.y, blockDim.x, blockDim.y);
-		fprintf(stderr, "cudaError: %s", cudaGetErrorString(cudaError));
-		exit(1);
-	}
-
-	//3. Add the two matrices together
-
-	//TODO: Look into whether or not I need to do this. This memory is reused each time around
-	//cudaMemset(RFIMStruct->d_fullSymmetricCovarianceMatrix, 0, sizeof(float) * RFIMStruct->h_valuesPerSample * RFIMStruct->h_valuesPerSample);
-
-	alpha = 1.0f;
-	beta = 1.0f;
-
-	cublasError = cublasSgeam(*RFIMStruct->cublasHandle, CUBLAS_OP_N, CUBLAS_OP_N, RFIMStruct->h_valuesPerSample, RFIMStruct->h_valuesPerSample,
-				&alpha, RFIMStruct->d_upperTriangularCovarianceMatrix, RFIMStruct->h_valuesPerSample,
-				&beta, RFIMStruct->d_upperTriangularTransposedMatrix, RFIMStruct->h_valuesPerSample,
-				RFIMStruct->d_fullSymmetricCovarianceMatrix, RFIMStruct->h_valuesPerSample);
-
-
-
-
-	if(cublasError != CUBLAS_STATUS_SUCCESS)
-	{
-		fprintf(stderr, "Device_CalculateCovarianceMatrix: cublasSgeam call failed\n");
-		exit(1);
-	}
-
-
 }
 
 
-
+/*
 
 void Device_MatrixTranspose(cublasHandle_t* cublasHandle, const float* d_matrix, float* d_matrixTransposed, uint64_t rowNum, uint64_t colNum)
 {

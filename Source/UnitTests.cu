@@ -24,7 +24,7 @@
 
 //Production tests
 void MeanCublasProduction();
-//void CovarianceCublasProduction();
+void CovarianceCublasProduction();
 //void EigendecompProduction();
 //void FilteringProduction();
 //void TransposeProduction();
@@ -121,18 +121,21 @@ void MeanCublasProduction()
 }
 
 
-/*
+
 
 void CovarianceCublasProduction()
 {
 	uint64_t valuesPerSample = 3;
 	uint64_t sampleNum = 2;
+	uint32_t batchSize = 5;
 
-	RFIMMemoryStruct* RFIMStruct = RFIMMemoryStructCreate(valuesPerSample, sampleNum, 2);
+	RFIMMemoryStruct* RFIMStruct = RFIMMemoryStructCreate(valuesPerSample, sampleNum, 0, batchSize);
 
-	float* h_signal; //Column first signal (3, 2), 3 == valuesPerSample, 2 == sampleNum
+	uint64_t signalPointersArrayByteSize = sizeof(float*) * batchSize;
+	uint64_t signalByteSize = sizeof(float) * valuesPerSample * sampleNum;
 
-	h_signal = (float*)malloc( sizeof(float) * valuesPerSample * sampleNum);
+	float* h_signal = (float*)malloc(signalByteSize); //Column first signal (3, 2), 3 == valuesPerSample, 2 == sampleNum
+	float** h_signalPointersArray = (float**)malloc(signalPointersArrayByteSize);
 
 
 	//Set the host signal
@@ -141,116 +144,66 @@ void CovarianceCublasProduction()
 		h_signal[i] = i + 1;
 	}
 
-	float* d_signal;
-	cudaMalloc(&d_signal, sizeof(float) * valuesPerSample * sampleNum);
+	//Set each pointer to point to h_signal
+	for(uint32_t i = 0; i < batchSize; ++i)
+	{
+		h_signalPointersArray[i] = h_signal;
+	}
 
-	CudaUtility_CopySignalToDevice(h_signal, &d_signal, sizeof(float) * valuesPerSample * sampleNum);
-	free(h_signal);
+	//Allocate memory on the device and copy data over
+	float** d_signalPointersArray = CudaUtility_BatchAllocateDeviceArrays(batchSize, signalByteSize);
+	CudaUtility_BatchCopyArraysHostToDevice(d_signalPointersArray, h_signalPointersArray, batchSize, signalByteSize);
+
 
 	//Calculate the covariance matrix
-	Device_CalculateCovarianceMatrix(RFIMStruct, d_signal);
-
-	//Copy the data back to the device and print it
+	Device_CalculateCovarianceMatrix(RFIMStruct, d_signalPointersArray);
 
 
-	//Test the upper tricovariance matrix
-	float* h_upperTriCovarMatrix = (float*)malloc(sizeof(float) * valuesPerSample * valuesPerSample);
+	//Copy data back to the host
+	uint64_t covarianceMatrixByteSize = sizeof(float) * valuesPerSample * valuesPerSample;
+	float** h_covarianceMatrices = CudaUtility_BatchAllocateHostArrays(batchSize, covarianceMatrixByteSize);
+	CudaUtility_BatchCopyArraysDeviceToHost(RFIMStruct->d_covarianceMatrix, h_covarianceMatrices, batchSize, covarianceMatrixByteSize);
 
-	CudaUtility_CopySignalToHost(RFIMStruct->d_upperTriangularCovarianceMatrix, &h_upperTriCovarMatrix, valuesPerSample * valuesPerSample * sizeof(float));
+	float correctAnswerArray[9];
+	correctAnswerArray[0] = 2.25f;
+	correctAnswerArray[1] = 2.25f;
+	correctAnswerArray[2] = 2.25f;
+	correctAnswerArray[3] = 2.25f;
+	correctAnswerArray[4] = 2.25f;
+	correctAnswerArray[5] = 2.25f;
+	correctAnswerArray[6] = 2.25f;
+	correctAnswerArray[7] = 2.25f;
+	correctAnswerArray[8] = 2.25f;
 
 
-	for(int i = 0; i < valuesPerSample * valuesPerSample; ++i)
+	//Check/print the results
+	for(uint32_t i = 0; i < batchSize; ++i)
 	{
-		printf("Covar %d: %f\n", i, h_upperTriCovarMatrix[i]);
+		for(uint32_t j = 0; j < valuesPerSample * valuesPerSample; ++j)
+		{
+			//Check the results against the known results
+			if(h_covarianceMatrices[i][j] - correctAnswerArray[j] > 0.000001f)
+			{
+				fprintf(stderr, "CovarianceCublasProduction failed!\n");
+				exit(1);
+			}
+
+			//printf("CovarianceCublasProduction[%u][%u] = %f\n", i, j, h_covarianceMatrices[i][j]);
+		}
+
 	}
 
-
-
-	bool failed = false;
-
-
-	if(fabsf(h_upperTriCovarMatrix[0] - 2.25f) > 0.000001f)
-	{
-		failed = true;
-	}
-
-	if(fabsf(h_upperTriCovarMatrix[1] - 0.0f) > 0.000001f)
-	{
-		failed = true;
-	}
-
-	if(fabsf(h_upperTriCovarMatrix[2] - 0.0f) > 0.000001f)
-	{
-		failed = true;
-	}
-
-	if(fabsf(h_upperTriCovarMatrix[3] - 2.25f) > 0.000001f)
-	{
-		failed = true;
-	}
-
-	if(fabsf(h_upperTriCovarMatrix[4] - 2.25f) > 0.000001f)
-	{
-		failed = true;
-	}
-
-	if(fabsf(h_upperTriCovarMatrix[5] - 0.0f) > 0.000001f)
-	{
-		failed = true;
-	}
-
-	if(fabsf(h_upperTriCovarMatrix[6] - 2.25f) > 0.000001f)
-	{
-		failed = true;
-	}
-
-	if(fabsf(h_upperTriCovarMatrix[7] - 2.25f) > 0.000001f)
-	{
-		failed = true;
-	}
-
-	if(fabsf(h_upperTriCovarMatrix[8] - 2.25f) > 0.000001f)
-	{
-		failed = true;
-	}
-
-	if(failed)
-	{
-		fprintf(stderr, "CovarianceCublasProduction Unit test failed!\n");
-		exit(1);
-	}
-
-
-
-	//Test the full matrix
-	float* h_fullCovarianceMatrix = (float*)malloc(sizeof(float) * valuesPerSample * valuesPerSample);
-	CudaUtility_CopySignalToHost(RFIMStruct->d_fullSymmetricCovarianceMatrix, &h_fullCovarianceMatrix, sizeof(float) * valuesPerSample * valuesPerSample);
-
-
-	for(int i = 0; i < valuesPerSample * valuesPerSample; ++i)
-	{
-		if(h_fullCovarianceMatrix[i] - 2.25f > 0.000001f)
-			failed = true;
-
-
-		//printf("Full covar %d: %f\n", i, h_fullCovarianceMatrix[i]);
-	}
-
-
-	if(failed)
-	{
-		fprintf(stderr, "CovarianceCublasProduction Unit test at generating the correct full covariance matrix!\n");
-		exit(1);
-	}
-
+	//Free all memory
+	free(h_signalPointersArray); //Free the pointers
+	free(h_signal); //Free the actual data
+	CudaUtility_BatchDeallocateDeviceArrays(d_signalPointersArray, batchSize);
+	CudaUtility_BatchDeallocateHostArrays(h_covarianceMatrices, batchSize);
 
 	RFIMMemoryStructDestroy(RFIMStruct);
 
-	free(h_upperTriCovarMatrix);
-	free(h_fullCovarianceMatrix);
-	cudaFree(d_signal);
 }
 
+/*
 
 
 void EigendecompProduction()
@@ -419,7 +372,7 @@ void FilteringProduction()
 void RunAllUnitTests()
 {
 	MeanCublasProduction();
-	//CovarianceCublasProduction();
+	CovarianceCublasProduction();
 	//EigendecompProduction();
 	//FilteringProduction();
 
