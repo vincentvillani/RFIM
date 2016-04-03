@@ -133,6 +133,14 @@ RFIMMemoryStruct* RFIMMemoryStructCreate(uint32_t h_valuesPerSample, uint32_t h_
 	free(h_oneVec);
 	free(h_oneVecPointerArray);
 
+	cudaError_t cudaError = cudaGetLastError();
+
+	if(cudaError != cudaSuccess)
+	{
+		fprintf(stderr, "RFIMMemoryStructCreate: Probably failed to allocate memory\n");
+		exit(1);
+	}
+
 
 	return result;
 }

@@ -45,12 +45,12 @@ void Benchmark()
 
 
 	//For each numberOfSamples value
-	for(uint32_t i = 10; i < 20; ++i)
+	for(uint32_t i = 14; i < 20; ++i)
 	{
 		h_numberOfSamples = 1 << i;
 
 		//For each batchSize
-		for(uint32_t j = 0; j < 13; ++j)
+		for(uint32_t j = 0; j < 7; ++j)
 		{
 
 			h_batchSize = 1 << j;

@@ -303,12 +303,15 @@ void Device_EigenReductionAndFiltering(RFIMMemoryStruct* RFIMStruct, float** d_o
 	cudaStreamSynchronize(0); //The default stream
 
 
+	//TODO: FIX ALL THIS SHIT
 	cublasStatus = cublasSgemmBatched(*RFIMStruct->cublasHandle, CUBLAS_OP_T, CUBLAS_OP_N,
-			RFIMStruct->h_valuesPerSample, RFIMStruct->h_numberOfSamples, RFIMStruct->h_valuesPerSample,
+			RFIMStruct->h_numberOfSamples, RFIMStruct->h_numberOfSamples, RFIMStruct->h_valuesPerSample,
 			&alpha,  (const float**)(RFIMStruct->d_U), RFIMStruct->h_valuesPerSample,
 			(const float**)d_originalSignalMatrices, RFIMStruct->h_valuesPerSample, &beta,
 			RFIMStruct->d_projectedSignalMatrix, RFIMStruct->h_valuesPerSample,
 			RFIMStruct->h_batchSize);
+
+
 
 	if(cublasStatus != CUBLAS_STATUS_SUCCESS)
 	{
@@ -327,6 +330,7 @@ void Device_EigenReductionAndFiltering(RFIMMemoryStruct* RFIMStruct, float** d_o
 			(const float**)RFIMStruct->d_projectedSignalMatrix, RFIMStruct->h_valuesPerSample, &beta,
 			d_filteredSignals, RFIMStruct->h_valuesPerSample,
 			RFIMStruct->h_batchSize);
+
 
 
 	if(cublasStatus != CUBLAS_STATUS_SUCCESS)
