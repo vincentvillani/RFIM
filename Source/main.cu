@@ -70,9 +70,12 @@ int main(int argc, char **argv)
 
 	//Create space to store the filtered signal
 	float* d_filteredSignal;
-	cudaMalloc(&d_filteredSignal, sizeof(float) * h_valuesPerSample * h_numberOfSamples);
+	cudaError_t cudaError = cudaMalloc(&d_filteredSignal, sizeof(float) * h_valuesPerSample * h_numberOfSamples);
 
-
+	if(cudaError != cudaSuccess)
+	{
+		fprintf(stderr, "Failed to allocate memory signal\n");
+	}
 
 	//3. Run RFIM benchmark
 	//--------------------------
