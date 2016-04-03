@@ -37,6 +37,7 @@ typedef struct RFIMMemoryStruct
 	//Eigenvector/value working memory
 	float** d_U;
 	float** h_UDevicePointers;
+	//float** h_UDeviceOffsetPointers; //This is used to remove the eigenvector columns
 
 	float** d_S;
 	float** h_SDevicePointers;
@@ -50,7 +51,6 @@ typedef struct RFIMMemoryStruct
 	int h_eigWorkingSpaceLength;
 
 	int* d_devInfo;
-	//int** h_devInfoDevicePointers; //Space to copy the d_devInfo devicePointers into
 	int* h_devInfoValues;
 
 	uint32_t h_eigenVectorDimensionsToReduce;

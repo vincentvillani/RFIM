@@ -209,7 +209,7 @@ void CovarianceCublasProduction()
 void EigendecompProduction()
 {
 	int valuesPerSample = 2;
-	int batchSize = 5;
+	int batchSize = 20;
 	int covarianceMatrixByteSize = sizeof(float) * valuesPerSample * valuesPerSample;
 	int signalPointersArrayByteSize = sizeof(float*) * batchSize;
 
@@ -368,7 +368,7 @@ void FilteringProduction()
 		for(uint32_t j = 0; j < valuesPerSample * valuesPerSample; ++j)
 		{
 			//print the signal
-			printf("Orig[%u][%u]: %f, filt[%u][%u]: %f\n", i, j, h_signalPointers[i][j], i, j, h_filteredSignals[i][j]);
+			//printf("Orig[%u][%u]: %f, filt[%u][%u]: %f\n", i, j, h_signalPointers[i][j], i, j, h_filteredSignals[i][j]);
 
 			if(fabs(h_signalPointers[i][j]) - fabs(h_filteredSignals[i][j]) > 0.0000001f)
 			{
@@ -376,7 +376,7 @@ void FilteringProduction()
 			}
 		}
 
-		printf("\n");
+		//printf("\n");
 	}
 
 	if(failed)

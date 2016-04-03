@@ -101,7 +101,7 @@ RFIMMemoryStruct* RFIMMemoryStructCreate(uint32_t h_valuesPerSample, uint32_t h_
 	result->d_S = CudaUtility_BatchAllocateDeviceArrays(h_batchSize, SByteSize);
 	result->d_VT = CudaUtility_BatchAllocateDeviceArrays(h_batchSize, VTByteSize);
 	result->d_eigWorkingSpace = CudaUtility_BatchAllocateDeviceArrays(h_batchSize, result->h_eigWorkingSpaceLength);
-	cudaMalloc(&result->d_devInfo, sizeof(int) * h_batchSize);
+	cudaMalloc(&(result->d_devInfo), sizeof(int) * h_batchSize);
 	result->h_devInfoValues = (int*)malloc(sizeof(int) * h_batchSize);
 	result->d_projectedSignalMatrix = CudaUtility_BatchAllocateDeviceArrays(h_batchSize, projectedSignalMatrixByteSize);
 
@@ -112,6 +112,7 @@ RFIMMemoryStruct* RFIMMemoryStructCreate(uint32_t h_valuesPerSample, uint32_t h_
 
 	result->h_covarianceMatrixDevicePointers = (float**)malloc(pointersArrayByteSize);
 	result->h_UDevicePointers = (float**)malloc(pointersArrayByteSize);
+	//result->h_UDeviceOffsetPointers = (float**)malloc(pointersArrayByteSize);
 	result->h_SDevicePointers = (float**)malloc(pointersArrayByteSize);
 	result->h_VTDevicePointers = (float**)malloc(pointersArrayByteSize);
 	result->h_eigWorkingSpaceDevicePointers = (float**)malloc(pointersArrayByteSize);
@@ -160,6 +161,7 @@ void RFIMMemoryStructDestroy(RFIMMemoryStruct* RFIMStruct)
 	//Free the host pointers to device memory
 	free(RFIMStruct->h_covarianceMatrixDevicePointers);
 	free(RFIMStruct->h_UDevicePointers);
+	//free(RFIMStruct->h_UDeviceOffsetPointers);
 	free(RFIMStruct->h_SDevicePointers);
 	free(RFIMStruct->h_VTDevicePointers);
 	free(RFIMStruct->h_eigWorkingSpaceDevicePointers);

@@ -10,7 +10,7 @@
 
 #include "RFIMMemoryStruct.h"
 
-void Benchmark(RFIMMemoryStruct* RFIM, float* d_signal, float* d_filteredSignal, uint32_t calculationNum, uint32_t iterations);
+void Benchmark();
 
 
 

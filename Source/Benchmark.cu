@@ -1,10 +1,12 @@
 
 #include "../Header/Benchmark.h"
 #include "../Header/RFIM.h"
+#include "../Header/RFIMHelperFunctions.h"
+#include "../Header/CudaUtilityFunctions.h"
 
 #include <stdio.h>
 #include <sys/time.h>
-
+#include <curand.h>
 
 double cpuSecond()
 {
@@ -14,27 +16,91 @@ double cpuSecond()
 }
 
 
-void Benchmark(RFIMMemoryStruct* RFIM, float* d_signal, float* d_filteredSignal, uint32_t calculationNum, uint32_t iterations)
+void Benchmark()
 {
-	//Start the timer
-	double startTime = cpuSecond();
+	//Benchmark
+	uint32_t iterations = 100;
 
-	//Run the benchmark iterations times. For a total of calculationNum * iterations executions of RFIMRoutine
-	for(uint32_t iterationCounter = 0; iterationCounter < iterations; ++iterationCounter)
+	//Signal
+	uint32_t h_valuesPerSample = 26;
+	uint32_t h_numberOfSamples;
+	uint32_t h_batchSize;
+
+
+	//Start up the RNG
+	curandGenerator_t rngGen;
+
+	if( curandCreateGenerator(&rngGen, CURAND_RNG_PSEUDO_DEFAULT) != CURAND_STATUS_SUCCESS)
 	{
-		for(uint32_t calculationCounter = 0; calculationCounter < calculationNum; ++calculationCounter)
+		fprintf(stderr, "main: Unable to start cuRand library\n");
+		exit(1);
+	}
+
+	//Set the RNG seed
+	if((curandSetPseudoRandomGeneratorSeed(rngGen, 1)) != CURAND_STATUS_SUCCESS)
+	{
+		fprintf(stderr, "main: Unable to set the RNG Seed value\n");
+		exit(1);
+	}
+
+
+	//For each numberOfSamples value
+	for(uint32_t i = 10; i < 20; ++i)
+	{
+		h_numberOfSamples = 1 << i;
+
+		//For each batchSize
+		for(uint32_t j = 0; j < 13; ++j)
 		{
-			RFIMRoutine(RFIM, d_signal, d_filteredSignal);
+
+			h_batchSize = 1 << j;
+
+
+			//1. Generate signal and allocate room for the filtered signal
+			float** d_signalMatrices = Device_GenerateWhiteNoiseSignal(&rngGen, h_valuesPerSample, h_numberOfSamples, h_batchSize);
+			float** d_filteredSignalMatrices = CudaUtility_BatchAllocateDeviceArrays(h_batchSize, sizeof(float) * h_valuesPerSample * h_numberOfSamples);
+
+			//2. Create the RFIMStruct
+			RFIMMemoryStruct* RFIMStruct = RFIMMemoryStructCreate(h_valuesPerSample, h_numberOfSamples, 2, h_batchSize);
+
+			//3. Run the benchmark
+			double startTime = cpuSecond();
+
+			//Run RFIMRoutine iteration times
+			for(uint32_t currentIteration = 0; currentIteration < iterations; ++currentIteration)
+			{
+				//printf("Iteration: %u\n", currentIteration);
+
+				RFIMRoutine(RFIMStruct, d_signalMatrices, d_filteredSignalMatrices);
+			}
+
+			//calculate total duration
+			double totalDuration = cpuSecond() - startTime;
+
+			//find the average time taken for each iteration
+			double averageIterationTime = totalDuration / iterations;
+
+			//Calculate the average samples processed per iteration in Mhz
+			double averageHz = (RFIMStruct->h_numberOfSamples * h_batchSize * iterations) / totalDuration;
+			double averageMhz =  averageHz / 1000000.0;
+
+
+
+			//Print the results
+			printf("Signal: (%u, %u, %u)\nIterations: %u\nTotal time: %fs\nAverage time: %fs\nAverage Mhz: %f\n\n",
+					RFIMStruct->h_valuesPerSample, RFIMStruct->h_numberOfSamples, RFIMStruct->h_batchSize, iterations, totalDuration, averageIterationTime, averageMhz);
+
+
+			//4. Free everything
+			CudaUtility_BatchDeallocateDeviceArrays(d_signalMatrices, h_batchSize);
+			CudaUtility_BatchDeallocateDeviceArrays(d_filteredSignalMatrices, h_batchSize);
+			RFIMMemoryStructDestroy(RFIMStruct);
+
 		}
 	}
 
-	//end the timer
-	double duration = cpuSecond() - startTime;
 
-	//find the average time taken
-	duration /= iterations;
 
-	printf("Signal: (%u, %u)\nIterations: (%u, %u)\nAverage time: %f\n",
-			RFIM->h_valuesPerSample, RFIM->h_numberOfSamples, calculationNum, iterations, duration);
+	printf("Benchmark complete!!\n");
 
 }

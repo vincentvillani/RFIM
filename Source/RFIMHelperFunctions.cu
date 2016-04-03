@@ -32,41 +32,42 @@
 //--------------------------
 
 
-float* Device_GenerateWhiteNoiseSignal(curandGenerator_t* rngGen, uint64_t h_valuesPerSample, uint64_t h_numberOfSamples)
+float** Device_GenerateWhiteNoiseSignal(curandGenerator_t* rngGen, uint64_t h_valuesPerSample, uint64_t h_numberOfSamples, uint64_t h_batchSize)
 {
 
 	uint64_t totalSignalLength = h_valuesPerSample * h_numberOfSamples;
 	uint64_t totalSignalByteSize = totalSignalLength * sizeof(float);
 
-	float* d_signal;
+	float** d_signalMatrices = CudaUtility_BatchAllocateDeviceArrays(h_batchSize, totalSignalByteSize);
+	float** h_signalMatricesDevicePointers = (float**)malloc(sizeof(float*) * h_batchSize);
 
-	cudaError_t error;
+	//Copy the device pointers onto the host
+	cudaMemcpy(h_signalMatricesDevicePointers, d_signalMatrices, sizeof(float*) * h_batchSize, cudaMemcpyDeviceToHost);
 
-	//Allocate the memory required to store the signal
-	error =  cudaMalloc(&d_signal, totalSignalByteSize);
 
-	//Check that it was allocated successfully
-	if(error != cudaSuccess)
+	for(uint32_t i = 0; i < h_batchSize; ++i)
 	{
-		fprintf(stderr, "Device_GenerateWhiteNoiseSignal: Unable to allocate %llu bytes of memory on the device\n", totalSignalByteSize);
-		exit(1);
+
+		//Generate the signal!
+		//Generate random numbers on the device
+		//Generate random numbers using a normal distribution
+		//Normal distribution should emulate white noise hopefully?
+		//Generate signal
+		if(curandGenerateNormal(*rngGen, h_signalMatricesDevicePointers[i], totalSignalLength, 0.0f, 1.0f) != CURAND_STATUS_SUCCESS)
+		{
+			fprintf(stderr, "Device_GenerateWhiteNoiseSignal: Error when generating the signal\n");
+			exit(1);
+		}
+
 	}
 
 
-	//Generate the signal!
-	//Generate random numbers on the device
-	//Generate random numbers using a normal distribution
-	//Normal distribution should emulate white noise hopefully?
-	//Generate signal
-	if(curandGenerateNormal(*rngGen, d_signal, totalSignalLength, 0.0f, 1.0f) != CURAND_STATUS_SUCCESS)
-	{
-		fprintf(stderr, "Device_GenerateWhiteNoiseSignal: Error when generating the signal\n");
-		exit(1);
-	}
 
+	//Free memory
+	free(h_signalMatricesDevicePointers);
 
 	//Return the generated signal that resides in DEVICE memory
-	return d_signal;
+	return d_signalMatrices;
 
 }
 
@@ -135,6 +136,7 @@ void Device_CalculateCovarianceMatrix(RFIMMemoryStruct* RFIMStruct, float** d_si
 
 	//Calculate the meanMatrix of the signal
 	//--------------------------------
+
 	Device_CalculateMeanMatrices(RFIMStruct, d_signalMatrices);
 
 	//--------------------------------
@@ -159,6 +161,9 @@ void Device_CalculateCovarianceMatrix(RFIMMemoryStruct* RFIMStruct, float** d_si
 			(const float**)d_signalMatrices, RFIMStruct->h_valuesPerSample, &beta,
 			RFIMStruct->d_covarianceMatrix, RFIMStruct->h_valuesPerSample,
 			RFIMStruct->h_batchSize);
+
+
+
 
 
 	if(cublasError != CUBLAS_STATUS_SUCCESS)
@@ -275,6 +280,7 @@ void Device_EigenvalueSolver(RFIMMemoryStruct* RFIMStruct)
 void Device_EigenReductionAndFiltering(RFIMMemoryStruct* RFIMStruct, float** d_originalSignalMatrices, float** d_filteredSignals)
 {
 
+
 	cublasStatus_t cublasStatus;
 
 	//Projected signal matrix
@@ -282,14 +288,26 @@ void Device_EigenReductionAndFiltering(RFIMMemoryStruct* RFIMStruct, float** d_o
 	float alpha = 1;
 	float beta = 0;
 
-	uint32_t reducedDimension = RFIMStruct->h_valuesPerSample - RFIMStruct->h_eigenVectorDimensionsToReduce;
+	//uint32_t reducedDimension = RFIMStruct->h_valuesPerSample - RFIMStruct->h_eigenVectorDimensionsToReduce;
 	uint32_t eigenvectorPointerOffset = RFIMStruct->h_valuesPerSample * RFIMStruct->h_eigenVectorDimensionsToReduce;
 
+
+	//Set the appropriate number of columns to zero
+	for(uint32_t i = 0; i < RFIMStruct->h_batchSize; ++i)
+	{
+		cudaMemsetAsync(RFIMStruct->h_UDevicePointers[i], 0, sizeof(float) * eigenvectorPointerOffset, 0);
+	}
+
+
+	//TODO: ************************** REMOVE THIS WHEN ADDING STREAM SUPPORT LATER **************************
+	cudaStreamSynchronize(0); //The default stream
+
+
 	cublasStatus = cublasSgemmBatched(*RFIMStruct->cublasHandle, CUBLAS_OP_T, CUBLAS_OP_N,
-			reducedDimension, RFIMStruct->h_numberOfSamples, RFIMStruct->h_valuesPerSample,
-			&alpha,  (const float**)(RFIMStruct->d_U + eigenvectorPointerOffset), RFIMStruct->h_valuesPerSample,
+			RFIMStruct->h_valuesPerSample, RFIMStruct->h_numberOfSamples, RFIMStruct->h_valuesPerSample,
+			&alpha,  (const float**)(RFIMStruct->d_U), RFIMStruct->h_valuesPerSample,
 			(const float**)d_originalSignalMatrices, RFIMStruct->h_valuesPerSample, &beta,
-			RFIMStruct->d_projectedSignalMatrix, reducedDimension,
+			RFIMStruct->d_projectedSignalMatrix, RFIMStruct->h_valuesPerSample,
 			RFIMStruct->h_batchSize);
 
 	if(cublasStatus != CUBLAS_STATUS_SUCCESS)
@@ -304,9 +322,9 @@ void Device_EigenReductionAndFiltering(RFIMMemoryStruct* RFIMStruct, float** d_o
 
 
 	cublasStatus = cublasSgemmBatched(*RFIMStruct->cublasHandle, CUBLAS_OP_N, CUBLAS_OP_N,
-			RFIMStruct->h_valuesPerSample, RFIMStruct->h_numberOfSamples, reducedDimension,
-			&alpha, (const float**)(RFIMStruct->d_U + eigenvectorPointerOffset), RFIMStruct->h_valuesPerSample,
-			(const float**)RFIMStruct->d_projectedSignalMatrix, reducedDimension, &beta,
+			RFIMStruct->h_valuesPerSample, RFIMStruct->h_numberOfSamples, RFIMStruct->h_valuesPerSample,
+			&alpha, (const float**)(RFIMStruct->d_U), RFIMStruct->h_valuesPerSample,
+			(const float**)RFIMStruct->d_projectedSignalMatrix, RFIMStruct->h_valuesPerSample, &beta,
 			d_filteredSignals, RFIMStruct->h_valuesPerSample,
 			RFIMStruct->h_batchSize);
 
@@ -316,6 +334,7 @@ void Device_EigenReductionAndFiltering(RFIMMemoryStruct* RFIMStruct, float** d_o
 		fprintf(stderr, "Device_EigenReductionAndFiltering: error calculating the filtered signal\n");
 		exit(1);
 	}
+
 
 }
 

@@ -15,6 +15,6 @@
 
 
 //Does RFIM mitigation and returns the filtered signal matrix device pointer
-void RFIMRoutine(RFIMMemoryStruct* RFIMStruct, float* d_columnMajorSignalMatrix, float* d_columnMajorFilteredSignalMatrix);
+void RFIMRoutine(RFIMMemoryStruct* RFIMStruct, float** d_columnMajorSignalMatrices, float** d_columnMajorFilteredSignalMatrices);
 
 #endif /* RFIM_H_ */
