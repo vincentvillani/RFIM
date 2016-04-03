@@ -25,7 +25,7 @@
 //Production tests
 void MeanCublasProduction();
 void CovarianceCublasProduction();
-//void EigendecompProduction();
+void EigendecompProduction();
 //void FilteringProduction();
 //void TransposeProduction();
 //void GraphProduction();
@@ -203,93 +203,106 @@ void CovarianceCublasProduction()
 
 }
 
-/*
+
 
 
 void EigendecompProduction()
 {
 	int valuesPerSample = 2;
+	int batchSize = 5;
 	int covarianceMatrixByteSize = sizeof(float) * valuesPerSample * valuesPerSample;
+	int signalPointersArrayByteSize = sizeof(float*) * batchSize;
 
 
-
-	RFIMMemoryStruct* RFIM = RFIMMemoryStructCreate(valuesPerSample, valuesPerSample, 2);
+	RFIMMemoryStruct* RFIMStruct = RFIMMemoryStructCreate(valuesPerSample, valuesPerSample, 2, batchSize);
 
 
 	//Create small full covariance matrix
 	float* h_fullSymmCovarianceMatrix = (float*)malloc( covarianceMatrixByteSize );
+	float** h_fullSymmCovarianceMatrixPointersArray = (float**)malloc(signalPointersArrayByteSize);
 
 	h_fullSymmCovarianceMatrix[0] = 5.0f;
 	h_fullSymmCovarianceMatrix[1] = 2.0f;
 	h_fullSymmCovarianceMatrix[2] = 2.0f;
 	h_fullSymmCovarianceMatrix[3] = 5.0f;
 
-
-
-	CudaUtility_CopySignalToDevice(h_fullSymmCovarianceMatrix, &RFIM->d_fullSymmetricCovarianceMatrix,  covarianceMatrixByteSize);
-
-	//Compute the eigenvectors/values
-	Device_EigenvalueSolver(RFIM);
-
-
-	//Check to see that everything is correct
-	float* h_eigenvalues = (float*)malloc(sizeof(float) * valuesPerSample);
-	float* h_eigenvectorMatrix = (float*)malloc(sizeof(float) * valuesPerSample * valuesPerSample);
-
-	CudaUtility_CopySignalToHost(RFIM->d_S, &h_eigenvalues, sizeof(float) * valuesPerSample);
-	CudaUtility_CopySignalToHost(RFIM->d_U, &h_eigenvectorMatrix, sizeof(float) * valuesPerSample * valuesPerSample);
-
-
-	for(int i = 0; i < valuesPerSample; ++i)
+	//Set each pointer to point to h_fullSymmCovarianceMatrix
+	for(uint32_t i = 0; i < batchSize; ++i)
 	{
-		printf("Eigenvalue %d: %f\n", i, h_eigenvalues[i]);
+		h_fullSymmCovarianceMatrixPointersArray[i] = h_fullSymmCovarianceMatrix;
 	}
 
-	printf("\n");
+	//Copy these covariance matrices to the device
+	CudaUtility_BatchCopyArraysHostToDevice(RFIMStruct->d_covarianceMatrix, h_fullSymmCovarianceMatrixPointersArray, batchSize, covarianceMatrixByteSize);
 
-	for(int i = 0; i < valuesPerSample * valuesPerSample; ++i)
+	Device_EigenvalueSolver(RFIMStruct);
+
+	//Copy the results back
+	float** h_SData = CudaUtility_BatchAllocateHostArrays(batchSize, sizeof(float) * valuesPerSample);
+	float** h_UData = CudaUtility_BatchAllocateHostArrays(batchSize, sizeof(float) * valuesPerSample * valuesPerSample);
+
+	CudaUtility_BatchCopyArraysDeviceToHost(RFIMStruct->d_S, h_SData, batchSize,  sizeof(float) * valuesPerSample);
+	CudaUtility_BatchCopyArraysDeviceToHost(RFIMStruct->d_U, h_UData, batchSize,  sizeof(float) * valuesPerSample * valuesPerSample);
+
+
+	float eigenvalueExpectedResults[2];
+	eigenvalueExpectedResults[0] = 7.0f;
+	eigenvalueExpectedResults[1] = 3.0f;
+
+	float eigenvectorExpectedResults[4];
+	eigenvectorExpectedResults[0] = -0.707107f;
+	eigenvectorExpectedResults[1] = -0.707107f;
+	eigenvectorExpectedResults[2] = -0.707107f;
+	eigenvectorExpectedResults[3] = 0.707107f;
+
+	//Check and print the results
+	for(uint32_t i = 0; i < batchSize; ++i)
 	{
-		printf("Eigenvec %d: %f\n", i, h_eigenvectorMatrix[i]);
+		//eigenvalues
+		for(uint32_t j = 0; j < valuesPerSample; ++j)
+		{
+
+			if(fabs(eigenvalueExpectedResults[j]) - fabs(h_SData[i][j]) > 0.000001f)
+			{
+				fprintf(stderr, "EigendecompProduction unit test failed. Eigenvalues are incorrect\n");
+				exit(1);
+			}
+
+
+			//printf("Eigenvalue[%u][%u] = %f\n", i, j, h_SData[i][j]);
+		}
+
+		//eigenvectors
+		for(uint32_t j = 0; j < valuesPerSample * valuesPerSample; ++j)
+		{
+
+			if(fabs(eigenvectorExpectedResults[j]) - fabs(h_UData[i][j]) > 0.000001f)
+			{
+				fprintf(stderr, "EigendecompProduction unit test failed. Eigenvectors are incorrect\n");
+				exit(1);
+			}
+
+
+			//printf("Eigenvector[%u][%u] = %f\n", i, j, h_UData[i][j]);
+		}
+
+		//printf("\n");
 	}
 
 
+	//Free memory
+	free(h_fullSymmCovarianceMatrix);
+	free(h_fullSymmCovarianceMatrixPointersArray);
 
-	bool failed = false;
+	CudaUtility_BatchDeallocateHostArrays(h_SData, batchSize);
+	CudaUtility_BatchDeallocateHostArrays(h_UData, batchSize);
 
-	if(h_eigenvalues[0] - 7.0f > 0.0000001f)
-		failed = true;
-	if(h_eigenvalues[1] - 3.0f > 0.0000001f)
-		failed = true;
+	RFIMMemoryStructDestroy(RFIMStruct);
 
-	if(failed)
-	{
-		fprintf(stderr, "EigendecompProduction Unit test: failed to correctly calculate eigenvalues\n");
-		exit(1);
-	}
-
-	if(fabs(h_eigenvectorMatrix[0] + 0.707107) > 0.000001f)
-		failed = true;
-	if(fabs(h_eigenvectorMatrix[1] + 0.707107) > 0.000001f)
-		failed = true;
-	if(fabs(h_eigenvectorMatrix[2] + 0.707107) > 0.000001f)
-		failed = true;
-	if(fabs(h_eigenvectorMatrix[3] - 0.707107) > 0.000001f)
-		failed = true;
-
-	if(failed)
-	{
-		fprintf(stderr, "EigendecompProduction Unit test: failed to correctly calculate eigenvectors\n");
-		exit(1);
-	}
-
-	free(h_eigenvalues);
-	free(h_eigenvectorMatrix);
-
-	RFIMMemoryStructDestroy(RFIM);
 
 }
 
-
+/*
 
 //Doesn't actually prove that the filter itself works, just that the math functions are working as you would expected
 //By removing 0 dimensions we should get the same signal back
@@ -373,7 +386,7 @@ void RunAllUnitTests()
 {
 	MeanCublasProduction();
 	CovarianceCublasProduction();
-	//EigendecompProduction();
+	EigendecompProduction();
 	//FilteringProduction();
 
 	printf("All tests passed!\n");

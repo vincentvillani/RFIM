@@ -23,6 +23,7 @@
 
 
 //TODO: Make sure memory that can be used again, is still in a valid state after the first execution
+//TODO: Eigenvector/value solver memory (U, S, VT, etc) could be allocated as one big array that is offset in a for loop. This cannot be done for the cublas calls due to it's API. Think about if this is worth implemeting
 
 int main(int argc, char **argv)
 {

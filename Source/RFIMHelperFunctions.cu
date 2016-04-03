@@ -171,73 +171,9 @@ void Device_CalculateCovarianceMatrix(RFIMMemoryStruct* RFIMStruct, float** d_si
 }
 
 
-/*
-
-void Device_MatrixTranspose(cublasHandle_t* cublasHandle, const float* d_matrix, float* d_matrixTransposed, uint64_t rowNum, uint64_t colNum)
-{
-
-	cublasStatus_t cublasStatus;
-
-	float alpha = 1;
-	float beta = 0;
-
-
-	cublasStatus = cublasSgeam(*cublasHandle, CUBLAS_OP_T, CUBLAS_OP_N, colNum, rowNum,
-			&alpha, d_matrix, rowNum,
-			&beta, d_matrix, rowNum,
-			d_matrixTransposed, colNum);
-
-
-	if(cublasStatus != CUBLAS_STATUS_SUCCESS)
-	{
-		fprintf(stderr, "Device_InplaceMatrixTranspose: Transposition of the matrix failed!\n");
-		//exit(1);
-	}
-
-}
 
 
 
-/*
-float* Device_FullSymmetricMatrix(cublasHandle_t* cublasHandle, const float* d_triangularMatrix, uint64_t rowAndColNum)
-{
-	float* d_fullMatrix;
-
-	//Transpose the d_triangularMatrix
-	//Transpose the matrix
-	float* d_triangularMatrixTransposed = Device_MatrixTranspose(d_triangularMatrix, rowAndColNum, rowAndColNum);
-
-	//Set the transposes diagonal to zero
-	dim3 blockDim(32);
-	dim3 gridDim(1, ceilf(rowAndColNum / (float)32));
-	setDiagonalToZero<<<gridDim, blockDim>>>(d_triangularMatrixTransposed, rowAndColNum);
-
-	//TODO: Debug, remove this. It will affect performance
-	CudaCheckError();
-
-
-	//Add the triangular matrices together
-	float alpha = 1.0f;
-	float beta = 1.0f;
-
-	//Allocate memory for the full matrix
-	cudaMalloc(&d_fullMatrix, sizeof(float) * rowAndColNum * rowAndColNum);
-
-	cublasStatus_t cublasStatus = cublasSgeam(*cublasHandle, CUBLAS_OP_N, CUBLAS_OP_N, rowAndColNum, rowAndColNum,
-			&alpha, d_triangularMatrix, rowAndColNum, &beta, d_triangularMatrixTransposed, rowAndColNum, d_fullMatrix, rowAndColNum);
-
-	if(cublasStatus != CUBLAS_STATUS_SUCCESS)
-	{
-		fprintf(stderr, "Device_FullSymmetricMatrix: cublasSgeam call failed\n");
-		exit(1);
-	}
-
-	//Free the transposed matrix
-	cudaFree(d_triangularMatrixTransposed);
-
-	//return the result
-	return d_fullMatrix;
-}
 
 
 
@@ -248,48 +184,59 @@ void Device_EigenvalueSolver(RFIMMemoryStruct* RFIMStruct)
 
 	cusolverStatus_t cusolverStatus;
 
-
-
-	cusolverStatus = cusolverDnSgesvd(*RFIMStruct->cusolverHandle, 'A', 'A', RFIMStruct->h_valuesPerSample, RFIMStruct->h_valuesPerSample,
-			RFIMStruct->d_fullSymmetricCovarianceMatrix, RFIMStruct->h_valuesPerSample, RFIMStruct->d_S,  RFIMStruct->d_U, RFIMStruct->h_valuesPerSample, RFIMStruct->d_VT, RFIMStruct->h_valuesPerSample,
-			RFIMStruct->d_eigWorkingSpace, RFIMStruct->h_eigWorkingSpaceLength, NULL, RFIMStruct->d_devInfo);
-
-
-	/*
-	int* h_devInfo = (int*)malloc(sizeof(int));
-	cudaMemcpy(h_devInfo, RFIMStruct->d_devInfo, sizeof(int), cudaMemcpyDeviceToHost);
-
-	if(*h_devInfo != 0)
-	{
-		fprintf(stderr, "Device_EigenvalueSolver: Error with the %dth parameter\n", *h_devInfo);
-		//exit(1);
-	}
-
-	free(h_devInfo);
-
-
-
-	if(cusolverStatus != CUSOLVER_STATUS_SUCCESS)
+	//Calculate the eigenvectors/values for each batch
+	for(uint32_t i = 0; i < RFIMStruct->h_batchSize; ++i)
 	{
 
-		if(cusolverStatus == CUSOLVER_STATUS_NOT_INITIALIZED)
-			printf("1\n");
-		if(cusolverStatus == CUSOLVER_STATUS_INVALID_VALUE)
-			printf("2\n");
-		if(cusolverStatus == CUSOLVER_STATUS_ARCH_MISMATCH)
-			printf("3\n");
-		if(cusolverStatus == CUSOLVER_STATUS_INTERNAL_ERROR)
-			printf("4\n");
+		cusolverStatus = cusolverDnSgesvd(*RFIMStruct->cusolverHandle, 'A', 'A', RFIMStruct->h_valuesPerSample, RFIMStruct->h_valuesPerSample,
+				RFIMStruct->h_covarianceMatrixDevicePointers[i], RFIMStruct->h_valuesPerSample,
+				RFIMStruct->h_SDevicePointers[i],  RFIMStruct->h_UDevicePointers[i], RFIMStruct->h_valuesPerSample,
+				RFIMStruct->h_VTDevicePointers[i], RFIMStruct->h_valuesPerSample,
+				RFIMStruct->h_eigWorkingSpaceDevicePointers[i], RFIMStruct->h_eigWorkingSpaceLength, NULL, RFIMStruct->h_devInfoDevicePointers[i]);
 
 
+		//Check for errors
+		if(cusolverStatus != CUSOLVER_STATUS_SUCCESS)
+		{
 
-		fprintf(stderr, "Device_EigenvalueSolver: Error solving eigenvalues\n");
-		exit(1);
+			if(cusolverStatus == CUSOLVER_STATUS_NOT_INITIALIZED)
+				printf("1\n");
+			if(cusolverStatus == CUSOLVER_STATUS_INVALID_VALUE)
+				printf("2\n");
+			if(cusolverStatus == CUSOLVER_STATUS_ARCH_MISMATCH)
+				printf("3\n");
+			if(cusolverStatus == CUSOLVER_STATUS_INTERNAL_ERROR)
+				printf("4\n");
+
+
+			fprintf(stderr, "Device_EigenvalueSolver: Error solving eigenvalues\n");
+			exit(1);
+
+		}
+
 	}
+
+
+
+	//Check all dev info's
+	int currentDevInfo = -1;
+
+	for(uint32_t i = 0; i < RFIMStruct->h_batchSize; ++i)
+	{
+		//Copy the value over
+		cudaMemcpy(&currentDevInfo, RFIMStruct->h_devInfoDevicePointers[i], sizeof(int), cudaMemcpyDeviceToHost);
+
+		if(currentDevInfo != 0)
+		{
+			fprintf(stderr, "Device_EigenvalueSolver: Error with the %dth parameter\n", currentDevInfo);
+			//exit(1);
+		}
+	}
+
 
 }
 
-
+/*
 
 //Eigenvector reduction and signal projection/filtering
 //All matrices are column-major
@@ -370,6 +317,31 @@ void Device_EigenReductionAndFiltering(RFIMMemoryStruct* RFIMStruct, float* d_or
 	}
 
 }
+
+
+void Device_MatrixTranspose(cublasHandle_t* cublasHandle, const float* d_matrix, float* d_matrixTransposed, uint64_t rowNum, uint64_t colNum)
+{
+
+	cublasStatus_t cublasStatus;
+
+	float alpha = 1;
+	float beta = 0;
+
+
+	cublasStatus = cublasSgeam(*cublasHandle, CUBLAS_OP_T, CUBLAS_OP_N, colNum, rowNum,
+			&alpha, d_matrix, rowNum,
+			&beta, d_matrix, rowNum,
+			d_matrixTransposed, colNum);
+
+
+	if(cublasStatus != CUBLAS_STATUS_SUCCESS)
+	{
+		fprintf(stderr, "Device_InplaceMatrixTranspose: Transposition of the matrix failed!\n");
+		//exit(1);
+	}
+
+}
+
 
 */
 

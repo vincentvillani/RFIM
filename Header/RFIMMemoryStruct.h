@@ -32,14 +32,26 @@ typedef struct RFIMMemoryStruct
 
 	//Covariance matrix working memory
 	float** d_covarianceMatrix;
+	float** h_covarianceMatrixDevicePointers;
 
 	//Eigenvector/value working memory
 	float** d_U;
+	float** h_UDevicePointers;
+
 	float** d_S;
+	float** h_SDevicePointers;
+
 	float** d_VT;
+	float** h_VTDevicePointers;
+
 	float** d_eigWorkingSpace;
+	float** h_eigWorkingSpaceDevicePointers;
+
 	int h_eigWorkingSpaceLength;
+
 	int** d_devInfo;
+	int** h_devInfoDevicePointers; //Space to copy the d_devInfo devicePointers into
+	//int* h_devInfoValues;
 
 	uint32_t h_eigenVectorDimensionsToReduce;
 

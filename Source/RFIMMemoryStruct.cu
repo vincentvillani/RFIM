@@ -98,7 +98,37 @@ RFIMMemoryStruct* RFIMMemoryStructCreate(uint32_t h_valuesPerSample, uint32_t h_
 	CudaUtility_BatchCopyArraysHostToDevice(result->d_oneVec, h_oneVecPointerArray, h_batchSize, oneVecByteSize); //Copy the oneVec data to the 2D array
 
 	result->d_meanVec = CudaUtility_BatchAllocateDeviceArrays(h_batchSize, meanVecByteSize);
+
 	result->d_covarianceMatrix = CudaUtility_BatchAllocateDeviceArrays(h_batchSize, covarianceMatrixByteSize);
+	result->d_U = CudaUtility_BatchAllocateDeviceArrays(h_batchSize, UByteSize);
+	result->d_S = CudaUtility_BatchAllocateDeviceArrays(h_batchSize, SByteSize);
+	result->d_VT = CudaUtility_BatchAllocateDeviceArrays(h_batchSize, VTByteSize);
+	result->d_eigWorkingSpace = CudaUtility_BatchAllocateDeviceArrays(h_batchSize, result->h_eigWorkingSpaceLength);
+	result->d_devInfo = (int**)CudaUtility_BatchAllocateDeviceArrays(h_batchSize, devInfoByteSize); //Casting from float** to int** shouldn't be a problem, they should be the same size
+
+
+
+	//Allocate space for the pointers to device memory, this is used to speed up the eigenvector solver part of the RFIM
+	uint64_t pointersArrayByteSize = sizeof(float*) * h_batchSize;
+
+	result->h_covarianceMatrixDevicePointers = (float**)malloc(pointersArrayByteSize);
+	result->h_UDevicePointers = (float**)malloc(pointersArrayByteSize);
+	result->h_SDevicePointers = (float**)malloc(pointersArrayByteSize);
+	result->h_VTDevicePointers = (float**)malloc(pointersArrayByteSize);
+	result->h_eigWorkingSpaceDevicePointers = (float**)malloc(pointersArrayByteSize);
+	result->h_devInfoDevicePointers = (int**)malloc(pointersArrayByteSize);
+
+	//Copy the pointers to device memory over to the host memory
+	cudaMemcpy(result->h_covarianceMatrixDevicePointers, result->d_covarianceMatrix, pointersArrayByteSize, cudaMemcpyDeviceToHost);
+	cudaMemcpy(result->h_UDevicePointers, result->d_U, pointersArrayByteSize, cudaMemcpyDeviceToHost);
+	cudaMemcpy(result->h_SDevicePointers, result->d_S, pointersArrayByteSize, cudaMemcpyDeviceToHost);
+	cudaMemcpy(result->h_VTDevicePointers, result->d_VT, pointersArrayByteSize, cudaMemcpyDeviceToHost);
+	cudaMemcpy(result->h_eigWorkingSpaceDevicePointers, result->d_eigWorkingSpace, pointersArrayByteSize, cudaMemcpyDeviceToHost);
+	cudaMemcpy(result->h_devInfoDevicePointers, result->d_devInfo, pointersArrayByteSize, cudaMemcpyDeviceToHost);
+
+	//Allocate space for the h_devInfoValues
+	//result->h_devInfoValues = (int*)malloc(sizeof(int) * h_batchSize);
+
 
 	//printf("2\n");
 
@@ -127,7 +157,21 @@ void RFIMMemoryStructDestroy(RFIMMemoryStruct* RFIMStruct)
 	CudaUtility_BatchDeallocateDeviceArrays(RFIMStruct->d_oneVec, RFIMStruct->h_batchSize);
 	CudaUtility_BatchDeallocateDeviceArrays(RFIMStruct->d_meanVec, RFIMStruct->h_batchSize);
 	CudaUtility_BatchDeallocateDeviceArrays(RFIMStruct->d_covarianceMatrix, RFIMStruct->h_batchSize);
+	CudaUtility_BatchDeallocateDeviceArrays(RFIMStruct->d_U, RFIMStruct->h_batchSize);
+	CudaUtility_BatchDeallocateDeviceArrays(RFIMStruct->d_S, RFIMStruct->h_batchSize);
+	CudaUtility_BatchDeallocateDeviceArrays(RFIMStruct->d_VT, RFIMStruct->h_batchSize);
+	CudaUtility_BatchDeallocateDeviceArrays(RFIMStruct->d_eigWorkingSpace, RFIMStruct->h_batchSize);
+	CudaUtility_BatchDeallocateDeviceArrays((float**)RFIMStruct->d_devInfo, RFIMStruct->h_batchSize); //Casting from float** to int** shouldn't be a problem, they should be the same size
 
+	//Free the host pointers to device memory
+	free(RFIMStruct->h_covarianceMatrixDevicePointers);
+	free(RFIMStruct->h_UDevicePointers);
+	free(RFIMStruct->h_SDevicePointers);
+	free(RFIMStruct->h_VTDevicePointers);
+	free(RFIMStruct->h_eigWorkingSpaceDevicePointers);
+	free(RFIMStruct->h_devInfoDevicePointers);
+
+	//free(RFIMStruct->h_devInfoValues);
 
 	//Deallocate the struct memory on the host
 	free(RFIMStruct);
