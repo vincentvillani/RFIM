@@ -32,9 +32,12 @@ void Benchmark(RFIMMemoryStruct* RFIM, float* d_signal, float* d_filteredSignal,
 	double duration = cpuSecond() - startTime;
 
 	//find the average time taken
-	duration /= iterations;
+	duration = duration / iterations;
 
-	printf("Signal: (%u, %u)\nIterations: (%u, %u)\nAverage time: %f\n",
-			RFIM->h_valuesPerSample, RFIM->h_numberOfSamples, calculationNum, iterations, duration);
+	double mhz = (RFIM->h_numberOfSamples * calculationNum) / 1000000.0; //Number of samples processed per iteration (hz) converted into Mhz
+	mhz /= duration; // Divded by the average time taken per iteration to give an estimate of Mhz
+
+	printf("Signal: (%u, %u)\nIterations: (%u, %u)\nAverage time: %f\nMhz: %f\n",
+			RFIM->h_valuesPerSample, RFIM->h_numberOfSamples, calculationNum, iterations, duration, mhz);
 
 }

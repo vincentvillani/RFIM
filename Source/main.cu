@@ -36,7 +36,7 @@ int main(int argc, char **argv)
 
 
 	uint32_t h_valuesPerSample = 26;
-	uint32_t h_numberOfSamples = 4096;
+	uint32_t h_numberOfSamples = 524288;
 
 
 
@@ -79,7 +79,7 @@ int main(int argc, char **argv)
 
 	//3. Run RFIM benchmark
 	//--------------------------
-	Benchmark(RFIMStruct, d_whiteNoiseSignalMatrix, d_filteredSignal, 200, 1);
+	Benchmark(RFIMStruct, d_whiteNoiseSignalMatrix, d_filteredSignal, 10000, 1); //10000
 
 	//RFIMRoutine(RFIMStruct, d_whiteNoiseSignalMatrix, d_filteredSignal);
 

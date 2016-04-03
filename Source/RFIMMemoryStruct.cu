@@ -153,6 +153,8 @@ RFIMMemoryStruct* RFIMMemoryStructCreate(uint32_t h_valuesPerSample, uint32_t h_
 
 void RFIMMemoryStructDestroy(RFIMMemoryStruct* RFIMStruct)
 {
+	//printf("MemoryStructDestroy\n");
+
 	//Destroy the cuda library contexts
 	cublasDestroy_v2(*RFIMStruct->cublasHandle);
 	cusolverDnDestroy(*RFIMStruct->cusolverHandle);
