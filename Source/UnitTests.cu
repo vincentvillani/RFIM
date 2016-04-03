@@ -26,7 +26,7 @@
 void MeanCublasProduction();
 void CovarianceCublasProduction();
 void EigendecompProduction();
-//void FilteringProduction();
+void FilteringProduction();
 //void TransposeProduction();
 //void GraphProduction();
 
@@ -302,20 +302,24 @@ void EigendecompProduction()
 
 }
 
-/*
+
 
 //Doesn't actually prove that the filter itself works, just that the math functions are working as you would expected
 //By removing 0 dimensions we should get the same signal back
 void FilteringProduction()
 {
 	int valuesPerSample = 2;
+	int batchSize = 5;
+
 	int signalByteSize = sizeof(float) * valuesPerSample * valuesPerSample;
 
+
 	//REDUCE NOTHING! This should give us back the same signal
-	RFIMMemoryStruct* RFIM = RFIMMemoryStructCreate(valuesPerSample, valuesPerSample, 0);
+	RFIMMemoryStruct* RFIM = RFIMMemoryStructCreate(valuesPerSample, valuesPerSample, 0, batchSize);
 
 
 	//Create small full covariance matrix
+	float** h_signalPointers = (float**)malloc(sizeof(float*) * batchSize);
 	float* h_signal = (float*)malloc( signalByteSize );
 
 	h_signal[0] = 1.0f;
@@ -323,45 +327,57 @@ void FilteringProduction()
 	h_signal[2] = 7.0f;
 	h_signal[3] = -8.0f;
 
+	//Set each pointer to h_signal
+	for(uint32_t i = 0; i < batchSize; ++i)
+	{
+		h_signalPointers[i] = h_signal;
+	}
+
+
 	//Copy signal to the device
-	float* d_signal;
-	cudaMalloc(&d_signal, signalByteSize);
-	CudaUtility_CopySignalToDevice(h_signal, &d_signal, signalByteSize);
+	float** d_signalPointers = CudaUtility_BatchAllocateDeviceArrays(batchSize, signalByteSize);
+	CudaUtility_BatchCopyArraysHostToDevice(d_signalPointers, h_signalPointers, batchSize, signalByteSize);
+
+
 
 	//Calculate the covariance matrix
-	Device_CalculateCovarianceMatrix(RFIM, d_signal);
+	Device_CalculateCovarianceMatrix(RFIM, d_signalPointers);
 
 	//Calculate the eigenvectors
 	Device_EigenvalueSolver(RFIM);
 
 	//Setup the signal output
-	float* d_filteredSignal;
-	cudaMalloc(&d_filteredSignal, signalByteSize);
+	float** d_filteredSignals = CudaUtility_BatchAllocateDeviceArrays(batchSize, signalByteSize);
+
 
 
 	//Do the projection
-	Device_EigenReductionAndFiltering(RFIM, d_signal, d_filteredSignal);
+	Device_EigenReductionAndFiltering(RFIM, d_signalPointers, d_filteredSignals);
 
 
 	//Copy the signal back to the host
-	float* h_filteredSignal = (float*)malloc(signalByteSize);
-	CudaUtility_CopySignalToHost(d_filteredSignal, &h_filteredSignal, signalByteSize);
+	float** h_filteredSignals = CudaUtility_BatchAllocateHostArrays(batchSize, signalByteSize);
+	CudaUtility_BatchCopyArraysDeviceToHost(d_filteredSignals, h_filteredSignals, batchSize, signalByteSize);
 
 	bool failed = false;
 
-	//Make sure we got the same signal back
-	for(uint32_t i = 0; i < valuesPerSample * valuesPerSample; ++i)
+
+	for(uint32_t i = 0; i < batchSize; ++i)
 	{
-		//print the signal
-		//printf("Orig %d: %f, filt %d: %f\n", i, h_signal[i], i, h_filteredSignal[i]);
-
-		if(fabs(h_signal[i]) - fabs(h_filteredSignal[i]) > 0.0000001f)
+		//Make sure we got the same signal back
+		for(uint32_t j = 0; j < valuesPerSample * valuesPerSample; ++j)
 		{
-			failed = true;
+			//print the signal
+			printf("Orig[%u][%u]: %f, filt[%u][%u]: %f\n", i, j, h_signalPointers[i][j], i, j, h_filteredSignals[i][j]);
+
+			if(fabs(h_signalPointers[i][j]) - fabs(h_filteredSignals[i][j]) > 0.0000001f)
+			{
+				failed = true;
+			}
 		}
+
+		printf("\n");
 	}
-
-
 
 	if(failed)
 	{
@@ -370,14 +386,19 @@ void FilteringProduction()
 	}
 
 
-	RFIMMemoryStructDestroy(RFIM);
+	//Free all memory
 	free(h_signal);
-	free(h_filteredSignal);
-	cudaFree(d_signal);
-	cudaFree(d_filteredSignal);
+	free(h_signalPointers);
+
+	CudaUtility_BatchDeallocateDeviceArrays(d_signalPointers, batchSize);
+	CudaUtility_BatchDeallocateDeviceArrays(d_filteredSignals, batchSize);
+	CudaUtility_BatchDeallocateHostArrays(h_filteredSignals, batchSize);
+
+	RFIMMemoryStructDestroy(RFIM);
+
 }
 
-*/
+
 
 
 
@@ -387,7 +408,7 @@ void RunAllUnitTests()
 	MeanCublasProduction();
 	CovarianceCublasProduction();
 	EigendecompProduction();
-	//FilteringProduction();
+	FilteringProduction();
 
 	printf("All tests passed!\n");
 

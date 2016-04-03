@@ -234,7 +234,7 @@ void Device_EigenvalueSolver(RFIMMemoryStruct* RFIMStruct)
 
 }
 
-/*
+
 
 //Eigenvector reduction and signal projection/filtering
 //All matrices are column-major
@@ -272,7 +272,7 @@ void Device_EigenvalueSolver(RFIMMemoryStruct* RFIMStruct)
 
 
 
-void Device_EigenReductionAndFiltering(RFIMMemoryStruct* RFIMStruct, float* d_originalSignalMatrix, float* d_filteredSignal)
+void Device_EigenReductionAndFiltering(RFIMMemoryStruct* RFIMStruct, float** d_originalSignalMatrices, float** d_filteredSignals)
 {
 
 	cublasStatus_t cublasStatus;
@@ -285,11 +285,12 @@ void Device_EigenReductionAndFiltering(RFIMMemoryStruct* RFIMStruct, float* d_or
 	uint32_t reducedDimension = RFIMStruct->h_valuesPerSample - RFIMStruct->h_eigenVectorDimensionsToReduce;
 	uint32_t eigenvectorPointerOffset = RFIMStruct->h_valuesPerSample * RFIMStruct->h_eigenVectorDimensionsToReduce;
 
-	cublasStatus = cublasSgemm_v2(*RFIMStruct->cublasHandle, CUBLAS_OP_T, CUBLAS_OP_N,
+	cublasStatus = cublasSgemmBatched(*RFIMStruct->cublasHandle, CUBLAS_OP_T, CUBLAS_OP_N,
 			reducedDimension, RFIMStruct->h_numberOfSamples, RFIMStruct->h_valuesPerSample,
-			&alpha,  RFIMStruct->d_U + eigenvectorPointerOffset, RFIMStruct->h_valuesPerSample,
-			d_originalSignalMatrix, RFIMStruct->h_valuesPerSample, &beta,
-			RFIMStruct->d_projectedSignalMatrix, reducedDimension);
+			&alpha,  (const float**)(RFIMStruct->d_U + eigenvectorPointerOffset), RFIMStruct->h_valuesPerSample,
+			(const float**)d_originalSignalMatrices, RFIMStruct->h_valuesPerSample, &beta,
+			RFIMStruct->d_projectedSignalMatrix, reducedDimension,
+			RFIMStruct->h_batchSize);
 
 	if(cublasStatus != CUBLAS_STATUS_SUCCESS)
 	{
@@ -301,11 +302,13 @@ void Device_EigenReductionAndFiltering(RFIMMemoryStruct* RFIMStruct, float* d_or
 	//final signal matrix
 	// Fs = Er * Ps
 
-	cublasStatus = cublasSgemm_v2(*RFIMStruct->cublasHandle, CUBLAS_OP_N, CUBLAS_OP_N,
+
+	cublasStatus = cublasSgemmBatched(*RFIMStruct->cublasHandle, CUBLAS_OP_N, CUBLAS_OP_N,
 			RFIMStruct->h_valuesPerSample, RFIMStruct->h_numberOfSamples, reducedDimension,
-			&alpha, RFIMStruct->d_U + eigenvectorPointerOffset, RFIMStruct->h_valuesPerSample,
-			RFIMStruct->d_projectedSignalMatrix, reducedDimension, &beta,
-			d_filteredSignal, RFIMStruct->h_valuesPerSample);
+			&alpha, (const float**)(RFIMStruct->d_U + eigenvectorPointerOffset), RFIMStruct->h_valuesPerSample,
+			(const float**)RFIMStruct->d_projectedSignalMatrix, reducedDimension, &beta,
+			d_filteredSignals, RFIMStruct->h_valuesPerSample,
+			RFIMStruct->h_batchSize);
 
 
 	if(cublasStatus != CUBLAS_STATUS_SUCCESS)
@@ -316,7 +319,7 @@ void Device_EigenReductionAndFiltering(RFIMMemoryStruct* RFIMStruct, float* d_or
 
 }
 
-
+/*
 void Device_MatrixTranspose(cublasHandle_t* cublasHandle, const float* d_matrix, float* d_matrixTransposed, uint64_t rowNum, uint64_t colNum)
 {
 

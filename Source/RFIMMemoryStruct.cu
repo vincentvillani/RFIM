@@ -24,13 +24,13 @@ RFIMMemoryStruct* RFIMMemoryStructCreate(uint32_t h_valuesPerSample, uint32_t h_
 	if(cublasStatus != CUBLAS_STATUS_SUCCESS)
 	{
 		fprintf(stderr, "RFIMMemory::RFIMMemory(): Error starting cublas context\n");
-		//exit(1);
+		exit(1);
 	}
 
 	if(cusolverStatus != CUSOLVER_STATUS_SUCCESS)
 	{
 		fprintf(stderr, "RFIMMemory::RFIMMemory(): Error starting cusolver context\n");
-		//exit(1);
+		exit(1);
 	}
 
 
@@ -48,7 +48,6 @@ RFIMMemoryStruct* RFIMMemoryStructCreate(uint32_t h_valuesPerSample, uint32_t h_
 	float* h_oneVec = (float*)malloc(oneVecByteSize);
 	float** h_oneVecPointerArray = (float**)malloc(sizeof(float*) * h_batchSize);
 
-	//printf("0\n");
 
 	//Fill the one vec with ones
 	for(uint32_t i = 0; i < h_numberOfSamples; ++i)
@@ -56,7 +55,6 @@ RFIMMemoryStruct* RFIMMemoryStructCreate(uint32_t h_valuesPerSample, uint32_t h_
 		h_oneVec[i] = 1;
 	}
 
-	//printf("0.5\n");
 
 	//Set each pointer to point to the same array
 	for(uint32_t i = 0; i < h_batchSize; ++i)
@@ -64,7 +62,6 @@ RFIMMemoryStruct* RFIMMemoryStructCreate(uint32_t h_valuesPerSample, uint32_t h_
 		h_oneVecPointerArray[i] = h_oneVec;
 	}
 
-	//printf("0.75\n");
 
 
 	//Allocate one array on the device, everything in the pointer array will point to this
@@ -79,7 +76,7 @@ RFIMMemoryStruct* RFIMMemoryStructCreate(uint32_t h_valuesPerSample, uint32_t h_
 	uint64_t UByteSize = sizeof(float) * h_valuesPerSample * h_valuesPerSample;
 	uint64_t SByteSize = sizeof(float) * h_valuesPerSample;
 	uint64_t VTByteSize = sizeof(float) * h_valuesPerSample * h_valuesPerSample;
-	//uint32_t devInfoByteSize = sizeof(int);
+
 	//Ask cusolver for the needed buffer size
 	result->h_eigWorkingSpaceLength = 0;
 	cusolverStatus = cusolverDnSgesvd_bufferSize(*result->cusolverHandle, h_valuesPerSample, h_valuesPerSample, &(result->h_eigWorkingSpaceLength));
@@ -87,11 +84,11 @@ RFIMMemoryStruct* RFIMMemoryStructCreate(uint32_t h_valuesPerSample, uint32_t h_
 	if(cusolverStatus != CUSOLVER_STATUS_SUCCESS)
 	{
 		fprintf(stderr, "RFIMMemory::RFIMMemory(): Error finding eigenvalue working buffer size\n");
-		//exit(1);
+		exit(1);
 	}
 	uint32_t projectedSignalMatrixByteSize = sizeof(float) * ((h_valuesPerSample - result->h_eigenVectorDimensionsToReduce) * h_numberOfSamples);
 
-	//printf("1\n");
+
 
 	//Allocate 2D pointers on the device
 	result->d_oneVec = CudaUtility_BatchAllocateDeviceArrays(h_batchSize, oneVecByteSize);
@@ -106,6 +103,7 @@ RFIMMemoryStruct* RFIMMemoryStructCreate(uint32_t h_valuesPerSample, uint32_t h_
 	result->d_eigWorkingSpace = CudaUtility_BatchAllocateDeviceArrays(h_batchSize, result->h_eigWorkingSpaceLength);
 	cudaMalloc(&result->d_devInfo, sizeof(int) * h_batchSize);
 	result->h_devInfoValues = (int*)malloc(sizeof(int) * h_batchSize);
+	result->d_projectedSignalMatrix = CudaUtility_BatchAllocateDeviceArrays(h_batchSize, projectedSignalMatrixByteSize);
 
 
 
@@ -117,7 +115,7 @@ RFIMMemoryStruct* RFIMMemoryStructCreate(uint32_t h_valuesPerSample, uint32_t h_
 	result->h_SDevicePointers = (float**)malloc(pointersArrayByteSize);
 	result->h_VTDevicePointers = (float**)malloc(pointersArrayByteSize);
 	result->h_eigWorkingSpaceDevicePointers = (float**)malloc(pointersArrayByteSize);
-	//result->h_devInfoDevicePointers = (int**)malloc(pointersArrayByteSize);
+
 
 	//Copy the pointers to device memory over to the host memory
 	cudaMemcpy(result->h_covarianceMatrixDevicePointers, result->d_covarianceMatrix, pointersArrayByteSize, cudaMemcpyDeviceToHost);
@@ -125,13 +123,8 @@ RFIMMemoryStruct* RFIMMemoryStructCreate(uint32_t h_valuesPerSample, uint32_t h_
 	cudaMemcpy(result->h_SDevicePointers, result->d_S, pointersArrayByteSize, cudaMemcpyDeviceToHost);
 	cudaMemcpy(result->h_VTDevicePointers, result->d_VT, pointersArrayByteSize, cudaMemcpyDeviceToHost);
 	cudaMemcpy(result->h_eigWorkingSpaceDevicePointers, result->d_eigWorkingSpace, pointersArrayByteSize, cudaMemcpyDeviceToHost);
-	//cudaMemcpy(result->h_devInfoDevicePointers, result->d_devInfo, pointersArrayByteSize, cudaMemcpyDeviceToHost);
-
-	//Allocate space for the h_devInfoValues
-	//result->h_devInfoValues = (int*)malloc(sizeof(int) * h_batchSize);
 
 
-	//printf("2\n");
 
 
 	//Free memory
@@ -139,7 +132,6 @@ RFIMMemoryStruct* RFIMMemoryStructCreate(uint32_t h_valuesPerSample, uint32_t h_
 	free(h_oneVec);
 	free(h_oneVecPointerArray);
 
-	//printf("3\n");
 
 	return result;
 }
@@ -163,6 +155,7 @@ void RFIMMemoryStructDestroy(RFIMMemoryStruct* RFIMStruct)
 	CudaUtility_BatchDeallocateDeviceArrays(RFIMStruct->d_VT, RFIMStruct->h_batchSize);
 	CudaUtility_BatchDeallocateDeviceArrays(RFIMStruct->d_eigWorkingSpace, RFIMStruct->h_batchSize);
 	cudaFree(RFIMStruct->d_devInfo);
+	CudaUtility_BatchDeallocateDeviceArrays(RFIMStruct->d_projectedSignalMatrix, RFIMStruct->h_batchSize);
 
 	//Free the host pointers to device memory
 	free(RFIMStruct->h_covarianceMatrixDevicePointers);
