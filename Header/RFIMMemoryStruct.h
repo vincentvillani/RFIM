@@ -49,9 +49,9 @@ typedef struct RFIMMemoryStruct
 
 	int h_eigWorkingSpaceLength;
 
-	int** d_devInfo;
-	int** h_devInfoDevicePointers; //Space to copy the d_devInfo devicePointers into
-	//int* h_devInfoValues;
+	int* d_devInfo;
+	//int** h_devInfoDevicePointers; //Space to copy the d_devInfo devicePointers into
+	int* h_devInfoValues;
 
 	uint32_t h_eigenVectorDimensionsToReduce;
 

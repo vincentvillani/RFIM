@@ -192,7 +192,7 @@ void Device_EigenvalueSolver(RFIMMemoryStruct* RFIMStruct)
 				RFIMStruct->h_covarianceMatrixDevicePointers[i], RFIMStruct->h_valuesPerSample,
 				RFIMStruct->h_SDevicePointers[i],  RFIMStruct->h_UDevicePointers[i], RFIMStruct->h_valuesPerSample,
 				RFIMStruct->h_VTDevicePointers[i], RFIMStruct->h_valuesPerSample,
-				RFIMStruct->h_eigWorkingSpaceDevicePointers[i], RFIMStruct->h_eigWorkingSpaceLength, NULL, RFIMStruct->h_devInfoDevicePointers[i]);
+				RFIMStruct->h_eigWorkingSpaceDevicePointers[i], RFIMStruct->h_eigWorkingSpaceLength, NULL, RFIMStruct->d_devInfo + i);
 
 
 		//Check for errors
@@ -218,17 +218,15 @@ void Device_EigenvalueSolver(RFIMMemoryStruct* RFIMStruct)
 
 
 
-	//Check all dev info's
-	int currentDevInfo = -1;
+	//Check all dev info's, copy them all at once
+	cudaMemcpy(RFIMStruct->h_devInfoValues, RFIMStruct->d_devInfo, sizeof(int) * RFIMStruct->h_batchSize, cudaMemcpyDeviceToHost);
+
 
 	for(uint32_t i = 0; i < RFIMStruct->h_batchSize; ++i)
 	{
-		//Copy the value over
-		cudaMemcpy(&currentDevInfo, RFIMStruct->h_devInfoDevicePointers[i], sizeof(int), cudaMemcpyDeviceToHost);
-
-		if(currentDevInfo != 0)
+		if(RFIMStruct->h_devInfoValues[i] != 0)
 		{
-			fprintf(stderr, "Device_EigenvalueSolver: Error with the %dth parameter\n", currentDevInfo);
+			fprintf(stderr, "Device_EigenvalueSolver: Error with the %dth parameter on the %dth batch\n", RFIMStruct->h_devInfoValues[i], i);
 			//exit(1);
 		}
 	}
