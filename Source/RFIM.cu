@@ -38,8 +38,7 @@ void RFIMRoutine(RFIMMemoryStruct* RFIMStruct, float** d_columnMajorSignalMatric
 	Device_EigenReductionAndFiltering(RFIMStruct, d_columnMajorSignalMatrices, d_columnMajorFilteredSignalMatrices);
 
 
-	//TODO: REMOVE THIS WHEN ADDING STREAM SUPPORT
 	//Make sure all computation is done before continuing
-	cudaStreamSynchronize(0);
+	cudaStreamSynchronize(RFIMStruct->cudaStream);
 }
 

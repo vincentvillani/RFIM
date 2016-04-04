@@ -39,11 +39,13 @@ float** Device_GenerateWhiteNoiseSignal(curandGenerator_t* rngGen, uint64_t h_va
 	uint64_t totalSignalByteSize = totalSignalLength * sizeof(float);
 
 	float** d_signalMatrices = CudaUtility_BatchAllocateDeviceArrays(h_batchSize, totalSignalByteSize, cudaStream);
-	float** h_signalMatricesDevicePointers = (float**)malloc(sizeof(float*) * h_batchSize);
+	float** h_signalMatricesDevicePointers; //= (float**)malloc(sizeof(float*) * h_batchSize);
+	cudaMallocHost(&h_signalMatricesDevicePointers, sizeof(float*) * h_batchSize);
 
 	//Copy the device pointers onto the host
-	cudaMemcpy(h_signalMatricesDevicePointers, d_signalMatrices, sizeof(float*) * h_batchSize, cudaMemcpyDeviceToHost);
+	cudaMemcpyAsync(h_signalMatricesDevicePointers, d_signalMatrices, sizeof(float*) * h_batchSize, cudaMemcpyDeviceToHost, *cudaStream);
 
+	cudaStreamSynchronize(*cudaStream);
 
 	for(uint64_t i = 0; i < h_batchSize; ++i)
 	{
@@ -64,7 +66,7 @@ float** Device_GenerateWhiteNoiseSignal(curandGenerator_t* rngGen, uint64_t h_va
 
 
 	//Free memory
-	free(h_signalMatricesDevicePointers);
+	cudaFreeHost(h_signalMatricesDevicePointers);
 
 	//Return the generated signal that resides in DEVICE memory
 	return d_signalMatrices;
@@ -299,8 +301,8 @@ void Device_EigenReductionAndFiltering(RFIMMemoryStruct* RFIMStruct, float** d_o
 	}
 
 
-	//TODO: ************************** REMOVE THIS WHEN ADDING STREAM SUPPORT LATER **************************
-	cudaStreamSynchronize(0); //The default stream
+	//Wait for the memsets to complete
+	cudaStreamSynchronize(RFIMStruct->cudaStream);
 
 
 
