@@ -19,7 +19,7 @@ typedef struct RFIMMemoryStruct
 	uint64_t h_valuesPerSample;
 	uint64_t h_numberOfSamples;
 	uint64_t h_batchSize;
-
+	uint32_t h_threadId;
 
 
 
@@ -60,12 +60,13 @@ typedef struct RFIMMemoryStruct
 	//Library handles
 	cublasHandle_t* cublasHandle;
 	cusolverDnHandle_t* cusolverHandle;
+	cudaStream_t cudaStream;
 
 
 }RFIMMemoryStruct;
 
 
-RFIMMemoryStruct* RFIMMemoryStructCreate(uint64_t h_valuesPerSample, uint64_t h_numberOfSamples, uint64_t h_dimensionToReduce, uint64_t h_batchSize);
+RFIMMemoryStruct* RFIMMemoryStructCreate(uint64_t h_valuesPerSample, uint64_t h_numberOfSamples, uint64_t h_dimensionToReduce, uint64_t h_batchSize, uint32_t threadId);
 void RFIMMemoryStructDestroy(RFIMMemoryStruct* RFIMStruct);
 
 

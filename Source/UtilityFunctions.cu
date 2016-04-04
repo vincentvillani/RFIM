@@ -48,12 +48,13 @@ void Utility_WriteSignalMatrixToFile(const std::string filename, float* h_rowMaj
 
 void Utility_DeviceWriteSignalMatrixToFile(const std::string filename, float* d_rowMajorSignalMatrix, uint64_t rows, uint64_t columns, bool transpose)
 {
+	/*
 	uint32_t matrixByteSize = sizeof(float) * rows * columns;
 
 	//Copy the matrix to the device
 	float* h_rowMajorSignalMatrix = (float*)malloc(matrixByteSize);
 	float* d_transposedMatrix = d_rowMajorSignalMatrix;
-
+	*/
 	/*
 	cublasHandle_t cublasHandle;
 
@@ -67,13 +68,14 @@ void Utility_DeviceWriteSignalMatrixToFile(const std::string filename, float* d_
 		Device_MatrixTranspose(&cublasHandle, d_rowMajorSignalMatrix, d_transposedMatrix, rows, columns);
 	}
 	*/
-
+	/*
 	CudaUtility_CopySignalToHost(d_transposedMatrix, &h_rowMajorSignalMatrix, sizeof(float) * rows * columns);
 
 	//Call the host version of this function
 	Utility_WriteSignalMatrixToFile(filename, h_rowMajorSignalMatrix, rows, columns);
 
 	free(h_rowMajorSignalMatrix);
+	*/
 
 	/*
 	if(transpose)

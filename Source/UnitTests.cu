@@ -46,7 +46,7 @@ void MeanCublasProduction()
 	uint32_t sampleNum = 2;
 	uint32_t batchSize = 5;
 
-	RFIMMemoryStruct* RFIMStruct = RFIMMemoryStructCreate(valuesPerSample, sampleNum, 0, batchSize);
+	RFIMMemoryStruct* RFIMStruct = RFIMMemoryStructCreate(valuesPerSample, sampleNum, 0, batchSize, 0);
 
 	uint64_t signalPointersArrayByteSize = sizeof(float*) * batchSize;
 	uint64_t signalByteSize = sizeof(float) * valuesPerSample * sampleNum;
@@ -67,8 +67,8 @@ void MeanCublasProduction()
 	}
 
 	//Allocate memory on the device and copy data over
-	float** d_signalPointersArray = CudaUtility_BatchAllocateDeviceArrays(batchSize, signalByteSize);
-	CudaUtility_BatchCopyArraysHostToDevice(d_signalPointersArray, h_signalPointersArray, batchSize, signalByteSize);
+	float** d_signalPointersArray = CudaUtility_BatchAllocateDeviceArrays(batchSize, signalByteSize, &(RFIMStruct->cudaStream));
+	CudaUtility_BatchCopyArraysHostToDevice(d_signalPointersArray, h_signalPointersArray, batchSize, signalByteSize,  &(RFIMStruct->cudaStream));
 
 
 	//Calculate the mean matrix
@@ -78,7 +78,7 @@ void MeanCublasProduction()
 	//Copy data back to the host
 	uint64_t meanMatrixByteSize = sizeof(float) * valuesPerSample * valuesPerSample;
 	float** h_meanMatrices = CudaUtility_BatchAllocateHostArrays(batchSize, meanMatrixByteSize);
-	CudaUtility_BatchCopyArraysDeviceToHost(RFIMStruct->d_covarianceMatrix, h_meanMatrices, batchSize, meanMatrixByteSize);
+	CudaUtility_BatchCopyArraysDeviceToHost(RFIMStruct->d_covarianceMatrix, h_meanMatrices, batchSize, meanMatrixByteSize,  &(RFIMStruct->cudaStream));
 
 
 	float correctAnswerArray[9];
@@ -114,7 +114,7 @@ void MeanCublasProduction()
 	//Free all memory
 	free(h_signalPointersArray); //Free the pointers
 	free(h_signal); //Free the actual data
-	CudaUtility_BatchDeallocateDeviceArrays(d_signalPointersArray, batchSize);
+	CudaUtility_BatchDeallocateDeviceArrays(d_signalPointersArray, batchSize,  &(RFIMStruct->cudaStream));
 	CudaUtility_BatchDeallocateHostArrays(h_meanMatrices, batchSize);
 
 	RFIMMemoryStructDestroy(RFIMStruct);
@@ -129,7 +129,7 @@ void CovarianceCublasProduction()
 	uint64_t sampleNum = 2;
 	uint32_t batchSize = 5;
 
-	RFIMMemoryStruct* RFIMStruct = RFIMMemoryStructCreate(valuesPerSample, sampleNum, 0, batchSize);
+	RFIMMemoryStruct* RFIMStruct = RFIMMemoryStructCreate(valuesPerSample, sampleNum, 0, batchSize, 0);
 
 	uint64_t signalPointersArrayByteSize = sizeof(float*) * batchSize;
 	uint64_t signalByteSize = sizeof(float) * valuesPerSample * sampleNum;
@@ -151,8 +151,8 @@ void CovarianceCublasProduction()
 	}
 
 	//Allocate memory on the device and copy data over
-	float** d_signalPointersArray = CudaUtility_BatchAllocateDeviceArrays(batchSize, signalByteSize);
-	CudaUtility_BatchCopyArraysHostToDevice(d_signalPointersArray, h_signalPointersArray, batchSize, signalByteSize);
+	float** d_signalPointersArray = CudaUtility_BatchAllocateDeviceArrays(batchSize, signalByteSize,  &(RFIMStruct->cudaStream));
+	CudaUtility_BatchCopyArraysHostToDevice(d_signalPointersArray, h_signalPointersArray, batchSize, signalByteSize,  &(RFIMStruct->cudaStream));
 
 
 	//Calculate the covariance matrix
@@ -162,7 +162,7 @@ void CovarianceCublasProduction()
 	//Copy data back to the host
 	uint64_t covarianceMatrixByteSize = sizeof(float) * valuesPerSample * valuesPerSample;
 	float** h_covarianceMatrices = CudaUtility_BatchAllocateHostArrays(batchSize, covarianceMatrixByteSize);
-	CudaUtility_BatchCopyArraysDeviceToHost(RFIMStruct->d_covarianceMatrix, h_covarianceMatrices, batchSize, covarianceMatrixByteSize);
+	CudaUtility_BatchCopyArraysDeviceToHost(RFIMStruct->d_covarianceMatrix, h_covarianceMatrices, batchSize, covarianceMatrixByteSize,  &(RFIMStruct->cudaStream));
 
 	float correctAnswerArray[9];
 	correctAnswerArray[0] = 2.25f;
@@ -196,7 +196,7 @@ void CovarianceCublasProduction()
 	//Free all memory
 	free(h_signalPointersArray); //Free the pointers
 	free(h_signal); //Free the actual data
-	CudaUtility_BatchDeallocateDeviceArrays(d_signalPointersArray, batchSize);
+	CudaUtility_BatchDeallocateDeviceArrays(d_signalPointersArray, batchSize,  &(RFIMStruct->cudaStream));
 	CudaUtility_BatchDeallocateHostArrays(h_covarianceMatrices, batchSize);
 
 	RFIMMemoryStructDestroy(RFIMStruct);
@@ -214,7 +214,7 @@ void EigendecompProduction()
 	int signalPointersArrayByteSize = sizeof(float*) * batchSize;
 
 
-	RFIMMemoryStruct* RFIMStruct = RFIMMemoryStructCreate(valuesPerSample, valuesPerSample, 2, batchSize);
+	RFIMMemoryStruct* RFIMStruct = RFIMMemoryStructCreate(valuesPerSample, valuesPerSample, 2, batchSize, 0);
 
 
 	//Create small full covariance matrix
@@ -233,7 +233,7 @@ void EigendecompProduction()
 	}
 
 	//Copy these covariance matrices to the device
-	CudaUtility_BatchCopyArraysHostToDevice(RFIMStruct->d_covarianceMatrix, h_fullSymmCovarianceMatrixPointersArray, batchSize, covarianceMatrixByteSize);
+	CudaUtility_BatchCopyArraysHostToDevice(RFIMStruct->d_covarianceMatrix, h_fullSymmCovarianceMatrixPointersArray, batchSize, covarianceMatrixByteSize,  &(RFIMStruct->cudaStream));
 
 	Device_EigenvalueSolver(RFIMStruct);
 
@@ -241,8 +241,8 @@ void EigendecompProduction()
 	float** h_SData = CudaUtility_BatchAllocateHostArrays(batchSize, sizeof(float) * valuesPerSample);
 	float** h_UData = CudaUtility_BatchAllocateHostArrays(batchSize, sizeof(float) * valuesPerSample * valuesPerSample);
 
-	CudaUtility_BatchCopyArraysDeviceToHost(RFIMStruct->d_S, h_SData, batchSize,  sizeof(float) * valuesPerSample);
-	CudaUtility_BatchCopyArraysDeviceToHost(RFIMStruct->d_U, h_UData, batchSize,  sizeof(float) * valuesPerSample * valuesPerSample);
+	CudaUtility_BatchCopyArraysDeviceToHost(RFIMStruct->d_S, h_SData, batchSize,  sizeof(float) * valuesPerSample,  &(RFIMStruct->cudaStream));
+	CudaUtility_BatchCopyArraysDeviceToHost(RFIMStruct->d_U, h_UData, batchSize,  sizeof(float) * valuesPerSample * valuesPerSample,  &(RFIMStruct->cudaStream));
 
 
 	float eigenvalueExpectedResults[2];
@@ -315,7 +315,7 @@ void FilteringProduction()
 
 
 	//REDUCE NOTHING! This should give us back the same signal
-	RFIMMemoryStruct* RFIM = RFIMMemoryStructCreate(valuesPerSample, valuesPerSample, 0, batchSize);
+	RFIMMemoryStruct* RFIM = RFIMMemoryStructCreate(valuesPerSample, valuesPerSample, 0, batchSize, 0);
 
 
 	//Create small full covariance matrix
@@ -335,8 +335,8 @@ void FilteringProduction()
 
 
 	//Copy signal to the device
-	float** d_signalPointers = CudaUtility_BatchAllocateDeviceArrays(batchSize, signalByteSize);
-	CudaUtility_BatchCopyArraysHostToDevice(d_signalPointers, h_signalPointers, batchSize, signalByteSize);
+	float** d_signalPointers = CudaUtility_BatchAllocateDeviceArrays(batchSize, signalByteSize,  &(RFIM->cudaStream));
+	CudaUtility_BatchCopyArraysHostToDevice(d_signalPointers, h_signalPointers, batchSize, signalByteSize,  &(RFIM->cudaStream));
 
 
 
@@ -347,7 +347,7 @@ void FilteringProduction()
 	Device_EigenvalueSolver(RFIM);
 
 	//Setup the signal output
-	float** d_filteredSignals = CudaUtility_BatchAllocateDeviceArrays(batchSize, signalByteSize);
+	float** d_filteredSignals = CudaUtility_BatchAllocateDeviceArrays(batchSize, signalByteSize,  &(RFIM->cudaStream));
 
 
 
@@ -357,7 +357,7 @@ void FilteringProduction()
 
 	//Copy the signal back to the host
 	float** h_filteredSignals = CudaUtility_BatchAllocateHostArrays(batchSize, signalByteSize);
-	CudaUtility_BatchCopyArraysDeviceToHost(d_filteredSignals, h_filteredSignals, batchSize, signalByteSize);
+	CudaUtility_BatchCopyArraysDeviceToHost(d_filteredSignals, h_filteredSignals, batchSize, signalByteSize,  &(RFIM->cudaStream));
 
 	bool failed = false;
 
@@ -390,8 +390,8 @@ void FilteringProduction()
 	free(h_signal);
 	free(h_signalPointers);
 
-	CudaUtility_BatchDeallocateDeviceArrays(d_signalPointers, batchSize);
-	CudaUtility_BatchDeallocateDeviceArrays(d_filteredSignals, batchSize);
+	CudaUtility_BatchDeallocateDeviceArrays(d_signalPointers, batchSize,  &(RFIM->cudaStream));
+	CudaUtility_BatchDeallocateDeviceArrays(d_filteredSignals, batchSize,  &(RFIM->cudaStream));
 	CudaUtility_BatchDeallocateHostArrays(h_filteredSignals, batchSize);
 
 	RFIMMemoryStructDestroy(RFIM);

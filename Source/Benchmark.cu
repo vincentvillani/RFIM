@@ -50,18 +50,22 @@ void Benchmark()
 		h_numberOfSamples = 1 << i;
 
 		//For each batchSize
-		for(uint64_t j = 5; j < 7; ++j)
+		for(uint64_t j = 0; j < 7; ++j)
 		{
 
 			h_batchSize = 1 << j;
 
 
-			//1. Generate signal and allocate room for the filtered signal
-			float** d_signalMatrices = Device_GenerateWhiteNoiseSignal(&rngGen, h_valuesPerSample, h_numberOfSamples, h_batchSize);
-			float** d_filteredSignalMatrices = CudaUtility_BatchAllocateDeviceArrays(h_batchSize, sizeof(float) * h_valuesPerSample * h_numberOfSamples);
 
-			//2. Create the RFIMStruct
-			RFIMMemoryStruct* RFIMStruct = RFIMMemoryStructCreate(h_valuesPerSample, h_numberOfSamples, 2, h_batchSize);
+			//1. Create the RFIMStruct
+			//TODO: SET THE THREAD ID PROPERLY
+			RFIMMemoryStruct* RFIMStruct = RFIMMemoryStructCreate(h_valuesPerSample, h_numberOfSamples, 2, h_batchSize, 0);
+
+			//2. Generate signal and allocate room for the filtered signal
+			float** d_signalMatrices = Device_GenerateWhiteNoiseSignal(&rngGen, h_valuesPerSample, h_numberOfSamples, h_batchSize, &RFIMStruct->cudaStream);
+			float** d_filteredSignalMatrices = CudaUtility_BatchAllocateDeviceArrays(h_batchSize, sizeof(float) * h_valuesPerSample * h_numberOfSamples, &RFIMStruct->cudaStream);
+
+
 
 			//3. Run the benchmark
 			double startTime = cpuSecond();
@@ -92,8 +96,8 @@ void Benchmark()
 
 
 			//4. Free everything
-			CudaUtility_BatchDeallocateDeviceArrays(d_signalMatrices, h_batchSize);
-			CudaUtility_BatchDeallocateDeviceArrays(d_filteredSignalMatrices, h_batchSize);
+			CudaUtility_BatchDeallocateDeviceArrays(d_signalMatrices, h_batchSize, &RFIMStruct->cudaStream);
+			CudaUtility_BatchDeallocateDeviceArrays(d_filteredSignalMatrices, h_batchSize, &RFIMStruct->cudaStream);
 			RFIMMemoryStructDestroy(RFIMStruct);
 
 		}

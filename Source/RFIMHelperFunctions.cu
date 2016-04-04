@@ -32,13 +32,13 @@
 //--------------------------
 
 
-float** Device_GenerateWhiteNoiseSignal(curandGenerator_t* rngGen, uint64_t h_valuesPerSample, uint64_t h_numberOfSamples, uint64_t h_batchSize)
+float** Device_GenerateWhiteNoiseSignal(curandGenerator_t* rngGen, uint64_t h_valuesPerSample, uint64_t h_numberOfSamples, uint64_t h_batchSize, cudaStream_t* cudaStream)
 {
 
 	uint64_t totalSignalLength = h_valuesPerSample * h_numberOfSamples;
 	uint64_t totalSignalByteSize = totalSignalLength * sizeof(float);
 
-	float** d_signalMatrices = CudaUtility_BatchAllocateDeviceArrays(h_batchSize, totalSignalByteSize);
+	float** d_signalMatrices = CudaUtility_BatchAllocateDeviceArrays(h_batchSize, totalSignalByteSize, cudaStream);
 	float** h_signalMatricesDevicePointers = (float**)malloc(sizeof(float*) * h_batchSize);
 
 	//Copy the device pointers onto the host

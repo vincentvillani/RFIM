@@ -6,19 +6,30 @@
 #include <stdio.h>
 
 
-RFIMMemoryStruct* RFIMMemoryStructCreate(uint64_t h_valuesPerSample, uint64_t h_numberOfSamples, uint64_t h_dimensionToReduce, uint64_t h_batchSize)
+RFIMMemoryStruct* RFIMMemoryStructCreate(uint64_t h_valuesPerSample, uint64_t h_numberOfSamples, uint64_t h_dimensionToReduce,
+		uint64_t h_batchSize, uint32_t threadIndex)
 {
-	RFIMMemoryStruct* result = (RFIMMemoryStruct*)malloc(sizeof(RFIMMemoryStruct));
 
-	result->cublasHandle = (cublasHandle_t*)malloc(sizeof(cublasHandle_t));
-	result->cusolverHandle = (cusolverDnHandle_t*)malloc(sizeof(cusolverDnHandle_t));
+	RFIMMemoryStruct* result;
+	cudaMallocHost(&result, sizeof(RFIMMemoryStruct));
+
+	cudaMallocHost(&(result->cublasHandle), sizeof(cublasHandle_t));
+
+	cudaMallocHost(&(result->cusolverHandle), sizeof(cusolverDnHandle_t));
 
 	cublasStatus_t cublasStatus;
 	cusolverStatus_t cusolverStatus;
 
+	//Start up the cudaStream
+	cudaStreamCreateWithFlags(&result->cudaStream, cudaStreamNonBlocking);
+
 	//Create the contexts for each library
 	cublasStatus = cublasCreate_v2( result->cublasHandle );
 	cusolverStatus = cusolverDnCreate( result->cusolverHandle );
+
+	//Have the library handles execute on this newly created stream
+	cublasSetStream_v2(*result->cublasHandle, result->cudaStream);
+	cusolverDnSetStream(*result->cusolverHandle, result->cudaStream);
 
 	//Check the contexts started up ok
 	if(cublasStatus != CUBLAS_STATUS_SUCCESS)
@@ -39,14 +50,19 @@ RFIMMemoryStruct* RFIMMemoryStructCreate(uint64_t h_valuesPerSample, uint64_t h_
 	result->h_numberOfSamples = h_numberOfSamples;
 	result->h_eigenVectorDimensionsToReduce = h_dimensionToReduce;
 	result->h_batchSize = h_batchSize;
+	result->h_threadId = threadIndex;
 
 
 
 	//Setup the one vec
 	//------------------------
 	uint64_t oneVecByteSize = sizeof(float) * h_numberOfSamples;
-	float* h_oneVec = (float*)malloc(oneVecByteSize);
-	float** h_oneVecPointerArray = (float**)malloc(sizeof(float*) * h_batchSize);
+
+	float* h_oneVec;
+	cudaMallocHost(&h_oneVec, oneVecByteSize);
+
+	float** h_oneVecPointerArray;
+	cudaMallocHost(&h_oneVecPointerArray, sizeof(float*) * h_batchSize);
 
 
 	//Fill the one vec with ones
@@ -61,13 +77,6 @@ RFIMMemoryStruct* RFIMMemoryStructCreate(uint64_t h_valuesPerSample, uint64_t h_
 	{
 		h_oneVecPointerArray[i] = h_oneVec;
 	}
-
-
-
-	//Allocate one array on the device, everything in the pointer array will point to this
-	//float* d_oneVec;
-	//cudaMalloc(&d_oneVec, oneVecByteSize);
-	//cudaMemcpy(d_oneVec, h_oneVec, oneVecByteSize, cudaMemcpyHostToDevice);
 
 
 
@@ -91,48 +100,51 @@ RFIMMemoryStruct* RFIMMemoryStructCreate(uint64_t h_valuesPerSample, uint64_t h_
 
 
 	//Allocate 2D pointers on the device
-	result->d_oneVec = CudaUtility_BatchAllocateDeviceArrays(h_batchSize, oneVecByteSize);
-	CudaUtility_BatchCopyArraysHostToDevice(result->d_oneVec, h_oneVecPointerArray, h_batchSize, oneVecByteSize); //Copy the oneVec data to the 2D array
+	result->d_oneVec = CudaUtility_BatchAllocateDeviceArrays(h_batchSize, oneVecByteSize, &(result->cudaStream));
+	CudaUtility_BatchCopyArraysHostToDevice(result->d_oneVec, h_oneVecPointerArray, h_batchSize, oneVecByteSize, &(result->cudaStream)); //Copy the oneVec data to the 2D array
 
-	result->d_meanVec = CudaUtility_BatchAllocateDeviceArrays(h_batchSize, meanVecByteSize);
+	result->d_meanVec = CudaUtility_BatchAllocateDeviceArrays(h_batchSize, meanVecByteSize, &(result->cudaStream));
 
-	result->d_covarianceMatrix = CudaUtility_BatchAllocateDeviceArrays(h_batchSize, covarianceMatrixByteSize);
-	result->d_U = CudaUtility_BatchAllocateDeviceArrays(h_batchSize, UByteSize);
-	result->d_S = CudaUtility_BatchAllocateDeviceArrays(h_batchSize, SByteSize);
-	result->d_VT = CudaUtility_BatchAllocateDeviceArrays(h_batchSize, VTByteSize);
-	result->d_eigWorkingSpace = CudaUtility_BatchAllocateDeviceArrays(h_batchSize, result->h_eigWorkingSpaceLength);
+	result->d_covarianceMatrix = CudaUtility_BatchAllocateDeviceArrays(h_batchSize, covarianceMatrixByteSize, &(result->cudaStream));
+	result->d_U = CudaUtility_BatchAllocateDeviceArrays(h_batchSize, UByteSize, &(result->cudaStream));
+	result->d_S = CudaUtility_BatchAllocateDeviceArrays(h_batchSize, SByteSize, &(result->cudaStream));
+	result->d_VT = CudaUtility_BatchAllocateDeviceArrays(h_batchSize, VTByteSize, &(result->cudaStream));
+	result->d_eigWorkingSpace = CudaUtility_BatchAllocateDeviceArrays(h_batchSize, result->h_eigWorkingSpaceLength, &(result->cudaStream));
 	cudaMalloc(&(result->d_devInfo), sizeof(int) * h_batchSize);
-	result->h_devInfoValues = (int*)malloc(sizeof(int) * h_batchSize);
-	result->d_projectedSignalMatrix = CudaUtility_BatchAllocateDeviceArrays(h_batchSize, projectedSignalMatrixByteSize);
+	//result->h_devInfoValues = (int*)malloc(sizeof(int) * h_batchSize);
+	cudaMallocHost(&(result->h_devInfoValues), sizeof(int) * h_batchSize);
+	result->d_projectedSignalMatrix = CudaUtility_BatchAllocateDeviceArrays(h_batchSize, projectedSignalMatrixByteSize, &(result->cudaStream));
 
 
 
 	//Allocate space for the pointers to device memory, this is used to speed up the eigenvector solver part of the RFIM
 	uint64_t pointersArrayByteSize = sizeof(float*) * h_batchSize;
 
-	result->h_covarianceMatrixDevicePointers = (float**)malloc(pointersArrayByteSize);
-	result->h_UDevicePointers = (float**)malloc(pointersArrayByteSize);
-	//result->h_UDeviceOffsetPointers = (float**)malloc(pointersArrayByteSize);
-	result->h_SDevicePointers = (float**)malloc(pointersArrayByteSize);
-	result->h_VTDevicePointers = (float**)malloc(pointersArrayByteSize);
-	result->h_eigWorkingSpaceDevicePointers = (float**)malloc(pointersArrayByteSize);
+	cudaMallocHost(&(result->h_covarianceMatrixDevicePointers), pointersArrayByteSize);
+	cudaMallocHost(&(result->h_UDevicePointers), pointersArrayByteSize); //Allocate pinned memory for use with async memcpy
+	cudaMallocHost(&(result->h_SDevicePointers), pointersArrayByteSize);
+	cudaMallocHost(&(result->h_VTDevicePointers), pointersArrayByteSize);
+	cudaMallocHost(&(result->h_eigWorkingSpaceDevicePointers), pointersArrayByteSize);
 
 
 	//Copy the pointers to device memory over to the host memory
-	cudaMemcpy(result->h_covarianceMatrixDevicePointers, result->d_covarianceMatrix, pointersArrayByteSize, cudaMemcpyDeviceToHost);
-	cudaMemcpy(result->h_UDevicePointers, result->d_U, pointersArrayByteSize, cudaMemcpyDeviceToHost);
-	cudaMemcpy(result->h_SDevicePointers, result->d_S, pointersArrayByteSize, cudaMemcpyDeviceToHost);
-	cudaMemcpy(result->h_VTDevicePointers, result->d_VT, pointersArrayByteSize, cudaMemcpyDeviceToHost);
-	cudaMemcpy(result->h_eigWorkingSpaceDevicePointers, result->d_eigWorkingSpace, pointersArrayByteSize, cudaMemcpyDeviceToHost);
+	cudaMemcpyAsync(result->h_covarianceMatrixDevicePointers, result->d_covarianceMatrix, pointersArrayByteSize, cudaMemcpyDeviceToHost, result->cudaStream);
+	cudaMemcpyAsync(result->h_UDevicePointers, result->d_U, pointersArrayByteSize, cudaMemcpyDeviceToHost, result->cudaStream);
+	cudaMemcpyAsync(result->h_SDevicePointers, result->d_S, pointersArrayByteSize, cudaMemcpyDeviceToHost, result->cudaStream);
+	cudaMemcpyAsync(result->h_VTDevicePointers, result->d_VT, pointersArrayByteSize, cudaMemcpyDeviceToHost, result->cudaStream);
+	cudaMemcpyAsync(result->h_eigWorkingSpaceDevicePointers, result->d_eigWorkingSpace, pointersArrayByteSize, cudaMemcpyDeviceToHost, result->cudaStream);
 
 
-
+	//Wait for all memcopies, memsets etc to occur
+	cudaStreamSynchronize(result->cudaStream);
 
 	//Free memory
 	//-----------------------------
-	free(h_oneVec);
-	free(h_oneVecPointerArray);
+	cudaFreeHost(h_oneVec);
+	cudaFreeHost(h_oneVecPointerArray);
 
+
+	//Check for errors
 	cudaError_t cudaError = cudaGetLastError();
 
 	if(cudaError != cudaSuccess)
@@ -149,34 +161,38 @@ RFIMMemoryStruct* RFIMMemoryStructCreate(uint64_t h_valuesPerSample, uint64_t h_
 
 void RFIMMemoryStructDestroy(RFIMMemoryStruct* RFIMStruct)
 {
+
+
+	CudaUtility_BatchDeallocateDeviceArrays(RFIMStruct->d_oneVec, RFIMStruct->h_batchSize, &(RFIMStruct->cudaStream));
+	CudaUtility_BatchDeallocateDeviceArrays(RFIMStruct->d_meanVec, RFIMStruct->h_batchSize, &(RFIMStruct->cudaStream));
+	CudaUtility_BatchDeallocateDeviceArrays(RFIMStruct->d_covarianceMatrix, RFIMStruct->h_batchSize, &(RFIMStruct->cudaStream));
+	CudaUtility_BatchDeallocateDeviceArrays(RFIMStruct->d_U, RFIMStruct->h_batchSize, &(RFIMStruct->cudaStream));
+	CudaUtility_BatchDeallocateDeviceArrays(RFIMStruct->d_S, RFIMStruct->h_batchSize, &(RFIMStruct->cudaStream));
+	CudaUtility_BatchDeallocateDeviceArrays(RFIMStruct->d_VT, RFIMStruct->h_batchSize, &(RFIMStruct->cudaStream));
+	CudaUtility_BatchDeallocateDeviceArrays(RFIMStruct->d_eigWorkingSpace, RFIMStruct->h_batchSize, &(RFIMStruct->cudaStream));
+	cudaFree(RFIMStruct->d_devInfo);
+	CudaUtility_BatchDeallocateDeviceArrays(RFIMStruct->d_projectedSignalMatrix, RFIMStruct->h_batchSize, &(RFIMStruct->cudaStream));
+
+	//Free the host pointers to device memory
+	cudaFreeHost(RFIMStruct->h_covarianceMatrixDevicePointers);
+	cudaFreeHost(RFIMStruct->h_UDevicePointers);
+	cudaFreeHost(RFIMStruct->h_SDevicePointers);
+	cudaFreeHost(RFIMStruct->h_VTDevicePointers);
+	cudaFreeHost(RFIMStruct->h_eigWorkingSpaceDevicePointers);
+	cudaFreeHost(RFIMStruct->h_devInfoValues);
+
 	//Destroy the cuda library contexts
 	cublasDestroy_v2(*RFIMStruct->cublasHandle);
 	cusolverDnDestroy(*RFIMStruct->cusolverHandle);
 
-	free(RFIMStruct->cublasHandle);
-	free(RFIMStruct->cusolverHandle);
 
-	CudaUtility_BatchDeallocateDeviceArrays(RFIMStruct->d_oneVec, RFIMStruct->h_batchSize);
-	CudaUtility_BatchDeallocateDeviceArrays(RFIMStruct->d_meanVec, RFIMStruct->h_batchSize);
-	CudaUtility_BatchDeallocateDeviceArrays(RFIMStruct->d_covarianceMatrix, RFIMStruct->h_batchSize);
-	CudaUtility_BatchDeallocateDeviceArrays(RFIMStruct->d_U, RFIMStruct->h_batchSize);
-	CudaUtility_BatchDeallocateDeviceArrays(RFIMStruct->d_S, RFIMStruct->h_batchSize);
-	CudaUtility_BatchDeallocateDeviceArrays(RFIMStruct->d_VT, RFIMStruct->h_batchSize);
-	CudaUtility_BatchDeallocateDeviceArrays(RFIMStruct->d_eigWorkingSpace, RFIMStruct->h_batchSize);
-	cudaFree(RFIMStruct->d_devInfo);
-	CudaUtility_BatchDeallocateDeviceArrays(RFIMStruct->d_projectedSignalMatrix, RFIMStruct->h_batchSize);
+	cudaFreeHost(RFIMStruct->cublasHandle);
+	cudaFreeHost(RFIMStruct->cusolverHandle);
 
-	//Free the host pointers to device memory
-	free(RFIMStruct->h_covarianceMatrixDevicePointers);
-	free(RFIMStruct->h_UDevicePointers);
-	//free(RFIMStruct->h_UDeviceOffsetPointers);
-	free(RFIMStruct->h_SDevicePointers);
-	free(RFIMStruct->h_VTDevicePointers);
-	free(RFIMStruct->h_eigWorkingSpaceDevicePointers);
-	free(RFIMStruct->h_devInfoValues);
+	cudaStreamDestroy(RFIMStruct->cudaStream);
 
 	//Deallocate the struct memory on the host
-	free(RFIMStruct);
+	cudaFreeHost(RFIMStruct);
 
 }
 

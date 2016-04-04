@@ -21,6 +21,8 @@
 #include "../Header/RFIM.h"
 #include "../Header/Benchmark.h"
 
+
+//TODO: Remove all malloc and free calls from the program. All host memory should be allocated as paged so it can be copied asyncly
 //TODO: Look into ways of using less memory
 //TODO: Write a unit test to test eigenvector removal gives the correct result
 //TODO: Make sure memory that can be used again, is still in a valid state after the first execution
