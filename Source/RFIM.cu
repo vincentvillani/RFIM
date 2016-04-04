@@ -16,7 +16,6 @@
 void RFIMRoutine(RFIMMemoryStruct* RFIMStruct, float** d_columnMajorSignalMatrices, float** d_columnMajorFilteredSignalMatrices)
 {
 
-
 	//If we reduce everything, we will have nothing left...
 	if(RFIMStruct->h_eigenVectorDimensionsToReduce >= RFIMStruct->h_valuesPerSample)
 	{

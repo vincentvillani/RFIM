@@ -1,9 +1,9 @@
 
 debug:
-	nvcc -o debug.out Source/main.cu Source/Kernels.cu Source/UnitTests.cu Source/RFIM.cu Source/RFIMHelperFunctions.cu Source/CudaUtilityFunctions.cu Source/UtilityFunctions.cu Source/RFIMMemoryStruct.cu Source/Benchmark.cu -lcurand -lcublas -lcusolver -arch=sm_20 -g -G -O0
+	nvcc -o debug.out Source/main.cu Source/Kernels.cu Source/UnitTests.cu Source/RFIM.cu Source/RFIMHelperFunctions.cu Source/CudaUtilityFunctions.cu Source/UtilityFunctions.cu Source/RFIMMemoryStruct.cu Source/Benchmark.cu -lcurand -lcublas -lcusolver -g -G -O0 -std=c++11
 
 release:
-	nvcc -o release.out Source/main.cu Source/Kernels.cu Source/UnitTests.cu Source/RFIM.cu Source/RFIMHelperFunctions.cu Source/CudaUtilityFunctions.cu Source/UtilityFunctions.cu Source/RFIMMemoryStruct.cu Source/Benchmark.cu -lcurand -lcublas -lcusolver -arch=sm_20 -O3
+	nvcc -o release.out Source/main.cu Source/Kernels.cu Source/UnitTests.cu Source/RFIM.cu Source/RFIMHelperFunctions.cu Source/CudaUtilityFunctions.cu Source/UtilityFunctions.cu Source/RFIMMemoryStruct.cu Source/Benchmark.cu -lcurand -lcublas -lcusolver -O3 -std=c++11
 
 
 clean:
