@@ -21,7 +21,7 @@
 #include "../Header/RFIM.h"
 #include "../Header/Benchmark.h"
 
-
+//TODO: Get all unit tests working with streams / async mem copies etc
 //TODO: Remove all malloc and free calls from the program. All host memory should be allocated as paged so it can be copied asyncly
 //TODO: Look into ways of using less memory
 //TODO: Write a unit test to test eigenvector removal gives the correct result
@@ -31,7 +31,7 @@
 int main(int argc, char **argv)
 {
 	//Run all the unit tests
-	//RunAllUnitTests();
+	RunAllUnitTests();
 
 	/*
 	uint32_t h_valuesPerSample = 26;
@@ -46,7 +46,7 @@ int main(int argc, char **argv)
 
 	//1. Run RFIM benchmark
 	//--------------------------
-	Benchmark();
+	//Benchmark();
 
 
 

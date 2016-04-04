@@ -51,8 +51,11 @@ void MeanCublasProduction()
 	uint64_t signalPointersArrayByteSize = sizeof(float*) * batchSize;
 	uint64_t signalByteSize = sizeof(float) * valuesPerSample * sampleNum;
 
-	float** h_signalPointersArray = (float**)malloc(signalPointersArrayByteSize);
-	float* h_signal = (float*)malloc(signalByteSize);
+	float** h_signalPointersArray;
+	cudaMallocHost(&h_signalPointersArray, signalPointersArrayByteSize);
+	// = (float**)malloc(signalPointersArrayByteSize);
+	float* h_signal; // = (float*)malloc(signalByteSize);
+	cudaMallocHost(&h_signal, signalByteSize);
 
 	//Set the host signal
 	for(uint32_t i = 0; i < valuesPerSample * sampleNum; ++i)
@@ -112,8 +115,8 @@ void MeanCublasProduction()
 
 
 	//Free all memory
-	free(h_signalPointersArray); //Free the pointers
-	free(h_signal); //Free the actual data
+	cudaFreeHost(h_signalPointersArray); //Free the pointers
+	cudaFreeHost(h_signal); //Free the actual data
 	CudaUtility_BatchDeallocateDeviceArrays(d_signalPointersArray, batchSize,  &(RFIMStruct->cudaStream));
 	CudaUtility_BatchDeallocateHostArrays(h_meanMatrices, batchSize);
 
@@ -134,8 +137,10 @@ void CovarianceCublasProduction()
 	uint64_t signalPointersArrayByteSize = sizeof(float*) * batchSize;
 	uint64_t signalByteSize = sizeof(float) * valuesPerSample * sampleNum;
 
-	float* h_signal = (float*)malloc(signalByteSize); //Column first signal (3, 2), 3 == valuesPerSample, 2 == sampleNum
-	float** h_signalPointersArray = (float**)malloc(signalPointersArrayByteSize);
+	float* h_signal; //= (float*)malloc(signalByteSize); //Column first signal (3, 2), 3 == valuesPerSample, 2 == sampleNum
+	cudaMallocHost(&h_signal, signalByteSize);
+	float** h_signalPointersArray; // = (float**)malloc(signalPointersArrayByteSize);
+	cudaMallocHost(&h_signalPointersArray, signalPointersArrayByteSize);
 
 
 	//Set the host signal
@@ -194,8 +199,8 @@ void CovarianceCublasProduction()
 	}
 
 	//Free all memory
-	free(h_signalPointersArray); //Free the pointers
-	free(h_signal); //Free the actual data
+	cudaFreeHost(h_signalPointersArray); //Free the pointers
+	cudaFreeHost(h_signal); //Free the actual data
 	CudaUtility_BatchDeallocateDeviceArrays(d_signalPointersArray, batchSize,  &(RFIMStruct->cudaStream));
 	CudaUtility_BatchDeallocateHostArrays(h_covarianceMatrices, batchSize);
 
@@ -218,8 +223,10 @@ void EigendecompProduction()
 
 
 	//Create small full covariance matrix
-	float* h_fullSymmCovarianceMatrix = (float*)malloc( covarianceMatrixByteSize );
-	float** h_fullSymmCovarianceMatrixPointersArray = (float**)malloc(signalPointersArrayByteSize);
+	float* h_fullSymmCovarianceMatrix; // = (float*)malloc( covarianceMatrixByteSize );
+	float** h_fullSymmCovarianceMatrixPointersArray; // = (float**)malloc(signalPointersArrayByteSize);
+	cudaMallocHost(&h_fullSymmCovarianceMatrix, covarianceMatrixByteSize);
+	cudaMallocHost(&h_fullSymmCovarianceMatrixPointersArray, signalPointersArrayByteSize);
 
 	h_fullSymmCovarianceMatrix[0] = 5.0f;
 	h_fullSymmCovarianceMatrix[1] = 2.0f;
@@ -291,8 +298,8 @@ void EigendecompProduction()
 
 
 	//Free memory
-	free(h_fullSymmCovarianceMatrix);
-	free(h_fullSymmCovarianceMatrixPointersArray);
+	cudaFreeHost(h_fullSymmCovarianceMatrix);
+	cudaFreeHost(h_fullSymmCovarianceMatrixPointersArray);
 
 	CudaUtility_BatchDeallocateHostArrays(h_SData, batchSize);
 	CudaUtility_BatchDeallocateHostArrays(h_UData, batchSize);
@@ -319,8 +326,10 @@ void FilteringProduction()
 
 
 	//Create small full covariance matrix
-	float** h_signalPointers = (float**)malloc(sizeof(float*) * batchSize);
-	float* h_signal = (float*)malloc( signalByteSize );
+	float** h_signalPointers; // = (float**)malloc(sizeof(float*) * batchSize);
+	float* h_signal; // = (float*)malloc( signalByteSize );
+	cudaMallocHost(&h_signalPointers, sizeof(float*) * batchSize);
+	cudaMallocHost(&h_signal, signalByteSize);
 
 	h_signal[0] = 1.0f;
 	h_signal[1] = 2.0f;
@@ -387,8 +396,8 @@ void FilteringProduction()
 
 
 	//Free all memory
-	free(h_signal);
-	free(h_signalPointers);
+	cudaFreeHost(h_signal);
+	cudaFreeHost(h_signalPointers);
 
 	CudaUtility_BatchDeallocateDeviceArrays(d_signalPointers, batchSize,  &(RFIM->cudaStream));
 	CudaUtility_BatchDeallocateDeviceArrays(d_filteredSignals, batchSize,  &(RFIM->cudaStream));
