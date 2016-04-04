@@ -6,7 +6,7 @@
 #include <stdio.h>
 
 
-RFIMMemoryStruct* RFIMMemoryStructCreate(uint32_t h_valuesPerSample, uint32_t h_numberOfSamples, uint32_t h_dimensionToReduce, uint32_t h_batchSize)
+RFIMMemoryStruct* RFIMMemoryStructCreate(uint64_t h_valuesPerSample, uint64_t h_numberOfSamples, uint64_t h_dimensionToReduce, uint64_t h_batchSize)
 {
 	RFIMMemoryStruct* result = (RFIMMemoryStruct*)malloc(sizeof(RFIMMemoryStruct));
 
@@ -44,20 +44,20 @@ RFIMMemoryStruct* RFIMMemoryStructCreate(uint32_t h_valuesPerSample, uint32_t h_
 
 	//Setup the one vec
 	//------------------------
-	uint32_t oneVecByteSize = sizeof(float) * h_numberOfSamples;
+	uint64_t oneVecByteSize = sizeof(float) * h_numberOfSamples;
 	float* h_oneVec = (float*)malloc(oneVecByteSize);
 	float** h_oneVecPointerArray = (float**)malloc(sizeof(float*) * h_batchSize);
 
 
 	//Fill the one vec with ones
-	for(uint32_t i = 0; i < h_numberOfSamples; ++i)
+	for(uint64_t i = 0; i < h_numberOfSamples; ++i)
 	{
 		h_oneVec[i] = 1;
 	}
 
 
 	//Set each pointer to point to the same array
-	for(uint32_t i = 0; i < h_batchSize; ++i)
+	for(uint64_t i = 0; i < h_batchSize; ++i)
 	{
 		h_oneVecPointerArray[i] = h_oneVec;
 	}
@@ -86,7 +86,7 @@ RFIMMemoryStruct* RFIMMemoryStructCreate(uint32_t h_valuesPerSample, uint32_t h_
 		fprintf(stderr, "RFIMMemory::RFIMMemory(): Error finding eigenvalue working buffer size\n");
 		exit(1);
 	}
-	uint32_t projectedSignalMatrixByteSize = sizeof(float) * ((h_valuesPerSample - result->h_eigenVectorDimensionsToReduce) * h_numberOfSamples);
+	uint64_t projectedSignalMatrixByteSize = sizeof(float) * h_valuesPerSample * h_numberOfSamples;
 
 
 

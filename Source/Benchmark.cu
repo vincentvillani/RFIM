@@ -19,12 +19,12 @@ double cpuSecond()
 void Benchmark()
 {
 	//Benchmark
-	uint32_t iterations = 100;
+	uint64_t iterations = 100;
 
 	//Signal
-	uint32_t h_valuesPerSample = 26;
-	uint32_t h_numberOfSamples;
-	uint32_t h_batchSize;
+	uint64_t h_valuesPerSample = 26;
+	uint64_t h_numberOfSamples;
+	uint64_t h_batchSize;
 
 
 	//Start up the RNG
@@ -45,12 +45,12 @@ void Benchmark()
 
 
 	//For each numberOfSamples value
-	for(uint32_t i = 14; i < 20; ++i)
+	for(uint64_t i = 19; i < 20; ++i)
 	{
 		h_numberOfSamples = 1 << i;
 
 		//For each batchSize
-		for(uint32_t j = 0; j < 7; ++j)
+		for(uint64_t j = 5; j < 7; ++j)
 		{
 
 			h_batchSize = 1 << j;
@@ -67,7 +67,7 @@ void Benchmark()
 			double startTime = cpuSecond();
 
 			//Run RFIMRoutine iteration times
-			for(uint32_t currentIteration = 0; currentIteration < iterations; ++currentIteration)
+			for(uint64_t currentIteration = 0; currentIteration < iterations; ++currentIteration)
 			{
 				//printf("Iteration: %u\n", currentIteration);
 
@@ -87,7 +87,7 @@ void Benchmark()
 
 
 			//Print the results
-			printf("Signal: (%u, %u, %u)\nIterations: %u\nTotal time: %fs\nAverage time: %fs\nAverage Mhz: %f\n\n",
+			printf("Signal: (%llu, %llu, %llu)\nIterations: %llu\nTotal time: %fs\nAverage time: %fs\nAverage Mhz: %f\n\n",
 					RFIMStruct->h_valuesPerSample, RFIMStruct->h_numberOfSamples, RFIMStruct->h_batchSize, iterations, totalDuration, averageIterationTime, averageMhz);
 
 

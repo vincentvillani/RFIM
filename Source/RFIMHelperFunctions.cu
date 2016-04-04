@@ -45,7 +45,7 @@ float** Device_GenerateWhiteNoiseSignal(curandGenerator_t* rngGen, uint64_t h_va
 	cudaMemcpy(h_signalMatricesDevicePointers, d_signalMatrices, sizeof(float*) * h_batchSize, cudaMemcpyDeviceToHost);
 
 
-	for(uint32_t i = 0; i < h_batchSize; ++i)
+	for(uint64_t i = 0; i < h_batchSize; ++i)
 	{
 
 		//Generate the signal!
@@ -190,7 +190,7 @@ void Device_EigenvalueSolver(RFIMMemoryStruct* RFIMStruct)
 	cusolverStatus_t cusolverStatus;
 
 	//Calculate the eigenvectors/values for each batch
-	for(uint32_t i = 0; i < RFIMStruct->h_batchSize; ++i)
+	for(uint64_t i = 0; i < RFIMStruct->h_batchSize; ++i)
 	{
 
 		cusolverStatus = cusolverDnSgesvd(*RFIMStruct->cusolverHandle, 'A', 'A', RFIMStruct->h_valuesPerSample, RFIMStruct->h_valuesPerSample,
@@ -227,11 +227,11 @@ void Device_EigenvalueSolver(RFIMMemoryStruct* RFIMStruct)
 	cudaMemcpy(RFIMStruct->h_devInfoValues, RFIMStruct->d_devInfo, sizeof(int) * RFIMStruct->h_batchSize, cudaMemcpyDeviceToHost);
 
 
-	for(uint32_t i = 0; i < RFIMStruct->h_batchSize; ++i)
+	for(uint64_t i = 0; i < RFIMStruct->h_batchSize; ++i)
 	{
 		if(RFIMStruct->h_devInfoValues[i] != 0)
 		{
-			fprintf(stderr, "Device_EigenvalueSolver: Error with the %dth parameter on the %dth batch\n", RFIMStruct->h_devInfoValues[i], i);
+			fprintf(stderr, "Device_EigenvalueSolver: Error with the %dth parameter on the %lluth batch\n", RFIMStruct->h_devInfoValues[i], i);
 			//exit(1);
 		}
 	}
@@ -289,11 +289,11 @@ void Device_EigenReductionAndFiltering(RFIMMemoryStruct* RFIMStruct, float** d_o
 	float beta = 0;
 
 	//uint32_t reducedDimension = RFIMStruct->h_valuesPerSample - RFIMStruct->h_eigenVectorDimensionsToReduce;
-	uint32_t eigenvectorPointerOffset = RFIMStruct->h_valuesPerSample * RFIMStruct->h_eigenVectorDimensionsToReduce;
+	uint64_t eigenvectorPointerOffset = RFIMStruct->h_valuesPerSample * RFIMStruct->h_eigenVectorDimensionsToReduce;
 
 
 	//Set the appropriate number of columns to zero
-	for(uint32_t i = 0; i < RFIMStruct->h_batchSize; ++i)
+	for(uint64_t i = 0; i < RFIMStruct->h_batchSize; ++i)
 	{
 		cudaMemsetAsync(RFIMStruct->h_UDevicePointers[i], 0, sizeof(float) * eigenvectorPointerOffset, 0);
 	}
@@ -303,9 +303,9 @@ void Device_EigenReductionAndFiltering(RFIMMemoryStruct* RFIMStruct, float** d_o
 	cudaStreamSynchronize(0); //The default stream
 
 
-	//TODO: FIX ALL THIS SHIT
+
 	cublasStatus = cublasSgemmBatched(*RFIMStruct->cublasHandle, CUBLAS_OP_T, CUBLAS_OP_N,
-			RFIMStruct->h_numberOfSamples, RFIMStruct->h_numberOfSamples, RFIMStruct->h_valuesPerSample,
+			RFIMStruct->h_valuesPerSample, RFIMStruct->h_numberOfSamples, RFIMStruct->h_valuesPerSample,
 			&alpha,  (const float**)(RFIMStruct->d_U), RFIMStruct->h_valuesPerSample,
 			(const float**)d_originalSignalMatrices, RFIMStruct->h_valuesPerSample, &beta,
 			RFIMStruct->d_projectedSignalMatrix, RFIMStruct->h_valuesPerSample,

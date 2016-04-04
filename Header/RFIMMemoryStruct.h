@@ -16,9 +16,9 @@ typedef struct RFIMMemoryStruct
 {
 
 	//Signal attributes, these need to be set before use
-	uint32_t h_valuesPerSample;
-	uint32_t h_numberOfSamples;
-	uint32_t h_batchSize;
+	uint64_t h_valuesPerSample;
+	uint64_t h_numberOfSamples;
+	uint64_t h_batchSize;
 
 
 
@@ -53,7 +53,7 @@ typedef struct RFIMMemoryStruct
 	int* d_devInfo;
 	int* h_devInfoValues;
 
-	uint32_t h_eigenVectorDimensionsToReduce;
+	uint64_t h_eigenVectorDimensionsToReduce;
 
 	float** d_projectedSignalMatrix;
 
@@ -65,7 +65,7 @@ typedef struct RFIMMemoryStruct
 }RFIMMemoryStruct;
 
 
-RFIMMemoryStruct* RFIMMemoryStructCreate(uint32_t h_valuesPerSample, uint32_t h_numberOfSamples, uint32_t h_dimensionToReduce, uint32_t h_batchSize);
+RFIMMemoryStruct* RFIMMemoryStructCreate(uint64_t h_valuesPerSample, uint64_t h_numberOfSamples, uint64_t h_dimensionToReduce, uint64_t h_batchSize);
 void RFIMMemoryStructDestroy(RFIMMemoryStruct* RFIMStruct);
 
 
