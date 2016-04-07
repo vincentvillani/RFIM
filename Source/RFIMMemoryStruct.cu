@@ -185,6 +185,14 @@ RFIMMemoryStruct* RFIMMemoryStructCreate(uint64_t h_valuesPerSample, uint64_t h_
 
 
 
+	cudaError_t error = cudaDeviceSynchronize();
+
+	if(error != cudaSuccess)
+	{
+		fprintf(stderr, "RFIMMemoryStructCreate: An error occurred, we probably ran out of device memory...\n");
+		exit(1);
+	}
+
 
 	return result;
 }

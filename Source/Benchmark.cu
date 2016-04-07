@@ -23,15 +23,17 @@ double cpuSecond()
 
 void Benchmark()
 {
-	/*
+
 	//Benchmark
 	uint64_t iterations = 1;
 
 	//Signal
 	uint64_t h_valuesPerSample = 26;
 	uint64_t h_numberOfSamples;
+	uint64_t h_dimensionsToReduce = 2;
 	uint64_t h_batchSize;
-	uint64_t h_threadNum;
+	//uint64_t h_threadNum;
+	uint64_t h_numberOfCudaStreams;
 
 
 	//Start up the RNG
@@ -56,57 +58,78 @@ void Benchmark()
 	{
 		h_numberOfSamples = 1 << i;
 
-		printf("i: %llu\n", i);
+
 
 		//For each batchSize
-		for(uint64_t j = 0; j < 4; ++j)
+		for(uint64_t j = 0; j < 8; ++j)
 		{
 
 			h_batchSize = 1 << j;
 
-			printf("j: %llu\n", j);
 
 
-			//Start the timer
-			double startTime = cpuSecond();
-
-			RFIMMemoryStruct* RFIMStruct = RFIMMemoryStructCreate(h_valuesPerSample, h_numberOfSamples, 2, h_batchSize, 0);
-
-			float** d_signal = Device_GenerateWhiteNoiseSignal(&rngGen, h_valuesPerSample, h_numberOfSamples, h_batchSize, &RFIMStruct->cudaStream);
-			float** d_filteredSignal = CudaUtility_BatchAllocateDeviceArrays(h_batchSize, sizeof(float) * h_valuesPerSample * h_numberOfSamples, &RFIMStruct->cudaStream);
-
-
-			for(uint64_t currentIteration = 0; currentIteration < iterations; ++currentIteration)
+			//For each numberOfStreams
+			for(uint64_t k = 0; k < 7; ++k)
 			{
-				RFIMRoutine(RFIMStruct, d_signal, d_filteredSignal);
-				//printf("iterations done\n", j);
+
+				h_numberOfCudaStreams = 1 << k;
+
+
+
+				RFIMMemoryStruct* RFIMStruct = RFIMMemoryStructCreate(h_valuesPerSample, h_numberOfSamples,
+						h_dimensionsToReduce, h_batchSize, h_numberOfCudaStreams);
+
+				float* d_signal = Device_GenerateWhiteNoiseSignal(&rngGen, h_valuesPerSample, h_numberOfSamples, h_batchSize);
+				float* d_filteredSignal;
+				cudaMalloc(&d_filteredSignal, sizeof(float) * h_valuesPerSample * h_numberOfSamples * h_batchSize);
+
+
+				//Start the timer
+				double startTime = cpuSecond();
+
+				for(uint64_t currentIteration = 0; currentIteration < iterations; ++currentIteration)
+				{
+					RFIMRoutine(RFIMStruct, d_signal, d_filteredSignal);
+					//printf("iterations done\n", j);
+				}
+
+				//Don't need to do this as each RFIMRoutine will do this itself
+				/*
+				//Wait for everything to finish
+				cudaError_t cudaError = cudaDeviceSynchronize();
+
+				if(cudaError != cudaSuccess)
+				{
+					fprintf(stderr, "Benchmark: Something went wrong :(\n");
+					exit(1);
+				}
+				*/
+
+
+				//Compute stats here
+				//calculate total duration
+				double totalDuration = cpuSecond() - startTime;
+
+				//find the average time taken for each iteration
+				double averageIterationTime = totalDuration / iterations;
+
+				//TODO: *************** ADD THREAD NUM HERE!!!! ***************
+				//Calculate the average samples processed per iteration in Mhz
+				double averageHz = (h_numberOfSamples * h_batchSize * iterations) / totalDuration;
+				double averageMhz =  averageHz / 1000000.0;
+
+
+
+				//Print the results
+				printf("Signal: (%llu, %llu, %llu)\nIterations: %llu\nTotal time: %fs\nAverage time: %fs\nAverage Mhz: %f\n\n",
+						h_valuesPerSample, h_numberOfSamples, h_batchSize, iterations, totalDuration, averageIterationTime, averageMhz);
+
+
+				cudaFree(d_signal);
+				cudaFree(d_filteredSignal);
+				RFIMMemoryStructDestroy(RFIMStruct);
 			}
 
-
-
-
-
-			//Compute stats here
-			//calculate total duration
-			double totalDuration = cpuSecond() - startTime;
-
-			//find the average time taken for each iteration
-			double averageIterationTime = totalDuration / iterations;
-
-			//TODO: *************** ADD THREAD NUM HERE!!!! ***************
-			//Calculate the average samples processed per iteration in Mhz
-			double averageHz = (h_numberOfSamples * h_batchSize * iterations) / totalDuration;
-			double averageMhz =  averageHz / 1000000.0;
-
-
-
-			//Print the results
-			printf("Signal: (%llu, %llu, %llu, %llu)\nIterations: %llu\nTotal time: %fs\nAverage time: %fs\nAverage Mhz: %f\n\n",
-					h_valuesPerSample, h_numberOfSamples, h_batchSize, h_threadNum, iterations, totalDuration, averageIterationTime, averageMhz);
-
-			CudaUtility_BatchDeallocateDeviceArrays(d_signal, h_batchSize, &RFIMStruct->cudaStream);
-			CudaUtility_BatchDeallocateDeviceArrays(d_filteredSignal, h_batchSize, &RFIMStruct->cudaStream);
-			RFIMMemoryStructDestroy(RFIMStruct);
 
 
 
@@ -116,7 +139,5 @@ void Benchmark()
 
 
 	printf("Benchmark complete!!\n");
-
-	*/
 
 }

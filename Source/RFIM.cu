@@ -13,9 +13,9 @@
 
 #include <stdio.h>
 
-void RFIMRoutine(RFIMMemoryStruct* RFIMStruct, float** d_columnMajorSignalMatrices, float* d_columnMajorFilteredSignalMatrices)
+void RFIMRoutine(RFIMMemoryStruct* RFIMStruct, float* d_columnMajorSignalMatrices, float* d_columnMajorFilteredSignalMatrices)
 {
-	/*
+
 
 	//If we reduce everything, we will have nothing left...
 	if(RFIMStruct->h_eigenVectorDimensionsToReduce >= RFIMStruct->h_valuesPerSample)
@@ -38,9 +38,20 @@ void RFIMRoutine(RFIMMemoryStruct* RFIMStruct, float** d_columnMajorSignalMatric
 	Device_EigenReductionAndFiltering(RFIMStruct, d_columnMajorSignalMatrices, d_columnMajorFilteredSignalMatrices);
 
 
-	//Make sure all computation is done before continuing
-	cudaDeviceSynchronize();
+	//Make sure all streams we used are done computing before we leave here
+	//This is done to ensure some when these streams are used again, we don't override memory other streams may need
+	//(some streams may overtake others and be working in a whole different RFIMRoutine iteration and overwrite needed memory)
+	cudaError_t cudaError;
+	for(uint64_t i = 0; i < RFIMStruct->h_cudaStreamsLength; ++i)
+	{
+		cudaError = cudaStreamSynchronize(RFIMStruct->h_cudaStreams[i]);
 
-	*/
+		if(cudaError != cudaSuccess)
+		{
+			fprintf(stderr, "RFIMRoutine: Something went wrong along the way...\n");
+			exit(1);
+		}
+	}
+
 }
 
