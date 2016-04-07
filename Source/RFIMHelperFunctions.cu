@@ -109,7 +109,7 @@ void Device_CalculateMeanMatrices(RFIMMemoryStruct* RFIMStruct, float* d_signalM
 			streamIndex = 0;
 		}
 
-		/*
+
 		//TODO: DEBUG REMOVE
 		cudaError_t cudaError = cudaDeviceSynchronize();
 		cublasError = cublasGetError();
@@ -118,7 +118,7 @@ void Device_CalculateMeanMatrices(RFIMMemoryStruct* RFIMStruct, float* d_signalM
 		{
 			fprintf(stderr, "CalculateMeanMatrix 1 error\n");
 		}
-		*/
+
 	}
 
 
@@ -315,6 +315,7 @@ void Device_EigenvalueSolver(RFIMMemoryStruct* RFIMStruct)
 				cudaMemcpyDeviceToHost, RFIMStruct->h_cudaStreams[cudaStreamIterator]);
 
 
+
 		//Iterate to the next stream
 		cudaStreamIterator += 1;
 		if(cudaStreamIterator >= RFIMStruct->h_cudaStreamsLength)
@@ -354,6 +355,7 @@ void Device_EigenvalueSolver(RFIMMemoryStruct* RFIMStruct)
 			exit(1);
 		}
 	}
+
 
 	//********************************************************************************************************
 
