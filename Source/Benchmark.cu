@@ -84,6 +84,18 @@ void Benchmark()
 				cudaMalloc(&d_filteredSignal, sizeof(float) * h_valuesPerSample * h_numberOfSamples * h_batchSize);
 
 
+				/*
+				float* h_signal;
+				cudaMallocHost(&h_signal, sizeof(float) * h_valuesPerSample * h_numberOfSamples * h_batchSize);
+				cudaMemcpy(h_signal, d_signal, sizeof(float) * h_valuesPerSample * h_numberOfSamples * h_batchSize, cudaMemcpyDeviceToHost);
+
+
+				for(uint64_t currentSignal = 0; currentSignal < h_valuesPerSample * h_numberOfSamples * h_batchSize; ++currentSignal)
+				{
+					printf("d_signal[%llu] = %f\n", currentSignal, h_signal[currentSignal]);
+				}
+	*/
+
 				//Start the timer
 				double startTime = cpuSecond();
 

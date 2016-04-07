@@ -55,6 +55,8 @@ float* Device_GenerateWhiteNoiseSignal(curandGenerator_t* rngGen, uint64_t h_val
 	}
 
 
+	cudaDeviceSynchronize();
+
 	return d_signalMatrix;
 
 }
