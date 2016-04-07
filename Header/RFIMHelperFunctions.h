@@ -17,8 +17,8 @@
 #include "../Header/RFIMMemoryStruct.h"
 
 
-float** Device_GenerateWhiteNoiseSignal(curandGenerator_t* rngGen, uint64_t h_valuesPerSample, uint64_t h_numberOfSamples, uint64_t h_batchSize, cudaStream_t* cudaStream);
-void Device_CalculateMeanMatrices(RFIMMemoryStruct* RFIMStruct, float** d_signalMatrices);
+float* Device_GenerateWhiteNoiseSignal(curandGenerator_t* rngGen, uint64_t h_valuesPerSample, uint64_t h_numberOfSamples, uint64_t h_batchSize);
+void Device_CalculateMeanMatrices(RFIMMemoryStruct* RFIMStruct, float* d_signalMatrices);
 void Device_CalculateCovarianceMatrix(RFIMMemoryStruct* RFIMStruct, float** d_signalMatrices);
 void Device_EigenvalueSolver(RFIMMemoryStruct* RFIMStruct);
 void Device_EigenReductionAndFiltering(RFIMMemoryStruct* RFIMStruct, float** d_originalSignalMatrices, float** d_filteredSignals);

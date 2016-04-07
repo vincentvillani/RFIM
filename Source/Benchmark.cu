@@ -18,20 +18,12 @@ double cpuSecond()
 }
 
 
-void BenchmarkHelperFunction(RFIMMemoryStruct* RFIMStruct, float** d_columnMajorSignalMatrices, float** d_filteredSignalMatrices, uint64_t iterations)
-{
-	for(uint64_t i = 0; i < iterations; ++i)
-	{
-		RFIMRoutine(RFIMStruct, d_columnMajorSignalMatrices, d_filteredSignalMatrices);
-	}
-
-	printf("ThreadComplete\n");
-}
 
 
 
 void Benchmark()
 {
+	/*
 	//Benchmark
 	uint64_t iterations = 1;
 
@@ -124,5 +116,7 @@ void Benchmark()
 
 
 	printf("Benchmark complete!!\n");
+
+	*/
 
 }
