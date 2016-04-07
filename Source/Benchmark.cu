@@ -121,8 +121,8 @@ void Benchmark()
 
 
 				//Print the results
-				printf("Signal: (%llu, %llu, %llu)\nIterations: %llu\nTotal time: %fs\nAverage time: %fs\nAverage Mhz: %f\n\n",
-						h_valuesPerSample, h_numberOfSamples, h_batchSize, iterations, totalDuration, averageIterationTime, averageMhz);
+				printf("Signal: (%llu, %llu, %llu, %llu)\nIterations: %llu\nTotal time: %fs\nAverage time: %fs\nAverage Mhz: %f\n\n",
+						h_valuesPerSample, h_numberOfSamples, h_batchSize, h_numberOfCudaStreams, iterations, totalDuration, averageIterationTime, averageMhz);
 
 
 				cudaFree(d_signal);

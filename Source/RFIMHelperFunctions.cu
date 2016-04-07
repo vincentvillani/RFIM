@@ -108,6 +108,17 @@ void Device_CalculateMeanMatrices(RFIMMemoryStruct* RFIMStruct, float* d_signalM
 		{
 			streamIndex = 0;
 		}
+
+		/*
+		//TODO: DEBUG REMOVE
+		cudaError_t cudaError = cudaDeviceSynchronize();
+		cublasError = cublasGetError();
+
+		if(cudaError != cudaSuccess || cublasError != CUBLAS_STATUS_SUCCESS)
+		{
+			fprintf(stderr, "CalculateMeanMatrix 1 error\n");
+		}
+		*/
 	}
 
 
@@ -152,6 +163,17 @@ void Device_CalculateMeanMatrices(RFIMMemoryStruct* RFIMStruct, float* d_signalM
 		{
 			streamIndex = 0;
 		}
+
+		/*
+		//TODO: DEBUG REMOVE
+		cudaError_t cudaError = cudaDeviceSynchronize();
+		cublasError = cublasGetError();
+
+		if(cudaError != cudaSuccess || cublasError != CUBLAS_STATUS_SUCCESS)
+		{
+			fprintf(stderr, "CalculateMeanMatrix 2 error\n");
+		}
+		*/
 	}
 
 
@@ -216,6 +238,18 @@ void Device_CalculateCovarianceMatrix(RFIMMemoryStruct* RFIMStruct, float* d_sig
 		{
 			cudaStreamIterator = 0;
 		}
+
+		/*
+		//TODO: DEBUG REMOVE
+		cudaError_t cudaError = cudaDeviceSynchronize();
+		cublasError = cublasGetError();
+
+		if(cudaError != cudaSuccess || cublasError != CUBLAS_STATUS_SUCCESS)
+		{
+			fprintf(stderr, "Device_CalculateCovarianceMatrix 1 error\n");
+		}
+		*/
+
 	}
 
 
@@ -287,6 +321,18 @@ void Device_EigenvalueSolver(RFIMMemoryStruct* RFIMStruct)
 		{
 			cudaStreamIterator = 0;
 		}
+
+		/*
+		//TODO: DEBUG REMOVE
+		cudaError_t cudaError = cudaDeviceSynchronize();
+		cublasStatus_t cublasError = cublasGetError();
+
+		if(cudaError != cudaSuccess )
+		{
+			fprintf(stderr, "Device_EigenvalueSolver 1 error\n");
+		}
+		*/
+
 	}
 
 
@@ -311,6 +357,16 @@ void Device_EigenvalueSolver(RFIMMemoryStruct* RFIMStruct)
 
 	//********************************************************************************************************
 
+	/*
+	//TODO: DEBUG REMOVE
+	cudaError_t cudaError = cudaDeviceSynchronize();
+
+
+	if(cudaError != cudaSuccess)
+	{
+		fprintf(stderr, "Device_EigenvalueSolver 2 error\n");
+	}
+	*/
 
 }
 
@@ -372,6 +428,18 @@ void Device_EigenReductionAndFiltering(RFIMMemoryStruct* RFIMStruct, float* d_or
 			cudaStreamIterator = 0;
 		}
 
+		/*
+		//TODO: DEBUG REMOVE
+		cudaError_t cudaError = cudaDeviceSynchronize();
+		cublasStatus_t cublasError = cublasGetError();
+
+		if(cudaError != cudaSuccess || cublasError != CUBLAS_STATUS_SUCCESS)
+		{
+			fprintf(stderr, "Device_EigenReductionAndFiltering 1 error\n");
+		}
+		*/
+
+
 	}
 
 
@@ -392,7 +460,7 @@ void Device_EigenReductionAndFiltering(RFIMMemoryStruct* RFIMStruct, float* d_or
 	for(uint64_t i = 0; i < RFIMStruct->h_batchSize; ++i)
 	{
 		//Set the stream
-		cublasSetStream_v2(*RFIMStruct->cublasHandle, RFIMStruct->h_cudaStreams[i]);
+		cublasSetStream_v2(*RFIMStruct->cublasHandle, RFIMStruct->h_cudaStreams[cudaStreamIterator]);
 
 
 
@@ -418,6 +486,18 @@ void Device_EigenReductionAndFiltering(RFIMMemoryStruct* RFIMStruct, float* d_or
 		{
 			cudaStreamIterator = 0;
 		}
+
+		/*
+		//TODO: DEBUG REMOVE
+		cudaError_t cudaError = cudaDeviceSynchronize();
+
+		cublasStatus = cublasGetError();
+
+		if(cudaError != cudaSuccess || cublasStatus != CUBLAS_STATUS_SUCCESS)
+		{
+			fprintf(stderr, "Device_EigenReductionAndFiltering 2 error\n");
+		}
+		*/
 	}
 
 
@@ -432,7 +512,7 @@ void Device_EigenReductionAndFiltering(RFIMMemoryStruct* RFIMStruct, float* d_or
 	{
 
 		//Set the stream
-		cublasSetStream_v2(*RFIMStruct->cublasHandle, RFIMStruct->h_cudaStreams[i]);
+		cublasSetStream_v2(*RFIMStruct->cublasHandle, RFIMStruct->h_cudaStreams[cudaStreamIterator]);
 
 
 		cublasStatus_t = cublasSgemm_v2(*RFIMStruct->cublasHandle, CUBLAS_OP_N, CUBLAS_OP_N,
@@ -457,6 +537,17 @@ void Device_EigenReductionAndFiltering(RFIMMemoryStruct* RFIMStruct, float* d_or
 		{
 			cudaStreamIterator = 0;
 		}
+
+		/*
+		//TODO: DEBUG REMOVE
+		cudaError_t cudaError = cudaDeviceSynchronize();
+		cublasStatus = cublasGetError();
+
+		if(cudaError != cudaSuccess || cublasStatus != CUBLAS_STATUS_SUCCESS)
+		{
+			fprintf(stderr, "Device_EigenReductionAndFiltering 3 error\n");
+		}
+		*/
 	}
 
 
