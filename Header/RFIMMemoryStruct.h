@@ -37,28 +37,29 @@ typedef struct RFIMMemoryStruct
 	float* d_covarianceMatrix;
 	uint64_t h_covarianceMatrixBatchOffset;
 
-	/*
-	float** h_covarianceMatrixDevicePointers;
 
 	//Eigenvector/value working memory
-	float** d_U;
-	float** h_UDevicePointers;
-	//float** h_UDeviceOffsetPointers; //This is used to remove the eigenvector columns
+	float* d_U;
+	uint64_t h_UBatchOffset;
 
-	float** d_S;
-	float** h_SDevicePointers;
+	float* d_S;
+	uint64_t h_SBatchOffset;
 
-	float** d_VT;
-	float** h_VTDevicePointers;
-
-	float** d_eigWorkingSpace;
-	float** h_eigWorkingSpaceDevicePointers;
+	float* d_VT;
+	uint64_t h_VTBatchOffset;
 
 	int h_eigWorkingSpaceLength;
 
-	int* d_devInfo;
-	int* h_devInfoValues;
+	float* d_eigenWorkingSpace;
+	uint64_t h_eigenWorkingSpaceBatchOffset;
 
+
+
+	int* d_devInfo;
+	int* h_devInfo;
+	uint64_t h_devInfoBatchOffset;
+
+	/*
 	float** d_projectedSignalMatrix;
 	*/
 

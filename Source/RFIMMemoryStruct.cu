@@ -101,12 +101,66 @@ RFIMMemoryStruct* RFIMMemoryStructCreate(uint64_t h_valuesPerSample, uint64_t h_
 
 
 	//Setup the covariance matrix
+	//------------------------
 	uint64_t covarianceMatrixLength = h_valuesPerSample * h_valuesPerSample * h_batchSize;
 	uint64_t covarianceMatrixByteSize = sizeof(float) * covarianceMatrixLength;
 
 	result->h_covarianceMatrixBatchOffset = h_valuesPerSample * h_valuesPerSample;
 
 	cudaMalloc(&(result->d_covarianceMatrix), covarianceMatrixByteSize);
+
+
+
+
+	//Setup the eigenvector/value variables
+	//------------------------
+
+	//U and VT
+	uint64_t singleULength = h_valuesPerSample * h_valuesPerSample;
+	uint64_t ULength = singleULength * h_batchSize;
+	uint64_t UByteSize = sizeof(float) * ULength;
+
+	cudaMalloc(&(result->d_U), UByteSize);
+	cudaMalloc(&(result->d_VT), UByteSize); //VT is the same size as U
+
+	result->h_UBatchOffset = singleULength;
+	result->h_VTBatchOffset = singleULength;
+
+
+	//S
+	uint64_t singleSLength = h_valuesPerSample;
+	uint64_t SLength = h_valuesPerSample * h_batchSize;
+	uint64_t SByteLength = sizeof(float) * SLength;
+
+	cudaMalloc(&(result->d_S), SByteLength);
+
+	result->h_SBatchOffset = singleSLength;
+
+
+	//Eigenworking space length
+
+
+
+	/*
+	float* d_U;
+	uint64_t h_UBatchOffset;
+
+	float* d_S;
+	uint64_t h_SBatchOffset;
+
+	float* d_VT;
+	uint64_t h_VTBatchOffset;
+
+	float* d_eigenWorkingSpace;
+	uint64_t h_eigenWorkingSpaceBatchOffset;
+
+	int h_eigWorkingSpaceLength;
+
+	int* d_devInfo;
+	int* h_devInfo;
+	uint64_t h_devInfoBatchOffset;
+	*/
+
 
 
 	return result;
