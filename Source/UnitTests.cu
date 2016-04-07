@@ -50,7 +50,6 @@ void MeanCublasProduction()
 
 	RFIMMemoryStruct* RFIMStruct = RFIMMemoryStructCreate(valuesPerSample, sampleNum, 0, batchSize, numberOfCudaStreams);
 
-
 	uint64_t signalLength = valuesPerSample * sampleNum * batchSize;
 	uint64_t signalByteSize = sizeof(float) * signalLength;
 
@@ -69,6 +68,7 @@ void MeanCublasProduction()
 	cudaMalloc(&d_signal, signalByteSize);
 	cudaMemcpy(d_signal, h_signal, signalByteSize, cudaMemcpyHostToDevice);
 
+	//cudaDeviceSynchronize();
 
 	//Compute the mean matrix
 	Device_CalculateMeanMatrices(RFIMStruct, d_signal);
@@ -78,6 +78,7 @@ void MeanCublasProduction()
 	uint64_t meanMatricesLength = valuesPerSample * valuesPerSample * batchSize;
 	uint64_t meanMatricesByteSize = sizeof(float) * meanMatricesLength;
 
+	uint64_t singleMeanMatrixByteSize = sizeof(float) * valuesPerSample * valuesPerSample;
 	uint64_t meanMatrixOffset = valuesPerSample * valuesPerSample;
 
 
@@ -90,7 +91,7 @@ void MeanCublasProduction()
 	for(uint64_t i = 0; i < batchSize; ++i)
 	{
 		cudaMemcpyAsync(h_meanMatrices + (i * meanMatrixOffset), RFIMStruct->d_covarianceMatrix + (i * meanMatrixOffset),
-				meanMatricesByteSize, cudaMemcpyDeviceToHost, RFIMStruct->h_cudaStreams[cudaStreamIterator]);
+				singleMeanMatrixByteSize, cudaMemcpyDeviceToHost, RFIMStruct->h_cudaStreams[cudaStreamIterator]);
 
 		cudaStreamIterator += 1;
 		if(cudaStreamIterator >= RFIMStruct->h_cudaStreamsLength)
@@ -112,7 +113,7 @@ void MeanCublasProduction()
 	//Print the results
 	for(uint64_t i = 0; i < meanMatricesLength; ++i)
 	{
-		printf("%llu: %f\n", i, h_meanMatrices[i]);
+		//printf("%llu: %f\n", i, h_meanMatrices[i]);
 	}
 
 

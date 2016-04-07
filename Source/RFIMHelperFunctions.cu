@@ -122,7 +122,7 @@ void Device_CalculateMeanMatrices(RFIMMemoryStruct* RFIMStruct, float* d_signalM
 	alpha = 1.0f;
 	streamIndex = 0;
 
-	uint64_t covarianceMatrixOffset = RFIMStruct->h_valuesPerSample * RFIMStruct->h_numberOfSamples;
+	uint64_t covarianceMatrixOffset = RFIMStruct->h_valuesPerSample * RFIMStruct->h_valuesPerSample;
 
 	for(uint64_t i = 0; i < RFIMStruct->h_batchSize; ++i)
 	{
