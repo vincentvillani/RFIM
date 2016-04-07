@@ -138,28 +138,36 @@ RFIMMemoryStruct* RFIMMemoryStructCreate(uint64_t h_valuesPerSample, uint64_t h_
 
 
 	//Eigenworking space length
+	result->h_singleEigWorkingSpaceByteSize = 0;
+
+	cusolverStatus = cusolverDnSgesvd_bufferSize(*result->cusolverHandle, h_valuesPerSample, h_valuesPerSample, &(result->h_singleEigWorkingSpaceByteSize));
+
+	//Check if it went well
+	if(cusolverStatus != CUSOLVER_STATUS_SUCCESS)
+	{
+		fprintf(stderr, "RFIMMemory::RFIMMemory(): Error finding eigenvalue working buffer size\n");
+		exit(1);
+	}
 
 
+	uint64_t totalEigenvalueWorkingspace = result->h_singleEigWorkingSpaceByteSize * h_batchSize;
 
-	/*
-	float* d_U;
-	uint64_t h_UBatchOffset;
+	//Allocate memory for the eigen working space
+	cudaMalloc(&(result->d_eigenWorkingSpace), totalEigenvalueWorkingspace);
 
-	float* d_S;
-	uint64_t h_SBatchOffset;
+	result->h_eigenWorkingSpaceBatchOffset = result->h_singleEigWorkingSpaceByteSize / sizeof(int);
 
-	float* d_VT;
-	uint64_t h_VTBatchOffset;
 
-	float* d_eigenWorkingSpace;
-	uint64_t h_eigenWorkingSpaceBatchOffset;
+	//DevInfo
+	uint64_t devInfoSingleLength = 1;
+	uint64_t devInfoLength = devInfoSingleLength * h_batchSize;
+	uint64_t devInfoByteSize = sizeof(int) * devInfoLength;
 
-	int h_eigWorkingSpaceLength;
+	cudaMalloc(&(result->d_devInfo), devInfoByteSize);
+	cudaMallocHost(&(result->h_devInfo), devInfoByteSize);
 
-	int* d_devInfo;
-	int* h_devInfo;
-	uint64_t h_devInfoBatchOffset;
-	*/
+	result->h_devInfoBatchOffset = devInfoSingleLength;
+
 
 
 
@@ -174,6 +182,17 @@ void RFIMMemoryStructDestroy(RFIMMemoryStruct* RFIMStruct)
 	cudaFree(RFIMStruct->d_oneVec);
 	cudaFree(RFIMStruct->d_meanVec);
 	cudaFree(RFIMStruct->d_covarianceMatrix);
+
+	cudaFree(RFIMStruct->d_U);
+	cudaFree(RFIMStruct->d_S);
+	cudaFree(RFIMStruct->d_VT);
+	cudaFree(RFIMStruct->d_eigenWorkingSpace);
+	cudaFree(RFIMStruct->d_devInfo);
+
+
+	//Free host memory
+	cudaFreeHost(RFIMStruct->h_devInfo);
+
 
 
 	//Destroy the cuda library contexts

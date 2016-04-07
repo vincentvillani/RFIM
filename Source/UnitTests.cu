@@ -25,7 +25,7 @@
 //Production tests
 void MeanCublasProduction();
 void CovarianceCublasProduction();
-//void EigendecompProduction();
+void EigendecompProduction();
 //void FilteringProduction();
 //void TransposeProduction();
 //void GraphProduction();
@@ -227,10 +227,12 @@ void CovarianceCublasProduction()
 }
 
 
-/*
+
 
 void EigendecompProduction()
 {
+
+	/*
 	int valuesPerSample = 2;
 	int batchSize = 20;
 	int covarianceMatrixByteSize = sizeof(float) * valuesPerSample * valuesPerSample;
@@ -324,10 +326,10 @@ void EigendecompProduction()
 
 	RFIMMemoryStructDestroy(RFIMStruct);
 
-
+	*/
 }
 
-
+/*
 
 //Doesn't actually prove that the filter itself works, just that the math functions are working as you would expected
 //By removing 0 dimensions we should get the same signal back
@@ -434,7 +436,7 @@ void RunAllUnitTests()
 {
 	MeanCublasProduction();
 	CovarianceCublasProduction();
-	//EigendecompProduction();
+	EigendecompProduction();
 	//FilteringProduction();
 
 	printf("All tests passed!\n");

@@ -232,21 +232,30 @@ void Device_CalculateCovarianceMatrix(RFIMMemoryStruct* RFIMStruct, float* d_sig
 void Device_EigenvalueSolver(RFIMMemoryStruct* RFIMStruct)
 {
 
-	/*
 	cusolverStatus_t cusolverStatus;
 
-	//Calculate the eigenvectors/values for each batch
+	uint64_t cudaStreamIterator = 0;
+
 	for(uint64_t i = 0; i < RFIMStruct->h_batchSize; ++i)
 	{
 
-		cusolverStatus = cusolverDnSgesvd(*RFIMStruct->cusolverHandle, 'A', 'A', RFIMStruct->h_valuesPerSample, RFIMStruct->h_valuesPerSample,
-				RFIMStruct->h_covarianceMatrixDevicePointers[i], RFIMStruct->h_valuesPerSample,
-				RFIMStruct->h_SDevicePointers[i],  RFIMStruct->h_UDevicePointers[i], RFIMStruct->h_valuesPerSample,
-				RFIMStruct->h_VTDevicePointers[i], RFIMStruct->h_valuesPerSample,
-				RFIMStruct->h_eigWorkingSpaceDevicePointers[i], RFIMStruct->h_eigWorkingSpaceLength, NULL, RFIMStruct->d_devInfo + i);
+		//Set the stream
+		cusolverDnSetStream(*RFIMStruct->cusolverHandle, RFIMStruct->h_cudaStreams[cudaStreamIterator]);
+
+		//Tell the device to solve the eigenvectors
+		cusolverStatus = cusolverDnSgesvd(*RFIMStruct->cusolverHandle, 'A', 'A',
+				RFIMStruct->h_valuesPerSample, RFIMStruct->h_valuesPerSample,
+				RFIMStruct->d_covarianceMatrix + (i * RFIMStruct->h_covarianceMatrixBatchOffset), RFIMStruct->h_valuesPerSample,
+				RFIMStruct->d_S + (i * RFIMStruct->h_SBatchOffset),
+				RFIMStruct->d_U + (i * RFIMStruct->h_UBatchOffset), RFIMStruct->h_valuesPerSample,
+				RFIMStruct->d_VT + (i * RFIMStruct->h_VTBatchOffset), RFIMStruct->h_valuesPerSample,
+				RFIMStruct->d_eigenWorkingSpace + (i * RFIMStruct->h_eigenWorkingSpaceBatchOffset),
+				RFIMStruct->h_singleEigWorkingSpaceByteSize,
+				NULL,
+				RFIMStruct->d_devInfo + (i * RFIMStruct->h_devInfoBatchOffset));
 
 
-		//Check for errors
+		//Check for startup errors
 		if(cusolverStatus != CUSOLVER_STATUS_SUCCESS)
 		{
 
@@ -265,26 +274,43 @@ void Device_EigenvalueSolver(RFIMMemoryStruct* RFIMStruct)
 
 		}
 
-	}
 
-	cudaDeviceSynchronize();
+		//Put in a request to copy the devInfo back to the host so you can check it later
+		cudaMemcpyAsync(RFIMStruct->h_devInfo + (i * RFIMStruct->h_devInfoBatchOffset),
+				RFIMStruct->d_devInfo + (i * RFIMStruct->h_devInfoBatchOffset), sizeof(int),
+				cudaMemcpyDeviceToHost, RFIMStruct->h_cudaStreams[cudaStreamIterator]);
 
 
-	//Check all dev info's, copy them all at once
-	cudaMemcpyAsync(RFIMStruct->h_devInfoValues, RFIMStruct->d_devInfo, sizeof(int) * RFIMStruct->h_batchSize, cudaMemcpyDeviceToHost, RFIMStruct->cudaStream);
-
-	cudaDeviceSynchronize();
-
-	for(uint64_t i = 0; i < RFIMStruct->h_batchSize; ++i)
-	{
-		if(RFIMStruct->h_devInfoValues[i] != 0)
+		//Iterate to the next stream
+		cudaStreamIterator += 1;
+		if(cudaStreamIterator >= RFIMStruct->h_cudaStreamsLength)
 		{
-			fprintf(stderr, "Device_EigenvalueSolver: Error with the %dth parameter on the %lluth batch\n", RFIMStruct->h_devInfoValues[i], i);
-			//exit(1);
+			cudaStreamIterator = 0;
 		}
 	}
 
-*/
+
+
+	//TODO: ****************** EXPERIMENT WITH PUTTING THIS AT THE END OF THE RFIM ROUTINE ******************
+	//Wait for everything to complete
+	for(uint64_t i = 0; i < RFIMStruct->h_cudaStreamsLength; ++i)
+	{
+		cudaStreamSynchronize(RFIMStruct->h_cudaStreams[i]);
+	}
+
+
+	//Check each devInfo value
+	for(uint64_t i = 0; i < RFIMStruct->h_batchSize; ++i)
+	{
+		if(RFIMStruct->h_devInfo[i] != 0)
+		{
+			fprintf(stderr, "Device_EigenvalueSolver: Error with the %dth parameter on the %lluth batch\n", RFIMStruct->h_devInfo[i], i);
+			exit(1);
+		}
+	}
+
+	//********************************************************************************************************
+
 
 }
 

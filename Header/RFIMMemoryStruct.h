@@ -48,11 +48,10 @@ typedef struct RFIMMemoryStruct
 	float* d_VT;
 	uint64_t h_VTBatchOffset;
 
-	int h_eigWorkingSpaceLength;
 
+	int h_singleEigWorkingSpaceByteSize;
 	float* d_eigenWorkingSpace;
 	uint64_t h_eigenWorkingSpaceBatchOffset;
-
 
 
 	int* d_devInfo;
