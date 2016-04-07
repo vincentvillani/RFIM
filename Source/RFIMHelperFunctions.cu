@@ -160,9 +160,9 @@ void Device_CalculateMeanMatrices(RFIMMemoryStruct* RFIMStruct, float* d_signalM
 
 
 
-void Device_CalculateCovarianceMatrix(RFIMMemoryStruct* RFIMStruct, float** d_signalMatrices)
+void Device_CalculateCovarianceMatrix(RFIMMemoryStruct* RFIMStruct, float* d_signalMatrices)
 {
-	/*
+
 	//d_signalMatrix should be column-major as CUBLAS is column-major library (indexes start at 1 also)
 	//Remember to take that into account!
 
@@ -185,27 +185,40 @@ void Device_CalculateCovarianceMatrix(RFIMMemoryStruct* RFIMStruct, float** d_si
 	float alpha = 1.0f / RFIMStruct->h_numberOfSamples;
 	float beta = -1;
 
+	uint64_t signalOffset = RFIMStruct->h_valuesPerSample * RFIMStruct->h_numberOfSamples;
+	uint64_t covarianceMatrixOffset = RFIMStruct->h_valuesPerSample * RFIMStruct->h_valuesPerSample;
+
+	uint64_t cudaStreamIterator = 0;
+
 	cublasStatus_t cublasError;
 
-
-	cublasError = cublasSgemmBatched(*RFIMStruct->cublasHandle, CUBLAS_OP_N, CUBLAS_OP_T,
-			RFIMStruct->h_valuesPerSample, RFIMStruct->h_valuesPerSample, RFIMStruct->h_numberOfSamples,
-			&alpha, (const float**)d_signalMatrices, RFIMStruct->h_valuesPerSample,
-			(const float**)d_signalMatrices, RFIMStruct->h_valuesPerSample, &beta,
-			RFIMStruct->d_covarianceMatrix, RFIMStruct->h_valuesPerSample,
-			RFIMStruct->h_batchSize);
-
-
-
-
-
-	if(cublasError != CUBLAS_STATUS_SUCCESS)
+	for(uint64_t i = 0; i < RFIMStruct->h_batchSize; ++i)
 	{
-		fprintf(stderr, "Device_CalculateCovarianceMatrix: error calculating the covariance matrix\n");
-		exit(1);
+		//Set the stream for the library
+		cublasSetStream_v2(*RFIMStruct->cublasHandle, RFIMStruct->h_cudaStreams[cudaStreamIterator]);
+
+		cublasError = cublasSgemm_v2(*RFIMStruct->cublasHandle, CUBLAS_OP_N, CUBLAS_OP_T,
+				RFIMStruct->h_valuesPerSample, RFIMStruct->h_valuesPerSample, RFIMStruct->h_numberOfSamples,
+				&alpha, d_signalMatrices + (i * signalOffset), RFIMStruct->h_valuesPerSample,
+				d_signalMatrices + (i * signalOffset), RFIMStruct->h_valuesPerSample, &beta,
+				RFIMStruct->d_covarianceMatrix + (i * covarianceMatrixOffset), RFIMStruct->h_valuesPerSample);
+
+
+		if(cublasError != CUBLAS_STATUS_SUCCESS)
+		{
+			fprintf(stderr, "Device_CalculateCovarianceMatrix: error calculating the covariance matrix\n");
+			exit(1);
+		}
+
+
+		cudaStreamIterator += 1;
+		if(cudaStreamIterator >= RFIMStruct->h_cudaStreamsLength)
+		{
+			cudaStreamIterator = 0;
+		}
 	}
 
-	*/
+
 }
 
 

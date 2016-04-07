@@ -13,8 +13,9 @@
 
 #include <stdio.h>
 
-void RFIMRoutine(RFIMMemoryStruct* RFIMStruct, float** d_columnMajorSignalMatrices, float** d_columnMajorFilteredSignalMatrices)
+void RFIMRoutine(RFIMMemoryStruct* RFIMStruct, float** d_columnMajorSignalMatrices, float* d_columnMajorFilteredSignalMatrices)
 {
+	/*
 
 	//If we reduce everything, we will have nothing left...
 	if(RFIMStruct->h_eigenVectorDimensionsToReduce >= RFIMStruct->h_valuesPerSample)
@@ -39,5 +40,7 @@ void RFIMRoutine(RFIMMemoryStruct* RFIMStruct, float** d_columnMajorSignalMatric
 
 	//Make sure all computation is done before continuing
 	cudaDeviceSynchronize();
+
+	*/
 }
 

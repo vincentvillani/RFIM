@@ -24,7 +24,7 @@
 
 //Production tests
 void MeanCublasProduction();
-//void CovarianceCublasProduction();
+void CovarianceCublasProduction();
 //void EigendecompProduction();
 //void FilteringProduction();
 //void TransposeProduction();
@@ -135,93 +135,99 @@ void MeanCublasProduction()
 
 }
 
-/*
+
 
 
 void CovarianceCublasProduction()
 {
-	uint64_t valuesPerSample = 3;
-	uint64_t sampleNum = 2;
+
+	uint32_t valuesPerSample = 3;
+	uint32_t sampleNum = 2;
 	uint32_t batchSize = 5;
+	uint32_t numberOfCudaStreams = 16;
 
-	RFIMMemoryStruct* RFIMStruct = RFIMMemoryStructCreate(valuesPerSample, sampleNum, 0, batchSize, 0);
+	RFIMMemoryStruct* RFIMStruct = RFIMMemoryStructCreate(valuesPerSample, sampleNum, 0, batchSize, numberOfCudaStreams);
 
-	uint64_t signalPointersArrayByteSize = sizeof(float*) * batchSize;
-	uint64_t signalByteSize = sizeof(float) * valuesPerSample * sampleNum;
+	uint64_t signalLength = valuesPerSample * sampleNum * batchSize;
+	uint64_t signalByteSize = sizeof(float) * signalLength;
 
-	float* h_signal; //= (float*)malloc(signalByteSize); //Column first signal (3, 2), 3 == valuesPerSample, 2 == sampleNum
+	float* h_signal;
 	cudaMallocHost(&h_signal, signalByteSize);
-	float** h_signalPointersArray; // = (float**)malloc(signalPointersArrayByteSize);
-	cudaMallocHost(&h_signalPointersArray, signalPointersArrayByteSize);
-
 
 	//Set the host signal
-	for(uint32_t i = 0; i < valuesPerSample * sampleNum; ++i)
+	for(uint32_t i = 0; i < signalLength; ++i)
 	{
 		h_signal[i] = i + 1;
 	}
 
-	//Set each pointer to point to h_signal
-	for(uint32_t i = 0; i < batchSize; ++i)
+
+	//Copy the signal over to the host
+	float* d_signal;
+	cudaMalloc(&d_signal, signalByteSize);
+	cudaMemcpy(d_signal, h_signal, signalByteSize, cudaMemcpyHostToDevice);
+
+
+	//Compute the covariance matrices
+	Device_CalculateCovarianceMatrix(RFIMStruct, d_signal);
+
+
+
+	//Copy the covariance matrices back to the host asyncly
+	uint64_t covarianceMatricesLength = valuesPerSample * valuesPerSample * batchSize;
+	uint64_t covarianceMatricesByteSize = sizeof(float) * covarianceMatricesLength;
+
+	uint64_t meanMatrixOffset = valuesPerSample * valuesPerSample;
+	uint64_t singleCovarianceMatrixByteSize = sizeof(float) * meanMatrixOffset;
+
+	float* h_covarianceMatrices;
+	cudaMallocHost(&h_covarianceMatrices, covarianceMatricesByteSize);
+
+	uint64_t cudaStreamIterator = 0;
+
+	//These memcpy streams should line up with the computation
+	for(uint64_t i = 0; i < batchSize; ++i)
 	{
-		h_signalPointersArray[i] = h_signal;
+		cudaMemcpyAsync(h_covarianceMatrices + (i * meanMatrixOffset),
+				RFIMStruct->d_covarianceMatrix + (i * meanMatrixOffset),
+				singleCovarianceMatrixByteSize, cudaMemcpyDeviceToHost, RFIMStruct->h_cudaStreams[cudaStreamIterator]);
+
+		cudaStreamIterator += 1;
+		if(cudaStreamIterator >= numberOfCudaStreams)
+		{
+			cudaStreamIterator = 0;
+		}
 	}
 
-	//Allocate memory on the device and copy data over
-	float** d_signalPointersArray = CudaUtility_BatchAllocateDeviceArrays(batchSize, signalByteSize,  &(RFIMStruct->cudaStream));
-	CudaUtility_BatchCopyArraysHostToDevice(d_signalPointersArray, h_signalPointersArray, batchSize, signalByteSize,  &(RFIMStruct->cudaStream));
+
+	//Wait for everything to complete
+	cudaDeviceSynchronize();
 
 
-	//Calculate the covariance matrix
-	Device_CalculateCovarianceMatrix(RFIMStruct, d_signalPointersArray);
-
-
-	//Copy data back to the host
-	uint64_t covarianceMatrixByteSize = sizeof(float) * valuesPerSample * valuesPerSample;
-	float** h_covarianceMatrices = CudaUtility_BatchAllocateHostArrays(batchSize, covarianceMatrixByteSize);
-	CudaUtility_BatchCopyArraysDeviceToHost(RFIMStruct->d_covarianceMatrix, h_covarianceMatrices, batchSize, covarianceMatrixByteSize,  &(RFIMStruct->cudaStream));
-
-	float correctAnswerArray[9];
-	correctAnswerArray[0] = 2.25f;
-	correctAnswerArray[1] = 2.25f;
-	correctAnswerArray[2] = 2.25f;
-	correctAnswerArray[3] = 2.25f;
-	correctAnswerArray[4] = 2.25f;
-	correctAnswerArray[5] = 2.25f;
-	correctAnswerArray[6] = 2.25f;
-	correctAnswerArray[7] = 2.25f;
-	correctAnswerArray[8] = 2.25f;
-
-
-	//Check/print the results
-	for(uint32_t i = 0; i < batchSize; ++i)
+	//Print the results
+	for(uint64_t i = 0; i < covarianceMatricesLength; ++i)
 	{
-		for(uint32_t j = 0; j < valuesPerSample * valuesPerSample; ++j)
+		if(h_covarianceMatrices[i] - 2.25f > 0.0000001f)
 		{
-			//Check the results against the known results
-			if(h_covarianceMatrices[i][j] - correctAnswerArray[j] > 0.000001f)
-			{
-				fprintf(stderr, "CovarianceCublasProduction failed!\n");
-				exit(1);
-			}
-
-			//printf("CovarianceCublasProduction[%u][%u] = %f\n", i, j, h_covarianceMatrices[i][j]);
+			fprintf(stderr, "CovarianceCublasProduction unit test failed!\n");
+			exit(1);
 		}
 
+		//printf("%llu: %f\n", i, h_covarianceMatrices[i]);
 	}
 
+
 	//Free all memory
-	cudaFreeHost(h_signalPointersArray); //Free the pointers
-	cudaFreeHost(h_signal); //Free the actual data
-	CudaUtility_BatchDeallocateDeviceArrays(d_signalPointersArray, batchSize,  &(RFIMStruct->cudaStream));
-	CudaUtility_BatchDeallocateHostArrays(h_covarianceMatrices, batchSize);
+	cudaFreeHost(h_signal);
+	cudaFreeHost(h_covarianceMatrices);
+
+	cudaFree(d_signal);
 
 	RFIMMemoryStructDestroy(RFIMStruct);
 
 }
 
 
-
+/*
 
 void EigendecompProduction()
 {
@@ -427,7 +433,7 @@ void FilteringProduction()
 void RunAllUnitTests()
 {
 	MeanCublasProduction();
-	//CovarianceCublasProduction();
+	CovarianceCublasProduction();
 	//EigendecompProduction();
 	//FilteringProduction();
 
