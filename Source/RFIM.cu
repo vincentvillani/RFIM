@@ -38,6 +38,6 @@ void RFIMRoutine(RFIMMemoryStruct* RFIMStruct, float** d_columnMajorSignalMatric
 
 
 	//Make sure all computation is done before continuing
-	cudaStreamSynchronize(RFIMStruct->cudaStream);
+	cudaDeviceSynchronize();
 }
 

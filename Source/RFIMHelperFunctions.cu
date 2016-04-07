@@ -223,11 +223,13 @@ void Device_EigenvalueSolver(RFIMMemoryStruct* RFIMStruct)
 
 	}
 
+	cudaDeviceSynchronize();
 
 
 	//Check all dev info's, copy them all at once
-	cudaMemcpy(RFIMStruct->h_devInfoValues, RFIMStruct->d_devInfo, sizeof(int) * RFIMStruct->h_batchSize, cudaMemcpyDeviceToHost);
+	cudaMemcpyAsync(RFIMStruct->h_devInfoValues, RFIMStruct->d_devInfo, sizeof(int) * RFIMStruct->h_batchSize, cudaMemcpyDeviceToHost, RFIMStruct->cudaStream);
 
+	cudaDeviceSynchronize();
 
 	for(uint64_t i = 0; i < RFIMStruct->h_batchSize; ++i)
 	{
