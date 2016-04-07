@@ -171,6 +171,21 @@ RFIMMemoryStruct* RFIMMemoryStructCreate(uint64_t h_valuesPerSample, uint64_t h_
 
 
 
+
+
+	//Projected signal
+	//------------------------
+	uint64_t projectedSignalSingleLength = h_valuesPerSample * h_numberOfSamples;
+	uint64_t projectedSignalLength = projectedSignalSingleLength * h_batchSize;
+	uint64_t projectedSignalByteSize = sizeof(float) * projectedSignalLength;
+
+	cudaMalloc(&(result->d_projectedSignalMatrix), projectedSignalByteSize);
+
+	result->h_projectedSignalBatchOffset = projectedSignalSingleLength;
+
+
+
+
 	return result;
 }
 
@@ -188,6 +203,8 @@ void RFIMMemoryStructDestroy(RFIMMemoryStruct* RFIMStruct)
 	cudaFree(RFIMStruct->d_VT);
 	cudaFree(RFIMStruct->d_eigenWorkingSpace);
 	cudaFree(RFIMStruct->d_devInfo);
+
+	cudaFree(RFIMStruct->d_projectedSignalMatrix);
 
 
 	//Free host memory

@@ -26,7 +26,7 @@
 void MeanCublasProduction();
 void CovarianceCublasProduction();
 void EigendecompProduction();
-//void FilteringProduction();
+void FilteringProduction();
 //void TransposeProduction();
 //void GraphProduction();
 
@@ -412,105 +412,139 @@ void EigendecompProduction()
 	RFIMMemoryStructDestroy(RFIMStruct);
 }
 
-/*
+
 
 //Doesn't actually prove that the filter itself works, just that the math functions are working as you would expected
 //By removing 0 dimensions we should get the same signal back
 void FilteringProduction()
 {
-	int valuesPerSample = 2;
-	int batchSize = 5;
 
-	int signalByteSize = sizeof(float) * valuesPerSample * valuesPerSample;
-
-
-	//REDUCE NOTHING! This should give us back the same signal
-	RFIMMemoryStruct* RFIM = RFIMMemoryStructCreate(valuesPerSample, valuesPerSample, 0, batchSize, 0);
+	uint64_t valuesPerSample = 2;
+	uint64_t numberOfSamples = 3; //THIS MAY MAKE THE UNIT TEST FAIL!?
+	uint64_t dimensionsToReduce = 0;
+	uint64_t batchSize = 20;
+	uint64_t numberOfCudaStreams = 16;
 
 
-	//Create small full covariance matrix
-	float** h_signalPointers; // = (float**)malloc(sizeof(float*) * batchSize);
-	float* h_signal; // = (float*)malloc( signalByteSize );
-	cudaMallocHost(&h_signalPointers, sizeof(float*) * batchSize);
+	RFIMMemoryStruct* RFIMStruct = RFIMMemoryStructCreate(valuesPerSample, numberOfSamples, dimensionsToReduce, batchSize, numberOfCudaStreams);
+
+
+	uint64_t singleSignalLength = valuesPerSample * numberOfSamples;
+	uint64_t signalLength = singleSignalLength * batchSize;
+	uint64_t signalByteSize = sizeof(float) * signalLength;
+
+	float* h_signal;
 	cudaMallocHost(&h_signal, signalByteSize);
 
-	h_signal[0] = 1.0f;
-	h_signal[1] = 2.0f;
-	h_signal[2] = 7.0f;
-	h_signal[3] = -8.0f;
 
-	//Set each pointer to h_signal
-	for(uint32_t i = 0; i < batchSize; ++i)
+	//Set the signal
+	for(uint64_t i = 0; i < batchSize; ++i)
 	{
-		h_signalPointers[i] = h_signal;
+		float* currentSignal = h_signal + (i * singleSignalLength);
+
+		currentSignal[0] = 1.0f;
+		currentSignal[1] = 2.0f;
+		currentSignal[2] = 7.0f;
+		currentSignal[3] = -8.0f;
 	}
 
 
-	//Copy signal to the device
-	float** d_signalPointers = CudaUtility_BatchAllocateDeviceArrays(batchSize, signalByteSize,  &(RFIM->cudaStream));
-	CudaUtility_BatchCopyArraysHostToDevice(d_signalPointers, h_signalPointers, batchSize, signalByteSize,  &(RFIM->cudaStream));
+	//Copy the signal over to the device
+	float* d_signal;
+	cudaMalloc(&d_signal, signalByteSize);
+	cudaMemcpy(d_signal, h_signal, signalByteSize, cudaMemcpyHostToDevice);
+
+
+	//Calculate the covarianceMatrices
+	Device_CalculateCovarianceMatrix(RFIMStruct, d_signal);
+
+
+	//Calculate the eigenvectors/values
+	Device_EigenvalueSolver(RFIMStruct);
 
 
 
-	//Calculate the covariance matrix
-	Device_CalculateCovarianceMatrix(RFIM, d_signalPointers);
-
-	//Calculate the eigenvectors
-	Device_EigenvalueSolver(RFIM);
-
-	//Setup the signal output
-	float** d_filteredSignals = CudaUtility_BatchAllocateDeviceArrays(batchSize, signalByteSize,  &(RFIM->cudaStream));
+	//Allocate memory for the filtered signal
+	float* d_filteredSignal;
+	cudaMalloc(&d_filteredSignal, signalByteSize);
 
 
-
-	//Do the projection
-	Device_EigenReductionAndFiltering(RFIM, d_signalPointers, d_filteredSignals);
-
-
-	//Copy the signal back to the host
-	float** h_filteredSignals = CudaUtility_BatchAllocateHostArrays(batchSize, signalByteSize);
-	CudaUtility_BatchCopyArraysDeviceToHost(d_filteredSignals, h_filteredSignals, batchSize, signalByteSize,  &(RFIM->cudaStream));
-
-	bool failed = false;
+	//Do the projection/reprojection
+	Device_EigenReductionAndFiltering(RFIMStruct, d_signal, d_filteredSignal);
 
 
-	for(uint32_t i = 0; i < batchSize; ++i)
+
+	//copy the result back to the host, one stream at a time
+
+	float* h_filteredSignal;
+	cudaMallocHost(&h_filteredSignal, signalByteSize);
+
+	uint64_t cudaStreamIterator = 0;
+
+	for(uint64_t i = 0; i < batchSize; ++i)
 	{
-		//Make sure we got the same signal back
-		for(uint32_t j = 0; j < valuesPerSample * valuesPerSample; ++j)
-		{
-			//print the signal
-			//printf("Orig[%u][%u]: %f, filt[%u][%u]: %f\n", i, j, h_signalPointers[i][j], i, j, h_filteredSignals[i][j]);
+		//Put in the request for the memory to be copied
+		cudaMemcpyAsync(h_filteredSignal + (i * singleSignalLength),
+				d_filteredSignal + (i * singleSignalLength),
+				singleSignalLength * sizeof(float),
+				cudaMemcpyDeviceToHost,
+				RFIMStruct->h_cudaStreams[cudaStreamIterator]);
 
-			if(fabs(h_signalPointers[i][j]) - fabs(h_filteredSignals[i][j]) > 0.0000001f)
-			{
-				failed = true;
-			}
+		//Iterate the streams
+		cudaStreamIterator += 1;
+		if(cudaStreamIterator >= RFIMStruct->h_cudaStreamsLength)
+		{
+			cudaStreamIterator = 0;
 		}
 
-		//printf("\n");
 	}
 
-	if(failed)
+
+	//Wait for everything to be completed
+	cudaError_t cudaError = cudaDeviceSynchronize();
+
+	if(cudaError != cudaSuccess)
 	{
-		fprintf(stderr, "FilteringProduction: Unit test failed!\n");
+		fprintf(stderr, "FilteringProduction: Something went wrong!\n");
 		exit(1);
 	}
 
 
+
+
+	//print/check the results
+	for(uint64_t i = 0; i < batchSize; ++i)
+	{
+		float* currentSignal = h_signal + (i * singleSignalLength);
+		float* currentFilteredSignal = h_filteredSignal + (i * singleSignalLength);
+
+		for(uint64_t j = 0; j < 4; ++j)
+		{
+			//printf("filteredSignal[%llu][%llu]: %f\n", i, j, currentFilteredSignal[j]);
+
+			if(currentSignal[j] - currentFilteredSignal[j] > 0.000001f)
+			{
+				fprintf(stderr, "FilteringProduction unit test: results are different from expected!\n");
+				exit(1);
+			}
+		}
+	}
+
+
+
 	//Free all memory
 	cudaFreeHost(h_signal);
-	cudaFreeHost(h_signalPointers);
+	cudaFreeHost(h_filteredSignal);
 
-	CudaUtility_BatchDeallocateDeviceArrays(d_signalPointers, batchSize,  &(RFIM->cudaStream));
-	CudaUtility_BatchDeallocateDeviceArrays(d_filteredSignals, batchSize,  &(RFIM->cudaStream));
-	CudaUtility_BatchDeallocateHostArrays(h_filteredSignals, batchSize);
+	cudaFree(d_signal);
+	cudaFree(d_filteredSignal);
 
-	RFIMMemoryStructDestroy(RFIM);
+	RFIMMemoryStructDestroy(RFIMStruct);
+
 
 }
 
-*/
+
 
 
 
@@ -520,7 +554,7 @@ void RunAllUnitTests()
 	MeanCublasProduction();
 	CovarianceCublasProduction();
 	EigendecompProduction();
-	//FilteringProduction();
+	FilteringProduction();
 
 	printf("All tests passed!\n");
 

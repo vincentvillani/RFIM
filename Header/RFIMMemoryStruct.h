@@ -58,9 +58,10 @@ typedef struct RFIMMemoryStruct
 	int* h_devInfo;
 	uint64_t h_devInfoBatchOffset;
 
-	/*
-	float** d_projectedSignalMatrix;
-	*/
+
+	float* d_projectedSignalMatrix;
+	uint64_t h_projectedSignalBatchOffset;
+
 
 	//Library handles
 	cublasHandle_t* cublasHandle;
