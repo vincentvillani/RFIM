@@ -56,7 +56,7 @@ RFIMMemoryStruct* RFIMMemoryStructCreate(uint64_t h_valuesPerSample, uint64_t h_
 	cudaMallocHost(&(result->h_cudaStreams), sizeof(cudaStream_t) * h_numberOfCUDAStreams);
 	for(uint64_t i = 0; i < h_numberOfCUDAStreams; ++i)
 	{
-		cudaStreamCreateWithFlags(result->h_cudaStreams + i, cudaStreamNonBlocking);
+		cudaStreamCreate(result->h_cudaStreams + i);
 	}
 
 

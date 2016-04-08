@@ -28,7 +28,7 @@ void Benchmark()
 	uint64_t iterations = 30;
 
 	//Signal
-	uint64_t h_valuesPerSample = 52;
+	uint64_t h_valuesPerSample = 26;
 	uint64_t h_numberOfSamples;
 	uint64_t h_dimensionsToReduce = 2;
 	uint64_t h_batchSize;
