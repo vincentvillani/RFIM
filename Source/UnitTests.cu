@@ -705,7 +705,7 @@ void MemoryLeakTest()
 	}
 
 
-	for(uint64_t i = 0; i < 10000000; ++i)
+	for(uint64_t i = 0; i < 5; ++i)
 	{
 		RFIMMemoryStruct** RFIMStructArray;
 		cudaMallocHost(&RFIMStructArray, sizeof(RFIMMemoryStruct*) * h_numberOfThreads);
@@ -736,34 +736,50 @@ void MemoryLeakTest()
 		//Start a thread for each RFIMStruct
 		//Allocate memory
 		std::vector<std::thread*> threadVector;
+		//cudaMallocHost(&threadArray, sizeof(std::thread) * h_numberOfThreads);
 
 
 
 		//Start the threads
 		for(uint64_t currentThreadIndex = 0; currentThreadIndex < h_numberOfThreads; ++currentThreadIndex)
 		{
-			//Placement new, construct an object on already allocated memory
-			std::thread* helloThread = new std::thread(RFIMRoutine,
+			threadVector.push_back(new std::thread(RFIMRoutine,
 					RFIMStructArray[currentThreadIndex],
 					d_signal + (currentThreadIndex * signalThreadOffset),
+					d_filteredSignal + (currentThreadIndex * signalThreadOffset)));
+
+			/*
+			//Placement new, construct an object on already allocated memory
+			std::thread* helloThread = new (threadArray + currentThreadIndex) std::thread(RFIMRoutine,
+					std::ref(RFIMStructArray[currentThreadIndex]),
+					d_signal + (currentThreadIndex * signalThreadOffset),
 					d_filteredSignal + (currentThreadIndex * signalThreadOffset));
+					*/
 
-			threadVector.push_back(helloThread);
-
-			helloThread->join();
 		}
 
+
+		//Wait for all threads to complete
+		for(uint64_t currentThreadIndex = 0; currentThreadIndex < h_numberOfThreads; ++currentThreadIndex)
+		{
+			threadVector[currentThreadIndex]->join();
+		}
 
 
 		//Free each of the RFIMStructs
 		for(uint64_t currentThreadIndex = 0; currentThreadIndex < h_numberOfThreads; ++currentThreadIndex)
 		{
 			RFIMMemoryStructDestroy(RFIMStructArray[currentThreadIndex]);
-			delete threadVector[currentThreadIndex];
+
+			std::thread* currentThread = threadVector[currentThreadIndex];
+			delete currentThread;
+
 		}
 
 
+
 		cudaFreeHost(RFIMStructArray);
+		//cudaFreeHost(threadArray);
 
 		cudaFree(d_signal);
 		cudaFree(d_filteredSignal);
@@ -777,14 +793,14 @@ void MemoryLeakTest()
 
 void RunAllUnitTests()
 {
-	/*
+
 	MeanCublasProduction();
 	CovarianceCublasProduction();
 	EigendecompProduction();
 	FilteringProduction();
 
 	RoundTripNoReduction();
-	*/
+
 
 	MemoryLeakTest();
 

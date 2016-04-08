@@ -143,6 +143,7 @@ void Device_CalculateMeanMatrices(RFIMMemoryStruct* RFIMStruct, float* d_signalM
 		}
 
 
+		/*
 		//TODO: DEBUG REMOVE
 		cudaError_t cudaError = cudaDeviceSynchronize();
 		cublasError = cublasGetError();
@@ -151,6 +152,7 @@ void Device_CalculateMeanMatrices(RFIMMemoryStruct* RFIMStruct, float* d_signalM
 		{
 			fprintf(stderr, "CalculateMeanMatrix 1 error\n");
 		}
+		*/
 
 	}
 

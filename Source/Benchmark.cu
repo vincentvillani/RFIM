@@ -133,19 +133,21 @@ void Benchmark()
 					for(uint64_t currentThreadIndex = 0; currentThreadIndex < h_numberOfThreads; ++currentThreadIndex)
 					{
 						//Placement new, construct an object on already allocated memory
-						new (threadArray + currentThreadIndex) std::thread(RFIMInstance,
-								std::ref(RFIMStructArray[currentThreadIndex]),
+						std::thread* helloThread = new (threadArray + currentThreadIndex) std::thread(RFIMInstance,
+								RFIMStructArray[currentThreadIndex],
 								d_signal + (currentThreadIndex * signalThreadOffset),
 								d_filteredSignal + (currentThreadIndex * signalThreadOffset), iterations);
+
+						helloThread->join();
 					}
 
-
+					/*
 					//Join with each of the threads
 					for(uint64_t currentThreadIndex = 0; currentThreadIndex < h_numberOfThreads; ++currentThreadIndex)
 					{
 						threadArray[currentThreadIndex].join();
 					}
-
+					*/
 
 
 
