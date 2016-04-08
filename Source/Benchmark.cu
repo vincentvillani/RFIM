@@ -25,10 +25,10 @@ void Benchmark()
 {
 
 	//Benchmark
-	uint64_t iterations = 1;
+	uint64_t iterations = 30;
 
 	//Signal
-	uint64_t h_valuesPerSample = 26;
+	uint64_t h_valuesPerSample = 52;
 	uint64_t h_numberOfSamples;
 	uint64_t h_dimensionsToReduce = 2;
 	uint64_t h_batchSize;
@@ -54,14 +54,14 @@ void Benchmark()
 
 
 	//For each numberOfSamples value
-	for(uint64_t i = 16; i < 22; ++i)
+	for(uint64_t i = 16; i < 24; ++i)
 	{
 		h_numberOfSamples = 1 << i;
 
 
 
 		//For each batchSize
-		for(uint64_t j = 0; j < 8; ++j)
+		for(uint64_t j = 0; j < 4; ++j)
 		{
 
 			h_batchSize = 1 << j;
@@ -149,6 +149,8 @@ void Benchmark()
 	}
 
 
+
+	curandDestroyGenerator(rngGen);
 
 	printf("Benchmark complete!!\n");
 
