@@ -21,14 +21,11 @@
 #include "../Header/RFIM.h"
 #include "../Header/Benchmark.h"
 
-//TODO: THERE MIGHT BE A MEMORY LEAK ON THE DEVICE
-//TODO: Get all unit tests working with streams / async mem copies etc
-//TODO: Remove all malloc and free calls from the program. All host memory should be allocated as paged so it can be copied asyncly
+
+
 //TODO: Look into ways of using less memory
 //TODO: Write a unit test to test eigenvector removal gives the correct result
-//TODO: Make sure memory that can be used again, is still in a valid state after the first execution
-//TODO: Eigenvector/value solver memory (U, S, VT, etc) could be allocated as one big array that is offset in a for loop. This cannot be done for the cublas calls due to it's API. Think about if this is worth implemeting
-//TODO: Looks like there is a memory leak somewhere
+
 
 
 int main(int argc, char **argv)
@@ -49,7 +46,7 @@ int main(int argc, char **argv)
 
 	//1. Run RFIM benchmark
 	//--------------------------
-	Benchmark();
+	//Benchmark();
 
 
 

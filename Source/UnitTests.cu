@@ -33,6 +33,7 @@ void RoundTripNoReduction();
 //void TransposeProduction();
 //void GraphProduction();
 
+void MemoryLeakTest();
 
 
 
@@ -672,18 +673,67 @@ void RoundTripNoReduction()
 
 
 
+void MemoryLeakTest()
+{
+	uint64_t h_valuesPerSample = 26;
+	uint64_t h_numberOfSamples = 1 << 14;
+	uint64_t h_dimensionsToReduce = 2;
+	uint64_t h_batchSize = 5;
+	uint64_t h_numberOfCudaStreams = 8;
+
+	curandGenerator_t rngGen;
+
+	if( curandCreateGenerator(&rngGen, CURAND_RNG_PSEUDO_DEFAULT) != CURAND_STATUS_SUCCESS)
+	{
+		fprintf(stderr, "main: Unable to start cuRand library\n");
+		exit(1);
+	}
+
+	//Set the RNG seed
+	if((curandSetPseudoRandomGeneratorSeed(rngGen, 1)) != CURAND_STATUS_SUCCESS)
+	{
+		fprintf(stderr, "main: Unable to set the RNG Seed value\n");
+		exit(1);
+	}
+
+
+	for(uint64_t i = 0; i < 10000000; ++i)
+	{
+		RFIMMemoryStruct* RFIMStruct = RFIMMemoryStructCreate(h_valuesPerSample, h_numberOfSamples,
+				h_dimensionsToReduce, h_batchSize, h_numberOfCudaStreams);
+
+		float* d_signal = Device_GenerateWhiteNoiseSignal(&rngGen, h_valuesPerSample, h_numberOfSamples, h_batchSize);
+		float* d_filteredSignal;
+		cudaMalloc(&d_filteredSignal, sizeof(float) * h_valuesPerSample * h_numberOfSamples * h_batchSize);
+
+		RFIMRoutine(RFIMStruct, d_signal, d_filteredSignal);
+
+
+		cudaFree(d_signal);
+		cudaFree(d_filteredSignal);
+
+		RFIMMemoryStructDestroy(RFIMStruct);
+	}
+
+
+
+
+}
+
 
 
 
 
 void RunAllUnitTests()
 {
-	MeanCublasProduction();
-	CovarianceCublasProduction();
-	EigendecompProduction();
-	FilteringProduction();
+	//MeanCublasProduction();
+	//CovarianceCublasProduction();
+	//EigendecompProduction();
+	//FilteringProduction();
 
-	RoundTripNoReduction();
+	//RoundTripNoReduction();
+
+	MemoryLeakTest();
 
 	printf("All tests passed!\n");
 
