@@ -28,9 +28,51 @@ void RFIMRoutine(RFIMMemoryStruct* RFIMStruct, float* d_columnMajorSignalMatrice
 	Device_CalculateCovarianceMatrix(RFIMStruct, d_columnMajorSignalMatrices);
 
 
+	//TODO: Debug!
+	cudaDeviceSynchronize();
+
+	//Write the matrix to a file
+	float* h_covarMatrix;
+	uint64_t matrixByteSize = sizeof(float) * RFIMStruct->h_valuesPerSample *  RFIMStruct->h_valuesPerSample;
+
+	cudaMallocHost(&h_covarMatrix, matrixByteSize);
+	cudaMemcpy(h_covarMatrix, RFIMStruct->d_covarianceMatrix, matrixByteSize, cudaMemcpyDeviceToHost);
+
+	cudaDeviceSynchronize();
+
+	Utility_WriteSignalMatrixToFile("signalCovarianceMatrix.txt", h_covarMatrix, RFIMStruct->h_valuesPerSample,  RFIMStruct->h_valuesPerSample);
+
+	cudaDeviceSynchronize();
+	//exit(1);
+	//-----------------
+
 
 	//Calculate the eigenvectors/values
 	Device_EigenvalueSolver(RFIMStruct);
+
+
+	//TODO: Debug!
+	cudaDeviceSynchronize();
+
+	//Write the matrix to a file
+	float* h_S;
+	float* h_U;
+	uint64_t SByteSize = sizeof(float) * RFIMStruct->h_valuesPerSample;
+	uint64_t UByteSize = sizeof(float) * RFIMStruct->h_valuesPerSample * RFIMStruct->h_valuesPerSample;
+
+	cudaMallocHost(&h_S, SByteSize);
+	cudaMallocHost(&h_U, UByteSize);
+	cudaMemcpy(h_S, RFIMStruct->d_S, SByteSize, cudaMemcpyDeviceToHost);
+	cudaMemcpy(h_U, RFIMStruct->d_U, UByteSize, cudaMemcpyDeviceToHost);
+
+	cudaDeviceSynchronize();
+
+	Utility_WriteSignalMatrixToFile("eigenvalues.txt", h_S, RFIMStruct->h_valuesPerSample,  1);
+	Utility_WriteSignalMatrixToFile("eigenvectors.txt", h_U, RFIMStruct->h_valuesPerSample,  RFIMStruct->h_valuesPerSample);
+
+	cudaDeviceSynchronize();
+
+	exit(1);
 
 
 

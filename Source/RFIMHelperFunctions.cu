@@ -14,6 +14,7 @@
 #include "../Header/CudaUtilityFunctions.h"
 #include "../Header/Kernels.h"
 #include "../Header/CudaMacros.h"
+#include "../Header/UtilityFunctions.h"
 
 
 //Private helper functions
@@ -97,12 +98,39 @@ void Device_CalculateMeanMatrices(RFIMMemoryStruct* RFIMStruct, float* d_signalM
 									RFIMStruct->d_meanVec + (i * meanVecOffset), 1);
 
 
+
+		//TODO: Debug!
+		cudaDeviceSynchronize();
+
+		//Write the matrix to a file
+		float* h_covarMatrix;
+		uint64_t matrixByteSize = sizeof(float) * RFIMStruct->h_valuesPerSample;
+
+		cudaMallocHost(&h_covarMatrix, matrixByteSize);
+		cudaMemcpy(h_covarMatrix, RFIMStruct->d_meanVec, matrixByteSize, cudaMemcpyDeviceToHost);
+
+		cudaDeviceSynchronize();
+
+		Utility_WriteSignalMatrixToFile("meanVec.txt", h_covarMatrix, RFIMStruct->h_valuesPerSample, 1);
+
+		cudaDeviceSynchronize();
+		//exit(1);
+		//-----------------
+
+
+
+
 		//Check for errors
 		if(cublasError != CUBLAS_STATUS_SUCCESS)
 		{
 			fprintf(stderr, "Device_CalculateMeanMatrices: An error occured while computing d_meanVec\n");
 			exit(1);
 		}
+
+
+
+
+
 
 		//Iterate stream index
 		streamIndex += 1;
@@ -149,6 +177,24 @@ void Device_CalculateMeanMatrices(RFIMMemoryStruct* RFIMStruct, float* d_signalM
 				&alpha, RFIMStruct->d_meanVec + (i * meanVecOffset), 1,
 				RFIMStruct->d_meanVec + (i * meanVecOffset), 1, &beta,
 				RFIMStruct->d_covarianceMatrix + (i * covarianceMatrixOffset), RFIMStruct->h_valuesPerSample);
+
+
+
+		//TODO: Debug!
+		cudaDeviceSynchronize();
+
+		//Write the matrix to a file
+		float* h_covarMatrix;
+		uint64_t matrixByteSize = sizeof(float) * RFIMStruct->h_valuesPerSample * RFIMStruct->h_valuesPerSample;
+
+		cudaMallocHost(&h_covarMatrix, matrixByteSize);
+		cudaMemcpy(h_covarMatrix, RFIMStruct->d_covarianceMatrix, matrixByteSize, cudaMemcpyDeviceToHost);
+
+		cudaDeviceSynchronize();
+
+		Utility_WriteSignalMatrixToFile("MeanMatrix.txt", h_covarMatrix, RFIMStruct->h_valuesPerSample, RFIMStruct->h_valuesPerSample);
+
+		cudaDeviceSynchronize();
 
 
 
@@ -226,6 +272,24 @@ void Device_CalculateCovarianceMatrix(RFIMMemoryStruct* RFIMStruct, float* d_sig
 				&alpha, d_signalMatrices + (i * signalOffset), RFIMStruct->h_valuesPerSample,
 				d_signalMatrices + (i * signalOffset), RFIMStruct->h_valuesPerSample, &beta,
 				RFIMStruct->d_covarianceMatrix + (i * covarianceMatrixOffset), RFIMStruct->h_valuesPerSample);
+
+
+
+		//TODO: Debug!
+		cudaDeviceSynchronize();
+
+		//Write the matrix to a file
+		float* h_covarMatrix;
+		uint64_t matrixByteSize = sizeof(float) * RFIMStruct->h_valuesPerSample * RFIMStruct->h_valuesPerSample;
+
+		cudaMallocHost(&h_covarMatrix, matrixByteSize);
+		cudaMemcpy(h_covarMatrix, RFIMStruct->d_covarianceMatrix, matrixByteSize, cudaMemcpyDeviceToHost);
+
+		cudaDeviceSynchronize();
+
+		Utility_WriteSignalMatrixToFile("newCovarMatrix.txt", h_covarMatrix, RFIMStruct->h_valuesPerSample, RFIMStruct->h_valuesPerSample);
+
+		cudaDeviceSynchronize();
 
 
 		if(cublasError != CUBLAS_STATUS_SUCCESS)
@@ -567,11 +631,16 @@ void Device_MatrixTranspose(cublasHandle_t* cublasHandle, const float* d_matrix,
 	float alpha = 1;
 	float beta = 0;
 
+	//cublasStatus = cublasSgeam(*cublasHandle, CUBLAS_OP_T, CUBLAS_OP_)
 
-	cublasStatus = cublasSgeam(*cublasHandle, CUBLAS_OP_T, CUBLAS_OP_N, colNum, rowNum,
+
+	cublasStatus = cublasSgeam(*cublasHandle, CUBLAS_OP_T, CUBLAS_OP_N,
+			colNum, colNum,
 			&alpha, d_matrix, rowNum,
 			&beta, d_matrix, rowNum,
 			d_matrixTransposed, colNum);
+
+
 
 
 	if(cublasStatus != CUBLAS_STATUS_SUCCESS)
@@ -581,8 +650,6 @@ void Device_MatrixTranspose(cublasHandle_t* cublasHandle, const float* d_matrix,
 	}
 
 }
-
-
-*/
+	*/
 
 
