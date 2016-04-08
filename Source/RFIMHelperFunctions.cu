@@ -62,6 +62,37 @@ float* Device_GenerateWhiteNoiseSignal(curandGenerator_t* rngGen, uint64_t h_val
 }
 
 
+float* Device_GenerateWhiteNoiseSignal(curandGenerator_t* rngGen, uint64_t h_valuesPerSample, uint64_t h_numberOfSamples, uint64_t h_batchSize, uint64_t h_threadNum)
+{
+
+	uint64_t totalSignalLength = h_valuesPerSample * h_numberOfSamples * h_batchSize * h_threadNum;
+	uint64_t totalSignalByteSize = sizeof(float) * totalSignalLength;
+
+
+	float* d_signalMatrix;
+
+	cudaMalloc(&d_signalMatrix, totalSignalByteSize);
+
+	//Generate the signal!
+	//Generate random numbers on the device
+	//Generate random numbers using a normal distribution
+	//Normal distribution should emulate white noise hopefully?
+	//Generate signal
+	if(curandGenerateNormal(*rngGen, d_signalMatrix, totalSignalLength, 0.0f, 1.0f) != CURAND_STATUS_SUCCESS)
+	{
+		fprintf(stderr, "Device_GenerateWhiteNoiseSignal: Error when generating the signal\n");
+		exit(1);
+	}
+
+
+	cudaDeviceSynchronize();
+
+	return d_signalMatrix;
+
+}
+
+
+
 
 void Device_CalculateMeanMatrices(RFIMMemoryStruct* RFIMStruct, float* d_signalMatrices)
 {

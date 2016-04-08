@@ -19,7 +19,6 @@ typedef struct RFIMMemoryStruct
 	uint64_t h_valuesPerSample;
 	uint64_t h_numberOfSamples;
 	uint64_t h_batchSize;
-	uint64_t h_threadId;
 	uint64_t h_eigenVectorDimensionsToReduce;
 
 
