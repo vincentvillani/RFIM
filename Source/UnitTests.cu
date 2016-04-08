@@ -21,6 +21,8 @@
 #include <assert.h>
 #include <cmath>
 #include <string>
+#include <thread>
+#include <vector>
 
 
 //Production tests
@@ -32,6 +34,8 @@ void FilteringProduction();
 void RoundTripNoReduction();
 //void TransposeProduction();
 //void GraphProduction();
+
+void MemoryLeakTest();
 
 
 
@@ -673,17 +677,116 @@ void RoundTripNoReduction()
 
 
 
+void MemoryLeakTest()
+{
+	//Signal
+	uint64_t h_valuesPerSample = 26;
+	uint64_t h_numberOfSamples  = 1 << 10;
+	uint64_t h_dimensionsToReduce = 2;
+	uint64_t h_batchSize = 5;
+	uint64_t h_numberOfCudaStreams = 8;
+	uint64_t h_numberOfThreads = 4;
+
+
+	//Start up the RNG
+	curandGenerator_t rngGen;
+
+	if( curandCreateGenerator(&rngGen, CURAND_RNG_PSEUDO_DEFAULT) != CURAND_STATUS_SUCCESS)
+	{
+		fprintf(stderr, "main: Unable to start cuRand library\n");
+		exit(1);
+	}
+
+	//Set the RNG seed
+	if((curandSetPseudoRandomGeneratorSeed(rngGen, 1)) != CURAND_STATUS_SUCCESS)
+	{
+		fprintf(stderr, "main: Unable to set the RNG Seed value\n");
+		exit(1);
+	}
+
+
+	for(uint64_t i = 0; i < 10000000; ++i)
+	{
+		RFIMMemoryStruct** RFIMStructArray;
+		cudaMallocHost(&RFIMStructArray, sizeof(RFIMMemoryStruct*) * h_numberOfThreads);
+
+		//Allocate all the signal memory
+		float* d_signal;
+		float* d_filteredSignal;
+		uint64_t signalThreadOffset = h_valuesPerSample * h_numberOfSamples * h_batchSize;
+		uint64_t signalByteSize = sizeof(float) * h_valuesPerSample * h_numberOfSamples * h_batchSize * h_numberOfThreads;
+
+
+
+		cudaMalloc(&d_filteredSignal, signalByteSize);
+
+		d_signal = Device_GenerateWhiteNoiseSignal(&rngGen, h_valuesPerSample, h_numberOfSamples, h_batchSize, h_numberOfThreads);
+
+
+		//Create a struct for each of the threads
+		for(uint64_t currentThreadIndex = 0; currentThreadIndex < h_numberOfThreads; ++currentThreadIndex)
+		{
+			RFIMStructArray[currentThreadIndex] = RFIMMemoryStructCreate(h_valuesPerSample, h_numberOfSamples,
+					h_dimensionsToReduce, h_batchSize, h_numberOfCudaStreams);
+
+		}
+
+
+
+		//Start a thread for each RFIMStruct
+		//Allocate memory
+		std::vector<std::thread*> threadVector;
+
+
+
+		//Start the threads
+		for(uint64_t currentThreadIndex = 0; currentThreadIndex < h_numberOfThreads; ++currentThreadIndex)
+		{
+			//Placement new, construct an object on already allocated memory
+			std::thread* helloThread = new std::thread(RFIMRoutine,
+					RFIMStructArray[currentThreadIndex],
+					d_signal + (currentThreadIndex * signalThreadOffset),
+					d_filteredSignal + (currentThreadIndex * signalThreadOffset));
+
+			threadVector.push_back(helloThread);
+
+			helloThread->join();
+		}
+
+
+
+		//Free each of the RFIMStructs
+		for(uint64_t currentThreadIndex = 0; currentThreadIndex < h_numberOfThreads; ++currentThreadIndex)
+		{
+			RFIMMemoryStructDestroy(RFIMStructArray[currentThreadIndex]);
+			delete threadVector[currentThreadIndex];
+		}
+
+
+		cudaFreeHost(RFIMStructArray);
+
+		cudaFree(d_signal);
+		cudaFree(d_filteredSignal);
+	}
+
+	curandDestroyGenerator(rngGen);
+}
+
 
 
 
 void RunAllUnitTests()
 {
+	/*
 	MeanCublasProduction();
 	CovarianceCublasProduction();
 	EigendecompProduction();
 	FilteringProduction();
 
 	RoundTripNoReduction();
+	*/
+
+	MemoryLeakTest();
 
 	printf("All tests passed!\n");
 

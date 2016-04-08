@@ -87,7 +87,7 @@ void Benchmark()
 
 
 
-				for(uint64_t p = 5; p < 6; ++p)
+				for(uint64_t p = 0; p < 6; ++p)
 				{
 
 					h_numberOfThreads = 1 << p;
@@ -103,7 +103,6 @@ void Benchmark()
 					uint64_t signalByteSize = sizeof(float) * h_valuesPerSample * h_numberOfSamples * h_batchSize * h_numberOfThreads;
 
 
-					cudaMalloc(&d_signal, signalByteSize);
 					cudaMalloc(&d_filteredSignal, signalByteSize);
 
 					d_signal = Device_GenerateWhiteNoiseSignal(&rngGen, h_valuesPerSample, h_numberOfSamples, h_batchSize, h_numberOfThreads);
@@ -188,11 +187,6 @@ void Benchmark()
 					cudaFree(d_signal);
 					cudaFree(d_filteredSignal);
 
-					//TODO: Remove
-					if(p == 5)
-					{
-						exit(1);
-					}
 
 				}
 
