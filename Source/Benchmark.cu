@@ -93,6 +93,8 @@ void Benchmark()
 					h_numberOfThreads = 1 << p;
 
 
+
+
 					RFIMMemoryStruct** RFIMStructArray;
 					cudaMallocHost(&RFIMStructArray, sizeof(RFIMMemoryStruct*) * h_numberOfThreads);
 
@@ -119,9 +121,7 @@ void Benchmark()
 
 
 					//Start a thread for each RFIMStruct
-					//Allocate memory
-					std::thread* threadArray;
-					cudaMallocHost(&threadArray, sizeof(std::thread) * h_numberOfThreads);
+					std::vector<std::thread*> threadVector;
 
 
 
@@ -133,21 +133,21 @@ void Benchmark()
 					for(uint64_t currentThreadIndex = 0; currentThreadIndex < h_numberOfThreads; ++currentThreadIndex)
 					{
 						//Placement new, construct an object on already allocated memory
-						std::thread* helloThread = new (threadArray + currentThreadIndex) std::thread(RFIMInstance,
+						threadVector.push_back( new std::thread(RFIMInstance,
 								RFIMStructArray[currentThreadIndex],
 								d_signal + (currentThreadIndex * signalThreadOffset),
-								d_filteredSignal + (currentThreadIndex * signalThreadOffset), iterations);
+								d_filteredSignal + (currentThreadIndex * signalThreadOffset), iterations));
 
-						helloThread->join();
+
 					}
 
-					/*
+
 					//Join with each of the threads
 					for(uint64_t currentThreadIndex = 0; currentThreadIndex < h_numberOfThreads; ++currentThreadIndex)
 					{
-						threadArray[currentThreadIndex].join();
+						threadVector[currentThreadIndex]->join();
 					}
-					*/
+
 
 
 
@@ -178,13 +178,15 @@ void Benchmark()
 					for(uint64_t currentThreadIndex = 0; currentThreadIndex < h_numberOfThreads; ++currentThreadIndex)
 					{
 						RFIMMemoryStructDestroy(RFIMStructArray[currentThreadIndex]);
-						threadArray[currentThreadIndex].~thread(); //Call the destructor
+						std::thread* currentThread = threadVector[currentThreadIndex];
+						delete currentThread;
+
 					}
 
 
 
 					cudaFreeHost(RFIMStructArray);
-					cudaFreeHost(threadArray);
+
 
 					cudaFree(d_signal);
 					cudaFree(d_filteredSignal);

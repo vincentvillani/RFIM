@@ -705,7 +705,7 @@ void MemoryLeakTest()
 	}
 
 
-	for(uint64_t i = 0; i < 10000; ++i)
+	for(uint64_t i = 0; i < 10; ++i)
 	{
 		RFIMMemoryStruct** RFIMStructArray;
 		cudaMallocHost(&RFIMStructArray, sizeof(RFIMMemoryStruct*) * h_numberOfThreads);

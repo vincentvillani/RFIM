@@ -30,7 +30,7 @@
 int main(int argc, char **argv)
 {
 	//Run all the unit tests
-	RunAllUnitTests();
+	//RunAllUnitTests();
 
 	/*
 	uint32_t h_valuesPerSample = 26;
@@ -45,7 +45,7 @@ int main(int argc, char **argv)
 
 	//1. Run RFIM benchmark
 	//--------------------------
-	//Benchmark();
+	Benchmark();
 
 
 
