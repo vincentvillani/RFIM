@@ -682,7 +682,7 @@ void MemoryLeakTest()
 	//Signal
 	uint64_t h_valuesPerSample = 26;
 	uint64_t h_numberOfSamples  = 1 << 10;
-	uint64_t h_dimensionsToReduce = 2;
+	uint64_t h_dimensionsToReduce = 0;
 	uint64_t h_batchSize = 5;
 	uint64_t h_numberOfCudaStreams = 8;
 	uint64_t h_numberOfThreads = 4;
@@ -705,7 +705,7 @@ void MemoryLeakTest()
 	}
 
 
-	for(uint64_t i = 0; i < 5; ++i)
+	for(uint64_t i = 0; i < 10000; ++i)
 	{
 		RFIMMemoryStruct** RFIMStructArray;
 		cudaMallocHost(&RFIMStructArray, sizeof(RFIMMemoryStruct*) * h_numberOfThreads);
@@ -766,6 +766,27 @@ void MemoryLeakTest()
 		}
 
 
+
+		//Compare the input and output results and see if they are the same
+		float* h_signal;
+		float* h_filteredSignal;
+		cudaMallocHost(&h_signal, signalByteSize);
+		cudaMallocHost(&h_filteredSignal, signalByteSize);
+		cudaMemcpy(h_signal, d_signal, signalByteSize, cudaMemcpyDeviceToHost);
+		cudaMemcpy(h_filteredSignal, d_filteredSignal, signalByteSize, cudaMemcpyDeviceToHost);
+
+		for(uint64_t signalIndex = 0; signalIndex < h_valuesPerSample * h_numberOfSamples * h_batchSize * h_numberOfThreads; ++signalIndex)
+		{
+			if(fabs(h_filteredSignal[signalIndex]) - fabs(h_signal[signalIndex]) > 0.1f)
+			{
+				fprintf(stderr, "MemoryLeakTest: Signal is not the same as filtered signal\nSignal[%llu] = %f\nFilteredSignal[%llu] = %f\n",
+						signalIndex, h_signal[signalIndex], signalIndex, h_filteredSignal[signalIndex]);
+				exit(1);
+			}
+		}
+
+
+
 		//Free each of the RFIMStructs
 		for(uint64_t currentThreadIndex = 0; currentThreadIndex < h_numberOfThreads; ++currentThreadIndex)
 		{
@@ -779,6 +800,8 @@ void MemoryLeakTest()
 
 
 		cudaFreeHost(RFIMStructArray);
+		cudaFreeHost(h_signal);
+		cudaFreeHost(h_filteredSignal);
 		//cudaFreeHost(threadArray);
 
 		cudaFree(d_signal);
