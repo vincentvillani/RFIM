@@ -7,7 +7,6 @@
 
 #include "../Header/UtilityFunctions.h"
 #include "../Header/RFIMHelperFunctions.h"
-#include "../Header/CudaUtilityFunctions.h"
 #include <cublas.h>
 
 

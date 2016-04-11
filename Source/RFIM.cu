@@ -7,7 +7,7 @@
 
 #include "../Header/RFIM.h"
 
-#include "../Header/CudaUtilityFunctions.h"
+
 #include "../Header/UtilityFunctions.h"
 #include "../Header/RFIMHelperFunctions.h"
 

@@ -11,7 +11,6 @@
 
 
 
-#include "../Header/CudaUtilityFunctions.h"
 #include "../Header/Kernels.h"
 #include "../Header/CudaMacros.h"
 
@@ -89,6 +88,36 @@ float* Device_GenerateWhiteNoiseSignal(curandGenerator_t* rngGen, uint64_t h_val
 
 	return d_signalMatrix;
 
+}
+
+
+
+cuComplex* Device_GenerateWhiteNoiseSignalComplex(curandGenerator_t* rngGen, uint64_t h_valuesPerSample, uint64_t h_numberOfSamples,
+		uint64_t h_batchSize, uint64_t h_threadNum)
+{
+	uint64_t totalSignalLength = h_valuesPerSample * h_numberOfSamples * h_batchSize * h_threadNum;
+	uint64_t totalSignalByteSize = sizeof(cuComplex) * totalSignalLength;
+
+
+	cuComplex* d_signalMatrix;
+
+	cudaMalloc(&d_signalMatrix, totalSignalByteSize);
+
+	//Generate the signal!
+	//Generate random numbers on the device
+	//Generate random numbers using a normal distribution
+	//Normal distribution should emulate white noise hopefully?
+	//Generate signal
+	if(curandGenerateNormal(*rngGen, (float*)d_signalMatrix, totalSignalLength * 2, 0.0f, 1.0f) != CURAND_STATUS_SUCCESS) //* 2 for complex numbers
+	{
+		fprintf(stderr, "Device_GenerateWhiteNoiseSignalComplex: Error when generating the signal\n");
+		exit(1);
+	}
+
+
+	cudaDeviceSynchronize();
+
+	return d_signalMatrix;
 }
 
 
@@ -217,6 +246,127 @@ void Device_CalculateMeanMatrices(RFIMMemoryStruct* RFIMStruct, float* d_signalM
 
 
 
+void Device_CalculateMeanMatricesComplex(RFIMMemoryStructComplex* RFIMStruct, cuComplex* d_signalMatrices)
+{
+	//Calculate d_meanVec
+	//d_meanVec = d_oneMatrix (1 x h_numberOfSamples) * d_signal (transposed) (h_numberOfSamples x h_valuesPerSample ) matrix = 1 * h_valuesPerSample matrix
+	//This each of the beams added up. It adds up the columns of transposed d_signal
+	//---------------------------
+	cublasStatus_t cublasError;
+
+
+	cuComplex alpha = make_cuComplex(1.0f / RFIMStruct->h_numberOfSamples, 0) ;
+	cuComplex beta = make_cuComplex(0, 0);
+
+	uint64_t signalMatrixOffset = RFIMStruct->h_valuesPerSample * RFIMStruct->h_numberOfSamples;
+	uint64_t meanVecOffset = RFIMStruct->h_valuesPerSample;
+
+	uint64_t streamIndex = 0;
+
+	for(uint64_t i = 0; i < RFIMStruct->h_batchSize; ++i)
+	{
+
+		//Set the cuda stream
+		cublasSetStream_v2(*RFIMStruct->cublasHandle, RFIMStruct->h_cudaStreams[streamIndex]);
+
+		//Compute the mean vector
+		//We use the same d_onevec each time
+		cublasError = cublasCgemm_v2(*RFIMStruct->cublasHandle, CUBLAS_OP_N, CUBLAS_OP_C,
+									1, RFIMStruct->h_valuesPerSample, RFIMStruct->h_numberOfSamples,
+									&alpha, RFIMStruct->d_oneVec, 1,
+									d_signalMatrices + (i * signalMatrixOffset), RFIMStruct->h_valuesPerSample, &beta,
+									RFIMStruct->d_meanVec + (i * meanVecOffset), 1);
+
+
+		//Check for errors
+		if(cublasError != CUBLAS_STATUS_SUCCESS)
+		{
+			fprintf(stderr, "Device_CalculateMeanMatricesComplex: An error occured while computing d_meanVec\n");
+			exit(1);
+		}
+
+		//Iterate stream index
+		streamIndex += 1;
+		if(streamIndex >= RFIMStruct->h_cudaStreamsLength)
+		{
+			streamIndex = 0;
+		}
+
+
+		/*
+		//TODO: DEBUG REMOVE
+		cudaError_t cudaError = cudaDeviceSynchronize();
+		cublasError = cublasGetError();
+
+		if(cudaError != cudaSuccess || cublasError != CUBLAS_STATUS_SUCCESS)
+		{
+			fprintf(stderr, "CalculateMeanMatrix 1 error\n");
+		}
+		*/
+
+	}
+
+
+
+
+
+	//Calculate mean matrix
+	//mean matrix = outer product of the transposed d_meanVec with itself
+	//d_meanMatrix = d_meanVec_Transposed (h_valuesPerSample x 1) * d_meanVec (1 x h_valuesPerSample)
+	//--------------------------------------
+
+	alpha = make_cuComplex(1.0f, 0);
+	streamIndex = 0;
+
+	uint64_t covarianceMatrixOffset = RFIMStruct->h_valuesPerSample * RFIMStruct->h_valuesPerSample;
+
+	for(uint64_t i = 0; i < RFIMStruct->h_batchSize; ++i)
+	{
+
+		//Set the cuda stream
+		cublasSetStream_v2(*RFIMStruct->cublasHandle, RFIMStruct->h_cudaStreams[streamIndex]);
+
+		//Compute the mean outer product
+		cublasError = cublasCgemm_v2(*RFIMStruct->cublasHandle, CUBLAS_OP_C, CUBLAS_OP_N,
+				RFIMStruct->h_valuesPerSample, RFIMStruct->h_valuesPerSample, 1,
+				&alpha, RFIMStruct->d_meanVec + (i * meanVecOffset), 1,
+				RFIMStruct->d_meanVec + (i * meanVecOffset), 1, &beta,
+				RFIMStruct->d_covarianceMatrix + (i * covarianceMatrixOffset), RFIMStruct->h_valuesPerSample);
+
+
+
+		//Check for errors
+		if(cublasError != CUBLAS_STATUS_SUCCESS)
+		{
+			fprintf(stderr, "Device_CalculateMeanMatricesComplex: An error occured while computing d_meanVec\n");
+			exit(1);
+		}
+
+		//Iterate stream index
+		streamIndex += 1;
+		if(streamIndex >= RFIMStruct->h_cudaStreamsLength)
+		{
+			streamIndex = 0;
+		}
+
+		/*
+		//TODO: DEBUG REMOVE
+		cudaError_t cudaError = cudaDeviceSynchronize();
+		cublasError = cublasGetError();
+
+		if(cudaError != cudaSuccess || cublasError != CUBLAS_STATUS_SUCCESS)
+		{
+			fprintf(stderr, "CalculateMeanMatrix 2 error\n");
+		}
+		*/
+	}
+}
+
+
+
+
+
+
 void Device_CalculateCovarianceMatrix(RFIMMemoryStruct* RFIMStruct, float* d_signalMatrices)
 {
 
@@ -290,6 +440,78 @@ void Device_CalculateCovarianceMatrix(RFIMMemoryStruct* RFIMStruct, float* d_sig
 
 }
 
+
+
+void Device_CalculateCovarianceMatrixComplex(RFIMMemoryStructComplex* RFIMStruct, cuComplex* d_signalMatrices)
+{
+	//d_signalMatrix should be column-major as CUBLAS is column-major library (indexes start at 1 also)
+	//Remember to take that into account!
+
+
+	//Calculate the meanMatrix of the signal
+	//--------------------------------
+
+	Device_CalculateMeanMatricesComplex(RFIMStruct, d_signalMatrices);
+
+	//--------------------------------
+
+
+
+	//Calculate the covariance matrix
+	//-------------------------------
+	//1. Calculate the outer product of the signal (sampleElements x sampleNumber) * ( sampleNumber x sampleElements)
+	//	AKA. signal * (signal)T, where T = transpose, which will give you a (sampleNumber x sampleNumber) matrix as a result
+
+	//Take the outer product of the signal with itself
+	cuComplex alpha = make_cuComplex(1.0f / RFIMStruct->h_numberOfSamples, 0);
+	cuComplex beta = make_cuComplex(-1, 0);
+
+	uint64_t signalOffset = RFIMStruct->h_valuesPerSample * RFIMStruct->h_numberOfSamples;
+	uint64_t covarianceMatrixOffset = RFIMStruct->h_valuesPerSample * RFIMStruct->h_valuesPerSample;
+
+	uint64_t cudaStreamIterator = 0;
+
+	cublasStatus_t cublasError;
+
+	for(uint64_t i = 0; i < RFIMStruct->h_batchSize; ++i)
+	{
+		//Set the stream for the library
+		cublasSetStream_v2(*RFIMStruct->cublasHandle, RFIMStruct->h_cudaStreams[cudaStreamIterator]);
+
+		cublasError = cublasCgemm_v2(*RFIMStruct->cublasHandle, CUBLAS_OP_N, CUBLAS_OP_C,
+				RFIMStruct->h_valuesPerSample, RFIMStruct->h_valuesPerSample, RFIMStruct->h_numberOfSamples,
+				&alpha, d_signalMatrices + (i * signalOffset), RFIMStruct->h_valuesPerSample,
+				d_signalMatrices + (i * signalOffset), RFIMStruct->h_valuesPerSample, &beta,
+				RFIMStruct->d_covarianceMatrix + (i * covarianceMatrixOffset), RFIMStruct->h_valuesPerSample);
+
+
+		if(cublasError != CUBLAS_STATUS_SUCCESS)
+		{
+			fprintf(stderr, "Device_CalculateCovarianceMatrixComplex: error calculating the covariance matrix\n");
+			exit(1);
+		}
+
+
+		cudaStreamIterator += 1;
+		if(cudaStreamIterator >= RFIMStruct->h_cudaStreamsLength)
+		{
+			cudaStreamIterator = 0;
+		}
+
+		/*
+		//TODO: DEBUG REMOVE
+		cudaError_t cudaError = cudaDeviceSynchronize();
+		cublasError = cublasGetError();
+
+		if(cudaError != cudaSuccess || cublasError != CUBLAS_STATUS_SUCCESS)
+		{
+			fprintf(stderr, "Device_CalculateCovarianceMatrix 1 error\n");
+		}
+		*/
+
+	}
+
+}
 
 
 

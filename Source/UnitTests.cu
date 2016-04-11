@@ -9,14 +9,14 @@
 #include "../Header/UnitTests.h"
 
 #include "../Header/CudaMacros.h"
-#include "../Header/CudaUtilityFunctions.h"
 #include "../Header/Kernels.h"
 #include "../Header/RFIMHelperFunctions.h"
 #include "../Header/UtilityFunctions.h"
 #include "../Header/RFIMMemoryStruct.h"
+#include "../Header/RFIMMemoryStructComplex.h"
 #include "../Header/RFIM.h"
 
-#include <cublas.h>
+#include <cublas_v2.h>
 
 #include <assert.h>
 #include <cmath>
@@ -27,7 +27,11 @@
 
 //Production tests
 void MeanCublasProduction();
+void MeanCublasComplexProduction();
+
 void CovarianceCublasProduction();
+void CovarianceCublasComplexProduction();
+
 void EigendecompProduction();
 void FilteringProduction();
 
@@ -144,6 +148,102 @@ void MeanCublasProduction()
 
 
 
+void MeanCublasComplexProduction()
+{
+	uint32_t valuesPerSample = 3;
+	uint32_t sampleNum = 2;
+	uint32_t batchSize = 5;
+	uint32_t numberOfCudaStreams = 16;
+
+	RFIMMemoryStructComplex* RFIMStruct = RFIMMemoryStructComplexCreate(valuesPerSample, sampleNum, 0, batchSize, numberOfCudaStreams);
+
+	uint64_t signalLength = valuesPerSample * sampleNum * batchSize;
+	uint64_t signalByteSize = sizeof(cuComplex) * signalLength;
+
+	cuComplex* h_signal;
+	cudaMallocHost(&h_signal, signalByteSize);
+
+	//Set the host signal
+	for(uint32_t i = 0; i < signalLength; ++i)
+	{
+		h_signal[i] = make_cuComplex(i + 1, i + 1);
+	}
+
+
+	//Copy the signal over to the host
+	cuComplex* d_signal;
+	cudaMalloc(&d_signal, signalByteSize);
+	cudaMemcpy(d_signal, h_signal, signalByteSize, cudaMemcpyHostToDevice);
+
+	//cudaDeviceSynchronize();
+
+	//Compute the mean matrix
+	Device_CalculateMeanMatricesComplex(RFIMStruct, d_signal);
+
+
+	//Allocate space to store the result
+	uint64_t meanMatricesLength = valuesPerSample * valuesPerSample * batchSize;
+	uint64_t meanMatricesByteSize = sizeof(cuComplex) * meanMatricesLength;
+
+	uint64_t singleMeanMatrixByteSize = sizeof(cuComplex) * valuesPerSample * valuesPerSample;
+	uint64_t meanMatrixOffset = valuesPerSample * valuesPerSample;
+
+
+	cuComplex* h_meanMatrices;
+	cudaMallocHost(&h_meanMatrices, meanMatricesByteSize);
+
+	uint32_t cudaStreamIterator = 0;
+
+	//Copy the memory back to the host asyncly
+	for(uint64_t i = 0; i < batchSize; ++i)
+	{
+		cudaMemcpyAsync(h_meanMatrices + (i * meanMatrixOffset), RFIMStruct->d_covarianceMatrix + (i * meanMatrixOffset),
+				singleMeanMatrixByteSize, cudaMemcpyDeviceToHost, RFIMStruct->h_cudaStreams[cudaStreamIterator]);
+
+		cudaStreamIterator += 1;
+		if(cudaStreamIterator >= RFIMStruct->h_cudaStreamsLength)
+		{
+			cudaStreamIterator = 0;
+		}
+	}
+
+	//Wait for all operations to complete
+	cudaError_t cudaError = cudaDeviceSynchronize();
+
+	if(cudaError != cudaSuccess)
+	{
+		fprintf(stderr, "Something has gone wrong in MeanCublasProduction unit test\n");
+		exit(1);
+	}
+
+
+	//Print the results
+	for(uint64_t i = 0; i < meanMatricesLength; ++i)
+	{
+		printf("%llu: real:%f, imag:%f\n", i, h_meanMatrices[i].x, h_meanMatrices[i].y);
+	}
+
+
+	//Free all memory
+	cudaFreeHost(h_signal);
+	cudaFreeHost(h_meanMatrices);
+
+	cudaFree(d_signal);
+
+	RFIMMemoryStructComplexDestroy(RFIMStruct);
+
+	cudaError = cudaDeviceSynchronize();
+
+	if(cudaError != cudaSuccess)
+	{
+		fprintf(stderr, "Something has gone wrong at the end of MeanCublasComplexProduction unit test\n");
+		exit(1);
+	}
+
+}
+
+
+
 
 void CovarianceCublasProduction()
 {
@@ -232,6 +332,98 @@ void CovarianceCublasProduction()
 	RFIMMemoryStructDestroy(RFIMStruct);
 
 }
+
+
+
+void CovarianceCublasComplexProduction()
+{
+	uint32_t valuesPerSample = 3;
+	uint32_t sampleNum = 2;
+	uint32_t batchSize = 5;
+	uint32_t numberOfCudaStreams = 16;
+
+	RFIMMemoryStructComplex* RFIMStruct = RFIMMemoryStructComplexCreate(valuesPerSample, sampleNum, 0, batchSize, numberOfCudaStreams);
+
+	uint64_t signalLength = valuesPerSample * sampleNum * batchSize;
+	uint64_t signalByteSize = sizeof(cuComplex) * signalLength;
+
+	cuComplex* h_signal;
+	cudaMallocHost(&h_signal, signalByteSize);
+
+	//Set the host signal
+	for(uint32_t i = 0; i < signalLength; ++i)
+	{
+		h_signal[i] = make_cuComplex(i + 1, i + 1);
+	}
+
+
+	//Copy the signal over to the host
+	cuComplex* d_signal;
+	cudaMalloc(&d_signal, signalByteSize);
+	cudaMemcpy(d_signal, h_signal, signalByteSize, cudaMemcpyHostToDevice);
+
+
+	//Compute the covariance matrices
+	Device_CalculateCovarianceMatrixComplex(RFIMStruct, d_signal);
+
+
+
+	//Copy the covariance matrices back to the host asyncly
+	uint64_t covarianceMatricesLength = valuesPerSample * valuesPerSample * batchSize;
+	uint64_t covarianceMatricesByteSize = sizeof(cuComplex) * covarianceMatricesLength;
+
+	uint64_t meanMatrixOffset = valuesPerSample * valuesPerSample;
+	uint64_t singleCovarianceMatrixByteSize = sizeof(cuComplex) * meanMatrixOffset;
+
+	cuComplex* h_covarianceMatrices;
+	cudaMallocHost(&h_covarianceMatrices, covarianceMatricesByteSize);
+
+	uint64_t cudaStreamIterator = 0;
+
+	//These memcpy streams should line up with the computation
+	for(uint64_t i = 0; i < batchSize; ++i)
+	{
+		cudaMemcpyAsync(h_covarianceMatrices + (i * meanMatrixOffset),
+				RFIMStruct->d_covarianceMatrix + (i * meanMatrixOffset),
+				singleCovarianceMatrixByteSize, cudaMemcpyDeviceToHost, RFIMStruct->h_cudaStreams[cudaStreamIterator]);
+
+		cudaStreamIterator += 1;
+		if(cudaStreamIterator >= numberOfCudaStreams)
+		{
+			cudaStreamIterator = 0;
+		}
+	}
+
+
+	//Wait for everything to complete
+	cudaDeviceSynchronize();
+
+
+	//Print the results
+	for(uint64_t i = 0; i < covarianceMatricesLength; ++i)
+	{
+
+
+		if(h_covarianceMatrices[i].x - 4.5f > 0.0000001f || h_covarianceMatrices[i].y > 0.0000001f)
+		{
+			fprintf(stderr, "CovarianceCublasProductionComplex unit test failed!\n");
+			exit(1);
+		}
+
+
+		printf("%llu: real:%f, imag:%f\n", i, h_covarianceMatrices[i].x, h_covarianceMatrices[i].y);
+	}
+
+
+	//Free all memory
+	cudaFreeHost(h_signal);
+	cudaFreeHost(h_covarianceMatrices);
+
+	cudaFree(d_signal);
+
+	RFIMMemoryStructComplexDestroy(RFIMStruct);
+}
+
 
 
 
@@ -650,7 +842,7 @@ void RoundTripNoReduction()
 	uint64_t signalLength = h_valuesPerSample * h_numberOfSamples * h_batchSize;
 	for(uint64_t i = 0; i < signalLength; ++i)
 	{
-		if(fabs(h_filteredSignal[i]) - fabs(h_signal[i]) > 0.1f)
+		if(fabs(h_filteredSignal[i]) - fabs(h_signal[i]) > 0.00001f)
 		{
 			fprintf(stderr, "RoundTripNoReduction: Signal is not the same as filtered signal\nSignal[%llu] = %f\nFilteredSignal[%llu] = %f\n",
 					i, h_signal[i], i, h_filteredSignal[i]);
@@ -777,7 +969,7 @@ void MemoryLeakTest()
 
 		for(uint64_t signalIndex = 0; signalIndex < h_valuesPerSample * h_numberOfSamples * h_batchSize * h_numberOfThreads; ++signalIndex)
 		{
-			if(fabs(h_filteredSignal[signalIndex]) - fabs(h_signal[signalIndex]) > 0.1f)
+			if(fabs(h_filteredSignal[signalIndex]) - fabs(h_signal[signalIndex]) > 0.00001f)
 			{
 				fprintf(stderr, "MemoryLeakTest: Signal is not the same as filtered signal\nSignal[%llu] = %f\nFilteredSignal[%llu] = %f\n",
 						signalIndex, h_signal[signalIndex], signalIndex, h_filteredSignal[signalIndex]);
@@ -818,12 +1010,15 @@ void RunAllUnitTests()
 {
 
 	MeanCublasProduction();
+	MeanCublasComplexProduction();
+
 	CovarianceCublasProduction();
+	CovarianceCublasComplexProduction();
+
 	EigendecompProduction();
 	FilteringProduction();
 
 	RoundTripNoReduction();
-
 
 	MemoryLeakTest();
 

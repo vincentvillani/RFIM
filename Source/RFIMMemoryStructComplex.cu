@@ -1,17 +1,22 @@
-
-#include "../Header/RFIMMemoryStruct.h"
+/*
+ * RFIMMemoryStructComplex.cu
+ *
+ *  Created on: 11 Apr 2016
+ *      Author: vincentvillani
+ */
 
 #include <stdio.h>
 
+#include "../Header/RFIMMemoryStructComplex.h"
 
-RFIMMemoryStruct* RFIMMemoryStructCreate(uint64_t h_valuesPerSample, uint64_t h_numberOfSamples, uint64_t h_dimensionToReduce,
+
+RFIMMemoryStructComplex* RFIMMemoryStructComplexCreate(uint64_t h_valuesPerSample, uint64_t h_numberOfSamples, uint64_t h_dimensionToReduce,
 		uint64_t h_batchSize, uint64_t h_numberOfCUDAStreams)
 {
 
-	RFIMMemoryStruct* result;
-	cudaMallocHost(&result, sizeof(RFIMMemoryStruct));
 
-
+	RFIMMemoryStructComplex* result;
+	cudaMallocHost(&result, sizeof(RFIMMemoryStructComplex));
 
 
 	//Set signal attributes
@@ -64,17 +69,17 @@ RFIMMemoryStruct* RFIMMemoryStructCreate(uint64_t h_valuesPerSample, uint64_t h_
 	//Setup the one vec, we use the same memory over and over again, it should never change
 	//------------------------
 	uint64_t oneVecLength = h_numberOfSamples;
-	uint64_t oneVecByteSize = sizeof(float) * oneVecLength;
+	uint64_t oneVecByteSize = sizeof(cuComplex) * oneVecLength;
 
 
-	float* h_oneVec;
+	cuComplex* h_oneVec;
 	cudaMallocHost(&h_oneVec, oneVecByteSize);
 	cudaMalloc(&(result->d_oneVec), oneVecByteSize);
 
 	//Fill the one vec with ones
 	for(uint64_t i = 0; i < oneVecLength; ++i)
 	{
-		h_oneVec[i] = 1;
+		h_oneVec[i] = make_cuComplex(1, 0);
 	}
 
 	//copy the ones over and free the host memory
@@ -88,7 +93,7 @@ RFIMMemoryStruct* RFIMMemoryStructCreate(uint64_t h_valuesPerSample, uint64_t h_
 	//Setup the mean vec
 	//------------------------
 	uint64_t meanVecLength = h_valuesPerSample * h_batchSize;
-	uint64_t meanVecByteSize = sizeof(float) * meanVecLength;
+	uint64_t meanVecByteSize = sizeof(cuComplex) * meanVecLength;
 
 	result->h_meanVecBatchOffset = h_valuesPerSample;
 
@@ -101,7 +106,7 @@ RFIMMemoryStruct* RFIMMemoryStructCreate(uint64_t h_valuesPerSample, uint64_t h_
 	//Setup the covariance matrix
 	//------------------------
 	uint64_t covarianceMatrixLength = h_valuesPerSample * h_valuesPerSample * h_batchSize;
-	uint64_t covarianceMatrixByteSize = sizeof(float) * covarianceMatrixLength;
+	uint64_t covarianceMatrixByteSize = sizeof(cuComplex) * covarianceMatrixLength;
 
 	result->h_covarianceMatrixBatchOffset = h_valuesPerSample * h_valuesPerSample;
 
@@ -116,7 +121,7 @@ RFIMMemoryStruct* RFIMMemoryStructCreate(uint64_t h_valuesPerSample, uint64_t h_
 	//U and VT
 	uint64_t singleULength = h_valuesPerSample * h_valuesPerSample;
 	uint64_t ULength = singleULength * h_batchSize;
-	uint64_t UByteSize = sizeof(float) * ULength;
+	uint64_t UByteSize = sizeof(cuComplex) * ULength;
 
 	cudaMalloc(&(result->d_U), UByteSize);
 	cudaMalloc(&(result->d_VT), UByteSize); //VT is the same size as U
@@ -128,7 +133,7 @@ RFIMMemoryStruct* RFIMMemoryStructCreate(uint64_t h_valuesPerSample, uint64_t h_
 	//S
 	uint64_t singleSLength = h_valuesPerSample;
 	uint64_t SLength = h_valuesPerSample * h_batchSize;
-	uint64_t SByteLength = sizeof(float) * SLength;
+	uint64_t SByteLength = sizeof(cuComplex) * SLength;
 
 	cudaMalloc(&(result->d_S), SByteLength);
 
@@ -175,7 +180,7 @@ RFIMMemoryStruct* RFIMMemoryStructCreate(uint64_t h_valuesPerSample, uint64_t h_
 	//------------------------
 	uint64_t projectedSignalSingleLength = h_valuesPerSample * h_numberOfSamples;
 	uint64_t projectedSignalLength = projectedSignalSingleLength * h_batchSize;
-	uint64_t projectedSignalByteSize = sizeof(float) * projectedSignalLength;
+	uint64_t projectedSignalByteSize = sizeof(cuComplex) * projectedSignalLength;
 
 	cudaMalloc(&(result->d_projectedSignalMatrix), projectedSignalByteSize);
 
@@ -195,9 +200,7 @@ RFIMMemoryStruct* RFIMMemoryStructCreate(uint64_t h_valuesPerSample, uint64_t h_
 	return result;
 }
 
-
-
-void RFIMMemoryStructDestroy(RFIMMemoryStruct* RFIMStruct)
+void RFIMMemoryStructComplexDestroy(RFIMMemoryStructComplex* RFIMStruct)
 {
 	//Free device memory
 	cudaFree(RFIMStruct->d_oneVec);
@@ -235,7 +238,4 @@ void RFIMMemoryStructDestroy(RFIMMemoryStruct* RFIMStruct)
 
 	//Deallocate the struct memory on the host
 	cudaFreeHost(RFIMStruct);
-
 }
-
-

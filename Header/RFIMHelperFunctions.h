@@ -15,14 +15,21 @@
 #include <cusolverDn.h>
 
 #include "../Header/RFIMMemoryStruct.h"
+#include "../Header/RFIMMemoryStructComplex.h"
 
 
 float* Device_GenerateWhiteNoiseSignal(curandGenerator_t* rngGen, uint64_t h_valuesPerSample, uint64_t h_numberOfSamples, uint64_t h_batchSize);
 float* Device_GenerateWhiteNoiseSignal(curandGenerator_t* rngGen, uint64_t h_valuesPerSample, uint64_t h_numberOfSamples,
 		uint64_t h_batchSize, uint64_t h_threadNum);
+cuComplex* Device_GenerateWhiteNoiseSignalComplex(curandGenerator_t* rngGen, uint64_t h_valuesPerSample, uint64_t h_numberOfSamples,
+		uint64_t h_batchSize, uint64_t h_threadNum);
 
 void Device_CalculateMeanMatrices(RFIMMemoryStruct* RFIMStruct, float* d_signalMatrices);
+void Device_CalculateMeanMatricesComplex(RFIMMemoryStructComplex* RFIMStruct, cuComplex* d_signalMatrices);
+
 void Device_CalculateCovarianceMatrix(RFIMMemoryStruct* RFIMStruct, float* d_signalMatrices);
+void Device_CalculateCovarianceMatrixComplex(RFIMMemoryStructComplex* RFIMStruct, cuComplex* d_signalMatrices);
+
 void Device_EigenvalueSolver(RFIMMemoryStruct* RFIMStruct);
 void Device_EigenReductionAndFiltering(RFIMMemoryStruct* RFIMStruct, float* d_originalSignalMatrices, float* d_filteredSignals);
 

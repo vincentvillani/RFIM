@@ -2,7 +2,6 @@
 #include "../Header/Benchmark.h"
 #include "../Header/RFIM.h"
 #include "../Header/RFIMHelperFunctions.h"
-#include "../Header/CudaUtilityFunctions.h"
 
 #include <stdio.h>
 #include <sys/time.h>
