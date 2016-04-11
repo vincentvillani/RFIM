@@ -31,6 +31,8 @@ void Device_CalculateCovarianceMatrix(RFIMMemoryStruct* RFIMStruct, float* d_sig
 void Device_CalculateCovarianceMatrixComplex(RFIMMemoryStructComplex* RFIMStruct, cuComplex* d_signalMatrices);
 
 void Device_EigenvalueSolver(RFIMMemoryStruct* RFIMStruct);
+void Device_EigenvalueSolverComplex(RFIMMemoryStructComplex* RFIMStruct);
+
 void Device_EigenReductionAndFiltering(RFIMMemoryStruct* RFIMStruct, float* d_originalSignalMatrices, float* d_filteredSignals);
 
 

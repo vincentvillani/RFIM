@@ -133,7 +133,7 @@ RFIMMemoryStructComplex* RFIMMemoryStructComplexCreate(uint64_t h_valuesPerSampl
 	//S
 	uint64_t singleSLength = h_valuesPerSample;
 	uint64_t SLength = h_valuesPerSample * h_batchSize;
-	uint64_t SByteLength = sizeof(cuComplex) * SLength;
+	uint64_t SByteLength = sizeof(float) * SLength;
 
 	cudaMalloc(&(result->d_S), SByteLength);
 
@@ -143,7 +143,7 @@ RFIMMemoryStructComplex* RFIMMemoryStructComplexCreate(uint64_t h_valuesPerSampl
 	//Eigenworking space length
 	result->h_singleEigWorkingSpaceByteSize = 0;
 
-	cusolverStatus = cusolverDnSgesvd_bufferSize(*result->cusolverHandle, h_valuesPerSample, h_valuesPerSample, &(result->h_singleEigWorkingSpaceByteSize));
+	cusolverStatus = cusolverDnCgesvd_bufferSize(*result->cusolverHandle, h_valuesPerSample, h_valuesPerSample, &(result->h_singleEigWorkingSpaceByteSize));
 
 	//Check if it went well
 	if(cusolverStatus != CUSOLVER_STATUS_SUCCESS)
@@ -153,12 +153,21 @@ RFIMMemoryStructComplex* RFIMMemoryStructComplexCreate(uint64_t h_valuesPerSampl
 	}
 
 
-	uint64_t totalEigenvalueWorkingspace = result->h_singleEigWorkingSpaceByteSize * h_batchSize;
+	//WOWOWOWOWOWOWOWOWOWOWOW WOW NVIDIA. WOW. WOWOWOWOW.
+	//Times 2 because NVIDIA's API is broken?
+	uint64_t totalEigenvalueWorkingspace = result->h_singleEigWorkingSpaceByteSize * h_batchSize * 2;
 
 	//Allocate memory for the eigen working space
 	cudaMalloc(&(result->d_eigenWorkingSpace), totalEigenvalueWorkingspace);
 
 	result->h_eigenWorkingSpaceBatchOffset = result->h_singleEigWorkingSpaceByteSize / sizeof(int);
+
+	//Allocate space for rWork
+	//times 2 for complex values
+	//times 5 because the cusolver documentation says so
+	cudaMallocHost(&result->h_rWork, sizeof(float) * 2 * 5 * min(h_valuesPerSample, h_numberOfSamples) * h_batchSize);
+
+	result->h_rWorkBatchOffset = 2 * 5 * min(h_valuesPerSample, h_numberOfSamples);
 
 
 	//DevInfo
@@ -218,6 +227,7 @@ void RFIMMemoryStructComplexDestroy(RFIMMemoryStructComplex* RFIMStruct)
 
 	//Free host memory
 	cudaFreeHost(RFIMStruct->h_devInfo);
+	cudaFreeHost(RFIMStruct->h_rWork);
 
 
 

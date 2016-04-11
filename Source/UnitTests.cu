@@ -33,6 +33,8 @@ void CovarianceCublasProduction();
 void CovarianceCublasComplexProduction();
 
 void EigendecompProduction();
+void EigendecompComplexProduction();
+
 void FilteringProduction();
 
 void RoundTripNoReduction();
@@ -220,7 +222,7 @@ void MeanCublasComplexProduction()
 	//Print the results
 	for(uint64_t i = 0; i < meanMatricesLength; ++i)
 	{
-		printf("%llu: real:%f, imag:%f\n", i, h_meanMatrices[i].x, h_meanMatrices[i].y);
+		//printf("%llu: real:%f, imag:%f\n", i, h_meanMatrices[i].x, h_meanMatrices[i].y);
 	}
 
 
@@ -411,7 +413,7 @@ void CovarianceCublasComplexProduction()
 		}
 
 
-		printf("%llu: real:%f, imag:%f\n", i, h_covarianceMatrices[i].x, h_covarianceMatrices[i].y);
+		//printf("%llu: real:%f, imag:%f\n", i, h_covarianceMatrices[i].x, h_covarianceMatrices[i].y);
 	}
 
 
@@ -432,7 +434,7 @@ void EigendecompProduction()
 {
 
 	uint64_t valuesPerSample = 2;
-	uint64_t numberOfSamples = 3; //THIS MAY MAKE THE UNIT TEST FAIL!?
+	uint64_t numberOfSamples = 2;
 	uint64_t batchSize = 20;
 	uint64_t numberOfCudaStreams = 16;
 	uint64_t singleCovarianceMatrixLength = valuesPerSample * valuesPerSample;
@@ -613,6 +615,205 @@ void EigendecompProduction()
 
 
 
+void EigendecompComplexProduction()
+{
+	uint64_t valuesPerSample = 2;
+	uint64_t numberOfSamples = 3;
+	uint64_t batchSize = 22;
+	uint64_t numberOfCudaStreams = 16;
+	uint64_t singleCovarianceMatrixLength = valuesPerSample * valuesPerSample;
+	uint64_t covarianceMatrixLength = singleCovarianceMatrixLength * batchSize;
+	uint64_t covarianceMatrixByteSize = sizeof(cuComplex) * covarianceMatrixLength;
+
+
+	RFIMMemoryStructComplex* RFIMStruct = RFIMMemoryStructComplexCreate(valuesPerSample, numberOfSamples, 2,
+			batchSize, numberOfCudaStreams);
+
+
+	cuComplex* h_covarianceMatrices;
+	cudaMallocHost(&h_covarianceMatrices, covarianceMatrixByteSize);
+
+
+	//Set the matrices
+	for(uint64_t i = 0; i < batchSize; ++i)
+	{
+		cuComplex* currentCovarianceMatrix = h_covarianceMatrices + (i * singleCovarianceMatrixLength);
+
+		currentCovarianceMatrix[0] = make_cuComplex(5.0f, 0);
+		currentCovarianceMatrix[1] = make_cuComplex(2.0f, 0);
+		currentCovarianceMatrix[2] = make_cuComplex(2.0f, 0);
+		currentCovarianceMatrix[3] = make_cuComplex(5.0f, 0);
+
+	}
+
+
+	//Copy the matrices over to the host
+	cudaMemcpy(RFIMStruct->d_covarianceMatrix, h_covarianceMatrices, covarianceMatrixByteSize, cudaMemcpyHostToDevice);
+
+
+
+
+	//Compute the eigenvectors/values
+	Device_EigenvalueSolverComplex(RFIMStruct);
+
+
+
+	//copy the values back one by one
+	uint64_t singleSLength = valuesPerSample;
+	uint64_t singleSByteSize = sizeof(float) * singleSLength;
+	uint64_t SLength = singleSLength * batchSize;
+	uint64_t SByteSize = sizeof(float) * SLength;
+
+	uint64_t singleULength = valuesPerSample * valuesPerSample;
+	uint64_t singleUByteSize = sizeof(cuComplex) * singleULength;
+	uint64_t ULength = singleULength * batchSize;
+	uint64_t UByteSize = sizeof(cuComplex) * ULength;
+
+
+	float* h_S;
+	cuComplex* h_U;
+
+	cudaMallocHost(&h_S, SByteSize);
+	cudaMallocHost(&h_U, UByteSize);
+
+
+	uint64_t cudaIterator = 0;
+
+
+	//Streams should match up with the computation of each eigenvector/value
+	for(uint64_t i  = 0; i < batchSize; ++i)
+	{
+
+		cudaMemcpyAsync(h_S + (i * singleSLength), RFIMStruct->d_S + (i * singleSLength),
+				singleSByteSize, cudaMemcpyDeviceToHost,
+				RFIMStruct->h_cudaStreams[cudaIterator]);
+
+
+		cudaMemcpyAsync(h_U + (i * singleULength), RFIMStruct->d_U + (i * singleULength),
+				singleUByteSize, cudaMemcpyDeviceToHost,
+				RFIMStruct->h_cudaStreams[cudaIterator]);
+
+		cudaIterator += 1;
+		if(cudaIterator >= numberOfCudaStreams)
+		{
+			cudaIterator = 0;
+		}
+	}
+
+
+
+	//Wait for everything to finish
+	cudaDeviceSynchronize();
+
+
+
+	float eigenvalueExpectedResults[2];
+	eigenvalueExpectedResults[0] = 7.0f;
+	eigenvalueExpectedResults[1] = 3.0f;
+
+	cuComplex eigenvectorExpectedResults[4];
+	eigenvectorExpectedResults[0] = make_cuComplex(-0.707107f, 0);
+	eigenvectorExpectedResults[1] = make_cuComplex(-0.707107f, 0);
+	eigenvectorExpectedResults[2] = make_cuComplex(-0.707107f, 0);
+	eigenvectorExpectedResults[3] = make_cuComplex(0.707107f, 0);
+
+
+
+	//Check the results
+	//Eigenvalues
+	for(uint64_t i = 0; i < batchSize; ++i)
+	{
+		float* currentS = h_S + (i * singleSLength);
+
+
+		bool failed = false;
+
+		if(fabs(currentS[0]) - fabs(eigenvalueExpectedResults[0]) > 0.000001f)
+		{
+			failed = true;
+		}
+
+		if(fabs(currentS[1]) - fabs(eigenvalueExpectedResults[1]) > 0.000001f)
+		{
+			failed = true;
+		}
+
+
+
+		for(uint64_t j = 0; j < 2; ++j)
+		{
+			//printf("Eigenvalue[%llu][%llu] = %f\n", i, j, currentS[j]);
+		}
+
+
+
+		if(failed)
+		{
+			fprintf(stderr, "EigendecompProductionComplex unit test: eigenvalues are not being computed properly!\n");
+			exit(1);
+		}
+
+	}
+
+
+	//Check eigenvectors
+	for(uint64_t i = 0; i < batchSize; ++i)
+	{
+
+		cuComplex* currentU = h_U + (i * singleULength);
+
+
+		bool failed = false;
+
+		if(fabs(currentU[0].x) - fabs(eigenvectorExpectedResults[0].x) > 0.000001f ||
+				fabs(currentU[0].y) - fabs(eigenvectorExpectedResults[0].y) > 0.000001f)
+		{
+			failed = true;
+		}
+		if(fabs(currentU[1].x) - fabs(eigenvectorExpectedResults[1].x) > 0.000001f ||
+				fabs(currentU[1].y) - fabs(eigenvectorExpectedResults[1].y) > 0.000001f)
+		{
+			failed = true;
+		}
+		if(fabs(currentU[2].x) - fabs(eigenvectorExpectedResults[2].x) > 0.000001f ||
+				fabs(currentU[2].y) - fabs(eigenvectorExpectedResults[2].y) > 0.000001f)
+		{
+			failed = true;
+		}
+		if(fabs(currentU[3].x) - fabs(eigenvectorExpectedResults[3].x) > 0.000001f ||
+				fabs(currentU[3].y) - fabs(eigenvectorExpectedResults[3].y) > 0.000001f)
+		{
+			failed = true;
+		}
+
+
+		for(uint64_t j = 0; j < 4; ++j)
+		{
+			//printf("Eigenvector[%llu][%llu] = real: %f, imag: %f\n", i, j, currentU[j].x, currentU[j].y);
+		}
+
+
+
+		if(failed)
+		{
+			fprintf(stderr, "EigendecompProduction unit test: eigenvectors are not being computed properly!\n");
+			exit(1);
+		}
+
+	}
+
+
+	//Free all the memory
+	cudaFreeHost(h_covarianceMatrices);
+	cudaFreeHost(h_S);
+	cudaFreeHost(h_U);
+
+	RFIMMemoryStructComplexDestroy(RFIMStruct);
+}
+
+
+
+
 //Doesn't actually prove that the filter itself works, just that the math functions are working as you would expected
 //By removing 0 dimensions we should get the same signal back
 void FilteringProduction()
@@ -724,6 +925,7 @@ void FilteringProduction()
 			if(currentSignal[j] - currentFilteredSignal[j] > 0.000001f)
 			{
 				fprintf(stderr, "FilteringProduction unit test: results are different from expected!\n");
+				fprintf(stderr, "Expected %f, Actual: %f\n", currentSignal[j], currentFilteredSignal[j]);
 				exit(1);
 			}
 		}
@@ -1016,6 +1218,8 @@ void RunAllUnitTests()
 	CovarianceCublasComplexProduction();
 
 	EigendecompProduction();
+	EigendecompComplexProduction();
+
 	FilteringProduction();
 
 	RoundTripNoReduction();

@@ -43,7 +43,7 @@ typedef struct RFIMMemoryStructComplex
 	cuComplex* d_U;
 	uint64_t h_UBatchOffset;
 
-	cuComplex* d_S;
+	float* d_S;
 	uint64_t h_SBatchOffset;
 
 	cuComplex* d_VT;
@@ -53,6 +53,9 @@ typedef struct RFIMMemoryStructComplex
 	int h_singleEigWorkingSpaceByteSize;
 	cuComplex* d_eigenWorkingSpace;
 	uint64_t h_eigenWorkingSpaceBatchOffset;
+
+	float* h_rWork;
+	uint64_t h_rWorkBatchOffset;
 
 
 	int* d_devInfo;

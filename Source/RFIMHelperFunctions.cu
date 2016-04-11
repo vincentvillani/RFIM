@@ -631,6 +631,116 @@ void Device_EigenvalueSolver(RFIMMemoryStruct* RFIMStruct)
 
 
 
+void Device_EigenvalueSolverComplex(RFIMMemoryStructComplex* RFIMStruct)
+{
+	cusolverStatus_t cusolverStatus;
+
+	uint64_t cudaStreamIterator = 0;
+
+	for(uint64_t i = 0; i < RFIMStruct->h_batchSize; ++i)
+	{
+
+		//Set the stream
+		cusolverDnSetStream(*RFIMStruct->cusolverHandle, RFIMStruct->h_cudaStreams[cudaStreamIterator]);
+
+		//Tell the device to solve the eigenvectors
+		cusolverStatus = cusolverDnCgesvd(*RFIMStruct->cusolverHandle, 'A', 'A',
+				RFIMStruct->h_valuesPerSample, RFIMStruct->h_valuesPerSample,
+				RFIMStruct->d_covarianceMatrix + (i * RFIMStruct->h_covarianceMatrixBatchOffset), RFIMStruct->h_valuesPerSample,
+				RFIMStruct->d_S + (i * RFIMStruct->h_SBatchOffset),
+				RFIMStruct->d_U + (i * RFIMStruct->h_UBatchOffset), RFIMStruct->h_valuesPerSample,
+				RFIMStruct->d_VT + (i * RFIMStruct->h_VTBatchOffset), RFIMStruct->h_valuesPerSample,
+				RFIMStruct->d_eigenWorkingSpace + (i * RFIMStruct->h_eigenWorkingSpaceBatchOffset),
+				RFIMStruct->h_singleEigWorkingSpaceByteSize,
+				RFIMStruct->h_rWork + (i * RFIMStruct->h_rWorkBatchOffset),
+				RFIMStruct->d_devInfo + (i * RFIMStruct->h_devInfoBatchOffset));
+
+
+		//Check for startup errors
+		if(cusolverStatus != CUSOLVER_STATUS_SUCCESS)
+		{
+
+			if(cusolverStatus == CUSOLVER_STATUS_NOT_INITIALIZED)
+				printf("1\n");
+			if(cusolverStatus == CUSOLVER_STATUS_INVALID_VALUE)
+				printf("2\n");
+			if(cusolverStatus == CUSOLVER_STATUS_ARCH_MISMATCH)
+				printf("3\n");
+			if(cusolverStatus == CUSOLVER_STATUS_INTERNAL_ERROR)
+				printf("4\n");
+
+
+			fprintf(stderr, "Device_EigenvalueSolver: Error solving eigenvalues\n");
+			exit(1);
+
+		}
+
+
+		//Put in a request to copy the devInfo back to the host so you can check it later
+		cudaMemcpyAsync(RFIMStruct->h_devInfo + (i * RFIMStruct->h_devInfoBatchOffset),
+				RFIMStruct->d_devInfo + (i * RFIMStruct->h_devInfoBatchOffset), sizeof(int),
+				cudaMemcpyDeviceToHost, RFIMStruct->h_cudaStreams[cudaStreamIterator]);
+
+
+
+		//Iterate to the next stream
+		cudaStreamIterator += 1;
+		if(cudaStreamIterator >= RFIMStruct->h_cudaStreamsLength)
+		{
+			cudaStreamIterator = 0;
+		}
+
+		/*
+		//TODO: DEBUG REMOVE
+		cudaError_t cudaError = cudaDeviceSynchronize();
+		cublasStatus_t cublasError = cublasGetError();
+
+		if(cudaError != cudaSuccess )
+		{
+			fprintf(stderr, "Device_EigenvalueSolver 1 error\n");
+		}
+		*/
+
+	}
+
+
+
+	//TODO: ****************** EXPERIMENT WITH PUTTING THIS AT THE END OF THE RFIM ROUTINE ******************
+	//Wait for everything to complete
+	for(uint64_t i = 0; i < RFIMStruct->h_cudaStreamsLength; ++i)
+	{
+		cudaStreamSynchronize(RFIMStruct->h_cudaStreams[i]);
+	}
+
+
+	//Check each devInfo value
+	for(uint64_t i = 0; i < RFIMStruct->h_batchSize; ++i)
+	{
+		if(RFIMStruct->h_devInfo[i] != 0)
+		{
+			fprintf(stderr, "Device_EigenvalueSolver: Error with the %dth parameter on the %lluth batch\n", RFIMStruct->h_devInfo[i], i);
+			exit(1);
+		}
+	}
+
+
+	//********************************************************************************************************
+
+	/*
+	//TODO: DEBUG REMOVE
+	cudaError_t cudaError = cudaDeviceSynchronize();
+
+
+	if(cudaError != cudaSuccess)
+	{
+		fprintf(stderr, "Device_EigenvalueSolver 2 error\n");
+	}
+	*/
+}
+
+
+
+
 //Eigenvector reduction and signal projection/filtering
 //All matrices are column-major
 
