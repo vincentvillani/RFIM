@@ -33,10 +33,10 @@ void Benchmark()
 {
 
 	//Benchmark
-	uint64_t iterations = 30;
+	uint64_t iterations = 50;
 
 	//Signal
-	uint64_t h_valuesPerSample = 26;
+	uint64_t h_valuesPerSample = 13;
 	uint64_t h_numberOfSamples;
 	uint64_t h_dimensionsToReduce = 2;
 	uint64_t h_batchSize;
@@ -62,7 +62,7 @@ void Benchmark()
 
 
 	//For each numberOfSamples value
-	for(uint64_t i = 16; i < 22; ++i)
+	for(uint64_t i = 19; i < 24; ++i)
 	{
 		h_numberOfSamples = 1 << i;
 
@@ -77,7 +77,7 @@ void Benchmark()
 
 
 			//For each numberOfStreams
-			for(uint64_t k = 0; k < 7; ++k)
+			for(uint64_t k = 0; k < 4; ++k)
 			{
 
 
@@ -87,7 +87,7 @@ void Benchmark()
 
 
 
-				for(uint64_t p = 0; p < 6; ++p)
+				for(uint64_t p = 0; p < 2; ++p)
 				{
 
 					h_numberOfThreads = 1 << p;
