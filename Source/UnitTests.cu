@@ -1053,17 +1053,20 @@ void FilteringProductionComplex()
 
 		for(uint64_t j = 0; j < 4; ++j)
 		{
-			printf("filteredSignal[%llu][%llu]: real:%f, imag:%f\n", i, j,
-					currentFilteredSignal[j].x, currentFilteredSignal[j].y);
+			//printf("filteredSignal[%llu][%llu]: real: %f, imag: %f\n", i, j,
+			//		currentFilteredSignal[j].x, currentFilteredSignal[j].y);
 
-			/*
-			if(currentSignal[j] - currentFilteredSignal[j] > 0.000001f)
+
+			if(currentSignal[j].x - currentFilteredSignal[j].x > 0.000001f ||
+					currentSignal[j].y - currentFilteredSignal[j].y > 0.000001f)
 			{
 				fprintf(stderr, "FilteringProduction unit test: results are different from expected!\n");
-				fprintf(stderr, "Expected %f, Actual: %f\n", currentSignal[j], currentFilteredSignal[j]);
+				fprintf(stderr, "Expected real: %f, imag: %f\nActual real: %f, imag: %f\n",
+						currentSignal[j].x, currentSignal[j].y,
+						currentFilteredSignal[j].x, currentFilteredSignal[j].y);
 				exit(1);
 			}
-			*/
+
 		}
 	}
 
