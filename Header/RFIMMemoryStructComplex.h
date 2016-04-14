@@ -57,7 +57,6 @@ typedef struct RFIMMemoryStructComplex
 	float* h_rWork;
 	uint64_t h_rWorkBatchOffset;
 
-
 	int* d_devInfo;
 	int* h_devInfo;
 	uint64_t h_devInfoBatchOffset;

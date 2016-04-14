@@ -34,6 +34,7 @@ void Device_EigenvalueSolver(RFIMMemoryStruct* RFIMStruct);
 void Device_EigenvalueSolverComplex(RFIMMemoryStructComplex* RFIMStruct);
 
 void Device_EigenReductionAndFiltering(RFIMMemoryStruct* RFIMStruct, float* d_originalSignalMatrices, float* d_filteredSignals);
+void Device_EigenReductionAndFilteringComplex(RFIMMemoryStructComplex* RFIMStruct, cuComplex* d_originalSignalMatrices, cuComplex* d_filteredSignals);
 
 
 

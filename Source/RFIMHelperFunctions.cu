@@ -923,6 +923,124 @@ void Device_EigenReductionAndFiltering(RFIMMemoryStruct* RFIMStruct, float* d_or
 
 }
 
+
+
+
+void Device_EigenReductionAndFilteringComplex(RFIMMemoryStructComplex* RFIMStruct, cuComplex* d_originalSignalMatrices, cuComplex* d_filteredSignals)
+{
+	//Set the appropriate number of columns to zero
+	uint64_t eigenvectorZeroByteSize = sizeof(cuComplex) * RFIMStruct->h_valuesPerSample * RFIMStruct->h_eigenVectorDimensionsToReduce;
+
+	uint64_t cudaStreamIterator = 0;
+
+	for(uint64_t i = 0; i < RFIMStruct->h_batchSize; ++i)
+	{
+		cudaMemsetAsync(RFIMStruct->d_U + (i * RFIMStruct->h_UBatchOffset),
+				0, eigenvectorZeroByteSize, RFIMStruct->h_cudaStreams[cudaStreamIterator]);
+
+		cudaStreamIterator += 1;
+		if(cudaStreamIterator >= RFIMStruct->h_cudaStreamsLength)
+		{
+			cudaStreamIterator = 0;
+		}
+
+	}
+
+
+	cublasStatus_t cublasStatus;
+
+	//Projected signal matrix
+	//Ps = (Er Transposed) * Os
+	cuComplex alpha = make_cuComplex(1, 0);
+	cuComplex beta = make_cuComplex(0, 0);
+
+	uint64_t originalSignalBatchOffset = RFIMStruct->h_valuesPerSample * RFIMStruct->h_numberOfSamples;
+
+	cudaStreamIterator = 0;
+
+
+	//Do the projection
+	for(uint64_t i = 0; i < RFIMStruct->h_batchSize; ++i)
+	{
+		//Set the stream
+		cublasSetStream_v2(*RFIMStruct->cublasHandle, RFIMStruct->h_cudaStreams[cudaStreamIterator]);
+
+
+
+		//compute
+		cublasStatus = cublasCgemm_v2(*RFIMStruct->cublasHandle, CUBLAS_OP_C, CUBLAS_OP_N,
+				RFIMStruct->h_valuesPerSample, RFIMStruct->h_numberOfSamples, RFIMStruct->h_valuesPerSample,
+				&alpha, RFIMStruct->d_U + (i * RFIMStruct->h_UBatchOffset), RFIMStruct->h_valuesPerSample,
+				d_originalSignalMatrices + (i * originalSignalBatchOffset), RFIMStruct->h_valuesPerSample, &beta,
+				RFIMStruct->d_projectedSignalMatrix + (i * RFIMStruct->h_projectedSignalBatchOffset), RFIMStruct->h_valuesPerSample);
+
+
+		//Check request status codes
+		if(cublasStatus != CUBLAS_STATUS_SUCCESS)
+		{
+			fprintf(stderr, "Device_EigenReductionAndFiltering: error calculating the projected signal\n");
+			exit(1);
+		}
+
+
+		//Iterate the stream
+		cudaStreamIterator += 1;
+		if(cudaStreamIterator >= RFIMStruct->h_cudaStreamsLength)
+		{
+			cudaStreamIterator = 0;
+		}
+
+	}
+
+
+
+	//Do the reprojection back
+	//final signal matrix
+	// Fs = Er * Ps
+
+	cudaStreamIterator = 0;
+
+	for(uint64_t i = 0; i < RFIMStruct->h_batchSize; ++i)
+	{
+
+		//Set the stream
+		cublasSetStream_v2(*RFIMStruct->cublasHandle, RFIMStruct->h_cudaStreams[cudaStreamIterator]);
+
+
+		cublasStatus_t = cublasCgemm_v2(*RFIMStruct->cublasHandle, CUBLAS_OP_N, CUBLAS_OP_N,
+				RFIMStruct->h_valuesPerSample, RFIMStruct->h_numberOfSamples, RFIMStruct->h_valuesPerSample,
+				&alpha, RFIMStruct->d_U + (i * RFIMStruct->h_UBatchOffset), RFIMStruct->h_valuesPerSample,
+				RFIMStruct->d_projectedSignalMatrix + (i * RFIMStruct->h_projectedSignalBatchOffset), RFIMStruct->h_valuesPerSample, &beta,
+				d_filteredSignals + (i * originalSignalBatchOffset), RFIMStruct->h_valuesPerSample);
+
+
+
+
+		if(cublasStatus != CUBLAS_STATUS_SUCCESS)
+		{
+			fprintf(stderr, "Device_EigenReductionAndFiltering: error calculating the filtered signal\n");
+			exit(1);
+		}
+
+
+		//Iterate the stream
+		cudaStreamIterator += 1;
+		if(cudaStreamIterator >= RFIMStruct->h_cudaStreamsLength)
+		{
+			cudaStreamIterator = 0;
+		}
+
+	}
+
+
+
+}
+
+
+
+
+
+
 /*
 void Device_MatrixTranspose(cublasHandle_t* cublasHandle, const float* d_matrix, float* d_matrixTransposed, uint64_t rowNum, uint64_t colNum)
 {

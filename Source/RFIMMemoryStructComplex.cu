@@ -1,5 +1,5 @@
 /*
- * RFIMMemoryStructComplex.cu
+d_projectedSignalMatrix * RFIMMemoryStructComplex.cu
  *
  *  Created on: 11 Apr 2016
  *      Author: vincentvillani

@@ -36,6 +36,7 @@ void EigendecompProduction();
 void EigendecompComplexProduction();
 
 void FilteringProduction();
+void FilteringProductionComplex();
 
 void RoundTripNoReduction();
 //void TransposeProduction();
@@ -949,6 +950,141 @@ void FilteringProduction()
 
 
 
+void FilteringProductionComplex()
+{
+	uint64_t valuesPerSample = 2;
+	uint64_t numberOfSamples = 3; //THIS MAY MAKE THE UNIT TEST FAIL!?
+	uint64_t dimensionsToReduce = 0;
+	uint64_t batchSize = 20;
+	uint64_t numberOfCudaStreams = 16;
+
+
+	RFIMMemoryStructComplex* RFIMStruct = RFIMMemoryStructComplexCreate(valuesPerSample, numberOfSamples, dimensionsToReduce, batchSize, numberOfCudaStreams);
+
+
+	uint64_t singleSignalLength = valuesPerSample * numberOfSamples;
+	uint64_t signalLength = singleSignalLength * batchSize;
+	uint64_t signalByteSize = sizeof(cuComplex) * signalLength;
+
+	cuComplex* h_signal;
+	cudaMallocHost(&h_signal, signalByteSize);
+
+
+	//Set the signal
+	for(uint64_t i = 0; i < batchSize; ++i)
+	{
+		cuComplex* currentSignal = h_signal + (i * singleSignalLength);
+
+		currentSignal[0] = make_cuComplex(1.0f, 4.0f);
+		currentSignal[1] = make_cuComplex(3.0f, -9.0f);
+		currentSignal[2] = make_cuComplex(2.0f, -2.0f);
+		currentSignal[3] = make_cuComplex(7.0f, 2.0f);
+	}
+
+
+
+	//Copy the signal over to the device
+	cuComplex* d_signal;
+	cudaMalloc(&d_signal, signalByteSize);
+	cudaMemcpy(d_signal, h_signal, signalByteSize, cudaMemcpyHostToDevice);
+
+
+	//Calculate the covarianceMatrices
+	Device_CalculateCovarianceMatrixComplex(RFIMStruct, d_signal);
+
+
+	//Calculate the eigenvectors/values
+	Device_EigenvalueSolverComplex(RFIMStruct);
+
+
+
+	//Allocate memory for the filtered signal
+	cuComplex* d_filteredSignal;
+	cudaMalloc(&d_filteredSignal, signalByteSize);
+
+
+	//Do the projection/reprojection
+	Device_EigenReductionAndFilteringComplex(RFIMStruct, d_signal, d_filteredSignal);
+
+
+
+
+	//copy the result back to the host, one stream at a time
+	cuComplex* h_filteredSignal;
+	cudaMallocHost(&h_filteredSignal, signalByteSize);
+
+	uint64_t cudaStreamIterator = 0;
+
+	for(uint64_t i = 0; i < batchSize; ++i)
+	{
+		//Put in the request for the memory to be copied
+		cudaMemcpyAsync(h_filteredSignal + (i * singleSignalLength),
+				d_filteredSignal + (i * singleSignalLength),
+				singleSignalLength * sizeof(cuComplex),
+				cudaMemcpyDeviceToHost,
+				RFIMStruct->h_cudaStreams[cudaStreamIterator]);
+
+		//Iterate the streams
+		cudaStreamIterator += 1;
+		if(cudaStreamIterator >= RFIMStruct->h_cudaStreamsLength)
+		{
+			cudaStreamIterator = 0;
+		}
+
+	}
+
+
+	//Wait for everything to be completed
+	cudaError_t cudaError = cudaDeviceSynchronize();
+
+	if(cudaError != cudaSuccess)
+	{
+		fprintf(stderr, "FilteringProduction: Something went wrong!\n");
+		exit(1);
+	}
+
+
+
+	//print/check the results
+	for(uint64_t i = 0; i < batchSize; ++i)
+	{
+		cuComplex* currentSignal = h_signal + (i * singleSignalLength);
+		cuComplex* currentFilteredSignal = h_filteredSignal + (i * singleSignalLength);
+
+		for(uint64_t j = 0; j < 4; ++j)
+		{
+			printf("filteredSignal[%llu][%llu]: real:%f, imag:%f\n", i, j,
+					currentFilteredSignal[j].x, currentFilteredSignal[j].y);
+
+			/*
+			if(currentSignal[j] - currentFilteredSignal[j] > 0.000001f)
+			{
+				fprintf(stderr, "FilteringProduction unit test: results are different from expected!\n");
+				fprintf(stderr, "Expected %f, Actual: %f\n", currentSignal[j], currentFilteredSignal[j]);
+				exit(1);
+			}
+			*/
+		}
+	}
+
+
+
+	//Free all memory
+	cudaFreeHost(h_signal);
+	cudaFreeHost(h_filteredSignal);
+
+	cudaFree(d_signal);
+	cudaFree(d_filteredSignal);
+
+	RFIMMemoryStructComplexDestroy(RFIMStruct);
+
+
+}
+
+
+
+
+
 void RoundTripNoReduction()
 {
 
@@ -996,7 +1132,7 @@ void RoundTripNoReduction()
 
 	if(cudaError != cudaSuccess)
 	{
-		fprintf(stderr, "RoundTripNoReduction(): Something has done wrong!\n");
+		fprintf(stderr, "RoundTripNoReduction(): Something has gone wrong!\n");
 		exit(1);
 	}
 
@@ -1221,6 +1357,7 @@ void RunAllUnitTests()
 	EigendecompComplexProduction();
 
 	FilteringProduction();
+	FilteringProductionComplex();
 
 	RoundTripNoReduction();
 
