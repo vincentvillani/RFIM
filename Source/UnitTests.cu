@@ -39,8 +39,8 @@ void FilteringProduction();
 void FilteringProductionComplex();
 
 void RoundTripNoReduction();
-//void TransposeProduction();
-//void GraphProduction();
+void RoundTripNoReductionComplex();
+
 
 void MemoryLeakTest();
 
@@ -1210,6 +1210,136 @@ void RoundTripNoReduction()
 
 
 
+
+void RoundTripNoReductionComplex()
+{
+
+	uint64_t h_valuesPerSample = 26;
+	uint64_t h_numberOfSamples = 1024;
+	uint64_t h_batchSize = 5;
+	uint64_t h_dimensionsToReduce = 0;
+	uint64_t h_numberOfCudaStreams = 2;
+
+	RFIMMemoryStructComplex* RFIM = RFIMMemoryStructComplexCreate(h_valuesPerSample, h_numberOfSamples,
+			h_dimensionsToReduce, h_batchSize, h_numberOfCudaStreams);
+
+
+	//Start up the RNG
+	curandGenerator_t rngGen;
+
+	if( curandCreateGenerator(&rngGen, CURAND_RNG_PSEUDO_DEFAULT) != CURAND_STATUS_SUCCESS)
+	{
+		fprintf(stderr, "main: Unable to start cuRand library\n");
+		exit(1);
+	}
+
+	//Set the RNG seed
+	if((curandSetPseudoRandomGeneratorSeed(rngGen, 1)) != CURAND_STATUS_SUCCESS)
+	{
+		fprintf(stderr, "main: Unable to set the RNG Seed value\n");
+		exit(1);
+	}
+
+	cudaDeviceSynchronize();
+
+	//Generate a signal
+	uint64_t signalByteSize = sizeof(cuComplex) *  h_valuesPerSample * h_numberOfSamples * h_batchSize;
+	cuComplex* d_signal = Device_GenerateWhiteNoiseSignalComplex(&rngGen, h_valuesPerSample, h_numberOfSamples, h_batchSize, 1);
+	cuComplex* d_filteredSignal;
+	cudaMalloc(&d_filteredSignal, signalByteSize);
+
+
+	//Put it through RFIM Routine
+	RFIMRoutineComplex(RFIM, d_signal, d_filteredSignal);
+
+
+
+	//Wait for everthing to complete / check errors
+	cudaError_t cudaError = cudaDeviceSynchronize();
+
+	if(cudaError != cudaSuccess)
+	{
+		fprintf(stderr, "RoundTripNoReduction(): Something has gone wrong!\n");
+		exit(1);
+	}
+
+
+
+	//Check everything
+
+
+
+
+	//Covariance matrix
+	//Write to a text file and check against python result
+	//TODO: Weird stuff is going on here...Ask Willem
+	cuComplex* h_signal;
+	cudaMallocHost(&h_signal, signalByteSize);
+	cudaMemcpy(h_signal, d_signal, signalByteSize, cudaMemcpyDeviceToHost);
+
+	/*
+	Utility_WriteSignalMatrixToFile("RoundTripNoReductionSignal1.txt", h_signal, h_numberOfSamples, h_valuesPerSample);
+	Utility_WriteSignalMatrixToFile("RoundTripNoReductionSignal2.txt", h_signal + (h_valuesPerSample * h_numberOfSamples), h_numberOfSamples, h_valuesPerSample);
+	Utility_WriteSignalMatrixToFile("RoundTripNoReductionSignal3.txt", h_signal + (2 * h_valuesPerSample * h_numberOfSamples), h_numberOfSamples, h_valuesPerSample);
+	Utility_WriteSignalMatrixToFile("RoundTripNoReductionSignal4.txt", h_signal + (3 * h_valuesPerSample * h_numberOfSamples), h_numberOfSamples, h_valuesPerSample);
+	Utility_WriteSignalMatrixToFile("RoundTripNoReductionSignal5.txt", h_signal + (4 * h_valuesPerSample * h_numberOfSamples), h_numberOfSamples, h_valuesPerSample);
+
+
+
+	cuComplex* h_covarianceMatrices;
+	uint64_t covarianceByteSize = sizeof(cuComplex) * h_valuesPerSample * h_valuesPerSample * h_batchSize;
+	cudaMallocHost(&h_covarianceMatrices, covarianceByteSize);
+	cudaMemcpy(h_covarianceMatrices, RFIM->d_covarianceMatrix, covarianceByteSize, cudaMemcpyDeviceToHost);
+
+	Utility_WriteSignalMatrixToFile("RoundTripNoReductionCovarianceMatrix1.txt", h_covarianceMatrices, h_valuesPerSample, h_valuesPerSample);
+	Utility_WriteSignalMatrixToFile("RoundTripNoReductionCovarianceMatrix2.txt", h_covarianceMatrices + (h_valuesPerSample * h_valuesPerSample), h_valuesPerSample, h_valuesPerSample);
+	Utility_WriteSignalMatrixToFile("RoundTripNoReductionCovarianceMatrix3.txt", h_covarianceMatrices + (2 * h_valuesPerSample * h_valuesPerSample), h_valuesPerSample, h_valuesPerSample);
+	Utility_WriteSignalMatrixToFile("RoundTripNoReductionCovarianceMatrix4.txt", h_covarianceMatrices + (3 * h_valuesPerSample * h_valuesPerSample), h_valuesPerSample, h_valuesPerSample);
+	Utility_WriteSignalMatrixToFile("RoundTripNoReductionCovarianceMatrix5.txt", h_covarianceMatrices + (4 * h_valuesPerSample * h_valuesPerSample), h_valuesPerSample, h_valuesPerSample);
+	*/
+
+	//Is the end result the same more or less?
+	//Copy the end result back to the host
+	cuComplex* h_filteredSignal;
+	cudaMallocHost(&h_filteredSignal,  signalByteSize);
+	cudaMemcpy(h_filteredSignal, d_filteredSignal, signalByteSize, cudaMemcpyDeviceToHost);
+
+	uint64_t signalLength = h_valuesPerSample * h_numberOfSamples * h_batchSize;
+	for(uint64_t i = 0; i < signalLength; ++i)
+	{
+		if(fabs(h_filteredSignal[i].x) - fabs(h_signal[i].x) > 0.00001f ||
+				fabs(h_filteredSignal[i].y) - fabs(h_signal[i].y) > 0.00001f)
+		{
+			fprintf(stderr,
+					"RoundTripNoReduction: Signal is not the same as filtered signal\nSignal[%llu]: real %f, imag %f\nFilteredSignal[%llu]: real %f, imag %f\n",
+					i, h_signal[i].x, h_signal[i].y, i, h_filteredSignal[i].x, h_filteredSignal[i].y);
+			//exit(1);
+		}
+	}
+
+
+
+	//Free everything
+	cudaFreeHost(h_signal);
+	//cudaFreeHost(h_covarianceMatrices);
+	cudaFreeHost(h_filteredSignal);
+
+	cudaFree(d_signal);
+	cudaFree(d_filteredSignal);
+
+	curandDestroyGenerator(rngGen);
+
+	RFIMMemoryStructComplexDestroy(RFIM);
+
+
+}
+
+
+
+
+
+
+
 void MemoryLeakTest()
 {
 	//Signal
@@ -1363,6 +1493,7 @@ void RunAllUnitTests()
 	FilteringProductionComplex();
 
 	RoundTripNoReduction();
+	RoundTripNoReductionComplex();
 
 	MemoryLeakTest();
 
