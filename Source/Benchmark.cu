@@ -256,7 +256,7 @@ void BenchmarkComplex()
 
 
 	//For each numberOfSamples value
-	for(uint64_t i = 19; i < 24; ++i)
+	for(uint64_t i = 14; i < 24; ++i)
 	{
 		h_numberOfSamples = 1 << i;
 

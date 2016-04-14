@@ -45,7 +45,7 @@ void MemoryLeakTest();
 void MemoryLeakTestComplex();
 
 
-
+void RFIMTest();
 
 
 //-------------------------------------
@@ -1615,6 +1615,111 @@ void MemoryLeakTestComplex()
 
 
 
+void RFIMTest()
+{
+	//generate two streams of data, add a sine wave to it for a bit, and see what happens after it goes through this routine
+
+
+
+	//Signal
+	uint64_t h_valuesPerSample = 2;
+	uint64_t h_numberOfSamples  = 1 << 15;
+	uint64_t h_dimensionsToReduce = 1;
+	uint64_t h_batchSize = 1;
+	uint64_t h_numberOfCudaStreams = 1;
+	uint64_t h_numberOfThreads = 1;
+
+
+	//Start up the RNG
+	curandGenerator_t rngGen;
+
+	if( curandCreateGenerator(&rngGen, CURAND_RNG_PSEUDO_DEFAULT) != CURAND_STATUS_SUCCESS)
+	{
+		fprintf(stderr, "main: Unable to start cuRand library\n");
+		exit(1);
+	}
+
+	//Set the RNG seed
+	if((curandSetPseudoRandomGeneratorSeed(rngGen, 1)) != CURAND_STATUS_SUCCESS)
+	{
+		fprintf(stderr, "main: Unable to set the RNG Seed value\n");
+		exit(1);
+	}
+
+
+	//Create an RFIMStruct
+	RFIMMemoryStruct* RFIM = RFIMMemoryStructCreate(h_valuesPerSample, h_numberOfSamples,
+			h_dimensionsToReduce, h_batchSize, h_numberOfCudaStreams);
+
+
+	//Generate a signal
+	uint64_t signalByteSize = sizeof(float) * h_valuesPerSample * h_numberOfSamples * h_batchSize * h_numberOfThreads;
+	float* d_signal = Device_GenerateWhiteNoiseSignal(&rngGen, h_valuesPerSample, h_numberOfSamples,
+			h_batchSize,  h_numberOfThreads);
+
+	//Copy it to the host so I can add stuff to it
+	float* h_signal;
+	cudaMallocHost(&h_signal, signalByteSize);
+	cudaMemcpy(h_signal, d_signal, signalByteSize, cudaMemcpyDeviceToHost);
+
+	const float pi = 3.14159265359f;
+
+	//Add a sine wave to each beam from sample zero to 4096
+	//Sinewave has a frequency of 3 from 0 - 4096 and an amplitude of 3
+	for(uint64_t i = 0; i < 4096; ++i)
+	{
+		//3 = frequency
+		float sineValue = sinf( (2 * pi * 3 * i) / 4096);
+
+		//Add sineValue to the existing noisy, uncorrelated signal
+		h_signal[i * 2] += sineValue;
+		h_signal[(i * 2) + 1] += sineValue;
+	}
+
+
+	//TODO: Write the signal to a file so it can be graphed
+	Utility_WriteSignalMatrixToFile("RFIMBefore.txt", h_signal, h_numberOfSamples, h_valuesPerSample);
+
+
+	//Copy this altered signal back to the device
+	cudaMemcpy(d_signal, h_signal, signalByteSize, cudaMemcpyHostToDevice);
+
+	//Run filtered signal
+	float* d_filteredSignal;
+	cudaMalloc(&d_filteredSignal, signalByteSize);
+
+	//Run RFIM on it
+	RFIMRoutine(RFIM, d_signal, d_filteredSignal);
+
+	//Copy the results back to the host
+	float* h_filteredSignal;
+	cudaMallocHost(&h_filteredSignal, signalByteSize);
+	cudaMemcpy(h_filteredSignal, d_filteredSignal, signalByteSize, cudaMemcpyDeviceToHost);
+
+	//TODO: Write the results to a file
+	Utility_WriteSignalMatrixToFile("RFIMAfter.txt", h_filteredSignal, h_numberOfSamples, h_valuesPerSample);
+
+
+	//Free everything
+	cudaFreeHost(h_signal);
+	cudaFreeHost(h_filteredSignal);
+
+	cudaFree(d_signal);
+	cudaFree(d_filteredSignal);
+
+	RFIMMemoryStructDestroy(RFIM);
+
+	curandDestroyGenerator(rngGen);
+
+}
+
+
+
+
+
+
+
+
 void RunAllUnitTests()
 {
 	/*
@@ -1634,9 +1739,12 @@ void RunAllUnitTests()
 	RoundTripNoReductionComplex();
 
 	MemoryLeakTest();
+
+
+	//MemoryLeakTestComplex();
 	*/
 
-	MemoryLeakTestComplex();
+	RFIMTest();
 
 	printf("All tests passed!\n");
 
