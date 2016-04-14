@@ -41,8 +41,8 @@ void FilteringProductionComplex();
 void RoundTripNoReduction();
 void RoundTripNoReductionComplex();
 
-
 void MemoryLeakTest();
+void MemoryLeakTestComplex();
 
 
 
@@ -1313,7 +1313,7 @@ void RoundTripNoReductionComplex()
 			fprintf(stderr,
 					"RoundTripNoReduction: Signal is not the same as filtered signal\nSignal[%llu]: real %f, imag %f\nFilteredSignal[%llu]: real %f, imag %f\n",
 					i, h_signal[i].x, h_signal[i].y, i, h_filteredSignal[i].x, h_filteredSignal[i].y);
-			//exit(1);
+			exit(1);
 		}
 	}
 
@@ -1476,10 +1476,148 @@ void MemoryLeakTest()
 
 
 
+void MemoryLeakTestComplex()
+{
+	//Signal
+	uint64_t h_valuesPerSample = 26;
+	uint64_t h_numberOfSamples  = 1 << 10;
+	uint64_t h_dimensionsToReduce = 0;
+	uint64_t h_batchSize = 5;
+	uint64_t h_numberOfCudaStreams = 8;
+	uint64_t h_numberOfThreads = 4;
+
+
+	//Start up the RNG
+	curandGenerator_t rngGen;
+
+	if( curandCreateGenerator(&rngGen, CURAND_RNG_PSEUDO_DEFAULT) != CURAND_STATUS_SUCCESS)
+	{
+		fprintf(stderr, "main: Unable to start cuRand library\n");
+		exit(1);
+	}
+
+	//Set the RNG seed
+	if((curandSetPseudoRandomGeneratorSeed(rngGen, 1)) != CURAND_STATUS_SUCCESS)
+	{
+		fprintf(stderr, "main: Unable to set the RNG Seed value\n");
+		exit(1);
+	}
+
+
+	for(uint64_t i = 0; i < 10000; ++i)
+	{
+		RFIMMemoryStructComplex** RFIMStructArray;
+		cudaMallocHost(&RFIMStructArray, sizeof(RFIMMemoryStructComplex*) * h_numberOfThreads);
+
+		//Allocate all the signal memory
+		cuComplex* d_signal;
+		cuComplex* d_filteredSignal;
+		uint64_t signalThreadOffset = h_valuesPerSample * h_numberOfSamples * h_batchSize;
+		uint64_t signalByteSize = sizeof(cuComplex) * h_valuesPerSample * h_numberOfSamples * h_batchSize * h_numberOfThreads;
+
+
+
+		cudaMalloc(&d_filteredSignal, signalByteSize);
+
+		d_signal = Device_GenerateWhiteNoiseSignalComplex(&rngGen, h_valuesPerSample, h_numberOfSamples, h_batchSize, h_numberOfThreads);
+
+
+		//Create a struct for each of the threads
+		for(uint64_t currentThreadIndex = 0; currentThreadIndex < h_numberOfThreads; ++currentThreadIndex)
+		{
+			RFIMStructArray[currentThreadIndex] = RFIMMemoryStructComplexCreate(h_valuesPerSample, h_numberOfSamples,
+					h_dimensionsToReduce, h_batchSize, h_numberOfCudaStreams);
+
+		}
+
+
+
+		//Start a thread for each RFIMStruct
+		//Allocate memory
+		std::vector<std::thread*> threadVector;
+		//cudaMallocHost(&threadArray, sizeof(std::thread) * h_numberOfThreads);
+
+
+
+		//Start the threads
+		for(uint64_t currentThreadIndex = 0; currentThreadIndex < h_numberOfThreads; ++currentThreadIndex)
+		{
+			threadVector.push_back(new std::thread(RFIMRoutineComplex,
+					RFIMStructArray[currentThreadIndex],
+					d_signal + (currentThreadIndex * signalThreadOffset),
+					d_filteredSignal + (currentThreadIndex * signalThreadOffset)));
+
+			/*
+			//Placement new, construct an object on already allocated memory
+			std::thread* helloThread = new (threadArray + currentThreadIndex) std::thread(RFIMRoutine,
+					std::ref(RFIMStructArray[currentThreadIndex]),
+					d_signal + (currentThreadIndex * signalThreadOffset),
+					d_filteredSignal + (currentThreadIndex * signalThreadOffset));
+					*/
+
+		}
+
+
+		//Wait for all threads to complete
+		for(uint64_t currentThreadIndex = 0; currentThreadIndex < h_numberOfThreads; ++currentThreadIndex)
+		{
+			threadVector[currentThreadIndex]->join();
+		}
+
+
+
+		//Compare the input and output results and see if they are the same
+		cuComplex* h_signal;
+		cuComplex* h_filteredSignal;
+		cudaMallocHost(&h_signal, signalByteSize);
+		cudaMallocHost(&h_filteredSignal, signalByteSize);
+		cudaMemcpy(h_signal, d_signal, signalByteSize, cudaMemcpyDeviceToHost);
+		cudaMemcpy(h_filteredSignal, d_filteredSignal, signalByteSize, cudaMemcpyDeviceToHost);
+
+		for(uint64_t signalIndex = 0; signalIndex < h_valuesPerSample * h_numberOfSamples * h_batchSize * h_numberOfThreads; ++signalIndex)
+		{
+			if(fabs(h_filteredSignal[signalIndex].x) - fabs(h_signal[signalIndex].x) > 0.00001f ||
+					fabs(h_filteredSignal[signalIndex].y) - fabs(h_signal[signalIndex].y) > 0.00001f)
+			{
+				fprintf(stderr,
+						"MemoryLeakTestComplex: Signal is not the same as filtered signal\nSignal[%llu]: real %f, imag %f\nFilteredSignal[%llu]: real %f, imag %f\n",
+						i, h_signal[i].x, h_signal[i].y, i, h_filteredSignal[i].x, h_filteredSignal[i].y);
+				exit(1);
+			}
+		}
+
+
+
+		//Free each of the RFIMStructs
+		for(uint64_t currentThreadIndex = 0; currentThreadIndex < h_numberOfThreads; ++currentThreadIndex)
+		{
+			RFIMMemoryStructComplexDestroy(RFIMStructArray[currentThreadIndex]);
+
+			std::thread* currentThread = threadVector[currentThreadIndex];
+			delete currentThread;
+
+		}
+
+
+
+		cudaFreeHost(RFIMStructArray);
+		cudaFreeHost(h_signal);
+		cudaFreeHost(h_filteredSignal);
+		//cudaFreeHost(threadArray);
+
+		cudaFree(d_signal);
+		cudaFree(d_filteredSignal);
+	}
+
+	curandDestroyGenerator(rngGen);
+}
+
+
+
 
 void RunAllUnitTests()
 {
-
+	/*
 	MeanCublasProduction();
 	MeanCublasComplexProduction();
 
@@ -1496,6 +1634,9 @@ void RunAllUnitTests()
 	RoundTripNoReductionComplex();
 
 	MemoryLeakTest();
+	*/
+
+	MemoryLeakTestComplex();
 
 	printf("All tests passed!\n");
 

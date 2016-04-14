@@ -11,6 +11,7 @@
 #include "RFIMMemoryStruct.h"
 
 void Benchmark();
+void BenchmarkComplex();
 
 
 
