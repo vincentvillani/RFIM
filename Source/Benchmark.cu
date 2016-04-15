@@ -263,135 +263,119 @@ void BenchmarkComplex()
 
 
 		//For each batchSize
-		for(uint64_t j = 0; j < 4; ++j)
+		for(uint64_t j = 0; j < 5; ++j)
 		{
 
 			h_batchSize = 1 << j;
+			h_numberOfCudaStreams = 1 << j;
 
 
-
-			//For each numberOfStreams
-			for(uint64_t k = 0; k < 4; ++k)
+			for(uint64_t p = 0; p < 1; ++p)
 			{
 
-
-
-				h_numberOfCudaStreams = 1 << k;
+				h_numberOfThreads = 1 << p;
 
 
 
 
-				for(uint64_t p = 0; p < 2; ++p)
+				RFIMMemoryStructComplex** RFIMStructArray;
+				cudaMallocHost(&RFIMStructArray, sizeof(RFIMMemoryStructComplex*) * h_numberOfThreads);
+
+				//Allocate all the signal memory
+				cuComplex* d_signal;
+				cuComplex* d_filteredSignal;
+				uint64_t signalThreadOffset = h_valuesPerSample * h_numberOfSamples * h_batchSize;
+				uint64_t signalByteSize = sizeof(cuComplex) * h_valuesPerSample * h_numberOfSamples * h_batchSize * h_numberOfThreads;
+
+
+				cudaMalloc(&d_filteredSignal, signalByteSize);
+
+				d_signal = Device_GenerateWhiteNoiseSignalComplex(&rngGen, h_valuesPerSample, h_numberOfSamples, h_batchSize, h_numberOfThreads);
+
+
+				//Create a struct for each of the threads
+				for(uint64_t currentThreadIndex = 0; currentThreadIndex < h_numberOfThreads; ++currentThreadIndex)
 				{
-
-					h_numberOfThreads = 1 << p;
-
-
-
-
-					RFIMMemoryStructComplex** RFIMStructArray;
-					cudaMallocHost(&RFIMStructArray, sizeof(RFIMMemoryStructComplex*) * h_numberOfThreads);
-
-					//Allocate all the signal memory
-					cuComplex* d_signal;
-					cuComplex* d_filteredSignal;
-					uint64_t signalThreadOffset = h_valuesPerSample * h_numberOfSamples * h_batchSize;
-					uint64_t signalByteSize = sizeof(cuComplex) * h_valuesPerSample * h_numberOfSamples * h_batchSize * h_numberOfThreads;
-
-
-					cudaMalloc(&d_filteredSignal, signalByteSize);
-
-					d_signal = Device_GenerateWhiteNoiseSignalComplex(&rngGen, h_valuesPerSample, h_numberOfSamples, h_batchSize, h_numberOfThreads);
-
-
-					//Create a struct for each of the threads
-					for(uint64_t currentThreadIndex = 0; currentThreadIndex < h_numberOfThreads; ++currentThreadIndex)
-					{
-						RFIMStructArray[currentThreadIndex] = RFIMMemoryStructComplexCreate(h_valuesPerSample, h_numberOfSamples,
-								h_dimensionsToReduce, h_batchSize, h_numberOfCudaStreams);
-
-					}
-
-
-
-					//Start a thread for each RFIMStruct
-					std::vector<std::thread*> threadVector;
-
-
-
-
-					//Start the timer
-					double startTime = cpuSecond();
-
-					//Start the threads
-					for(uint64_t currentThreadIndex = 0; currentThreadIndex < h_numberOfThreads; ++currentThreadIndex)
-					{
-						//Placement new, construct an object on already allocated memory
-						threadVector.push_back( new std::thread(RFIMInstanceComplex,
-								RFIMStructArray[currentThreadIndex],
-								d_signal + (currentThreadIndex * signalThreadOffset),
-								d_filteredSignal + (currentThreadIndex * signalThreadOffset), iterations));
-
-
-					}
-
-
-					//Join with each of the threads
-					for(uint64_t currentThreadIndex = 0; currentThreadIndex < h_numberOfThreads; ++currentThreadIndex)
-					{
-						threadVector[currentThreadIndex]->join();
-					}
-
-
-
-
-
-					//Compute stats here
-					//calculate total duration
-					double totalDuration = cpuSecond() - startTime;
-
-					//find the average time taken for each iteration
-					double averageIterationTime = totalDuration / iterations;
-
-					//TODO: *************** ADD THREAD NUM HERE!!!! ***************
-					//Calculate the average samples processed per iteration in Mhz
-					double averageHz = (h_numberOfSamples * h_batchSize * iterations * h_numberOfThreads) / totalDuration;
-					double averageMhz =  averageHz / 1000000.0;
-
-
-
-					//Print the results
-					printf("Signal: (%llu, %llu, %llu, %llu, %llu)\nIterations: %llu\nTotal time: %fs\nAverage time: %fs\nAverage Mhz: %f\n\n",
-							h_valuesPerSample, h_numberOfSamples, h_batchSize, h_numberOfCudaStreams, h_numberOfThreads, iterations, totalDuration, averageIterationTime, averageMhz);
-
-
-
-
-
-					//Free each of the RFIMStructs
-					for(uint64_t currentThreadIndex = 0; currentThreadIndex < h_numberOfThreads; ++currentThreadIndex)
-					{
-						RFIMMemoryStructComplexDestroy(RFIMStructArray[currentThreadIndex]);
-						std::thread* currentThread = threadVector[currentThreadIndex];
-						delete currentThread;
-
-					}
-
-
-
-					cudaFreeHost(RFIMStructArray);
-
-
-					cudaFree(d_signal);
-					cudaFree(d_filteredSignal);
-
+					RFIMStructArray[currentThreadIndex] = RFIMMemoryStructComplexCreate(h_valuesPerSample, h_numberOfSamples,
+							h_dimensionsToReduce, h_batchSize, h_numberOfCudaStreams);
 
 				}
 
 
 
-			}
+				//Start a thread for each RFIMStruct
+				std::vector<std::thread*> threadVector;
 
+
+
+
+				//Start the timer
+				double startTime = cpuSecond();
+
+				//Start the threads
+				for(uint64_t currentThreadIndex = 0; currentThreadIndex < h_numberOfThreads; ++currentThreadIndex)
+				{
+					//Placement new, construct an object on already allocated memory
+					threadVector.push_back( new std::thread(RFIMInstanceComplex,
+							RFIMStructArray[currentThreadIndex],
+							d_signal + (currentThreadIndex * signalThreadOffset),
+							d_filteredSignal + (currentThreadIndex * signalThreadOffset), iterations));
+
+
+				}
+
+
+				//Join with each of the threads
+				for(uint64_t currentThreadIndex = 0; currentThreadIndex < h_numberOfThreads; ++currentThreadIndex)
+				{
+					threadVector[currentThreadIndex]->join();
+				}
+
+
+
+
+
+				//Compute stats here
+				//calculate total duration
+				double totalDuration = cpuSecond() - startTime;
+
+				//find the average time taken for each iteration
+				double averageIterationTime = totalDuration / iterations;
+
+				//TODO: *************** ADD THREAD NUM HERE!!!! ***************
+				//Calculate the average samples processed per iteration in Mhz
+				double averageHz = (h_numberOfSamples * h_batchSize * iterations * h_numberOfThreads) / totalDuration;
+				double averageMhz =  averageHz / 1000000.0;
+
+
+
+				//Print the results
+				printf("Signal: (%llu, %llu, %llu, %llu, %llu)\nIterations: %llu\nTotal time: %fs\nAverage time: %fs\nAverage Mhz: %f\n\n",
+						h_valuesPerSample, h_numberOfSamples, h_batchSize, h_numberOfCudaStreams, h_numberOfThreads, iterations, totalDuration, averageIterationTime, averageMhz);
+
+
+
+
+
+				//Free each of the RFIMStructs
+				for(uint64_t currentThreadIndex = 0; currentThreadIndex < h_numberOfThreads; ++currentThreadIndex)
+				{
+					RFIMMemoryStructComplexDestroy(RFIMStructArray[currentThreadIndex]);
+					std::thread* currentThread = threadVector[currentThreadIndex];
+					delete currentThread;
+
+				}
+
+
+
+				cudaFreeHost(RFIMStructArray);
+
+
+				cudaFree(d_signal);
+				cudaFree(d_filteredSignal);
+
+
+			}
 
 
 

@@ -1744,7 +1744,7 @@ void RunAllUnitTests()
 	//MemoryLeakTestComplex();
 	*/
 
-	RFIMTest();
+	//RFIMTest();
 
 	printf("All tests passed!\n");
 
