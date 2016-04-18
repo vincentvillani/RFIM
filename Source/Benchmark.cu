@@ -71,33 +71,27 @@ void Benchmark()
 	}
 
 
-	//For each numberOfSamples value
-	for(uint64_t i = 19; i < 24; ++i)
+
+	for(uint64_t f = 0; f < 11; ++f)
 	{
-		h_numberOfSamples = 1 << i;
 
-
-
-		//For each batchSize
-		for(uint64_t j = 0; j < 4; ++j)
+		//For each numberOfSamples value
+		for(uint64_t i = 14; i < 15; ++i)
 		{
-
-			h_batchSize = 1 << j;
-
+			h_numberOfSamples = 1 << i;
 
 
-			//For each numberOfStreams
-			for(uint64_t k = 0; k < 4; ++k)
+
+			//For each batchSize
+			for(uint64_t j = 0; j < 4; ++j)
 			{
 
-
-
-				h_numberOfCudaStreams = 1 << k;
-
+				h_batchSize = 1 << j;
+				h_numberOfCudaStreams = 1 << j;
 
 
 
-				for(uint64_t p = 0; p < 2; ++p)
+				for(uint64_t p = 0; p < 1; ++p)
 				{
 
 					h_numberOfThreads = 1 << p;
@@ -204,16 +198,11 @@ void Benchmark()
 
 				}
 
-
-
 			}
-
-
-
-
 		}
-	}
 
+		h_valuesPerSample *= 2;
+	}
 
 
 	curandDestroyGenerator(rngGen);
