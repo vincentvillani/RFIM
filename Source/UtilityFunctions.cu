@@ -7,7 +7,80 @@
 
 #include "../Header/UtilityFunctions.h"
 #include "../Header/RFIMHelperFunctions.h"
+
 #include <cublas.h>
+#include <random>
+#include <math.h>
+
+
+float* Utility_GenerateWhiteNoiseHost(uint64_t length, float mean, float stdDev)
+{
+	float* result = (float*)malloc(sizeof(float) * length);
+
+
+	//Setup RNG generator
+	std::default_random_engine generator;
+	std::normal_distribution<float> distribution(mean, stdDev);
+
+
+	//Generate the random numbers
+	for(uint64_t i = 0; i < length; ++i)
+	{
+		result[i] = distribution(generator);
+	}
+
+
+	return result;
+
+}
+
+
+float Utility_GenerateSingleWhiteNoiseValueHost(float mean, float stdDev)
+{
+	std::default_random_engine generator;
+	std::normal_distribution<float> distribution(mean, stdDev);
+
+	return distribution(generator);
+}
+
+
+
+float Utility_SignalToNoiseRatio(float* h_signal, uint64_t signalLength, float signalAmplitude)
+{
+	//SNR = signalAmplitude / RootMeanSquare (RMS)
+	float RMS = 0;
+
+	for(uint64_t i = 0; i < signalLength; ++i)
+	{
+		RMS += h_signal[i] * h_signal[i];
+	}
+
+	RMS *= 1 / signalLength;
+	RMS = sqrtf(RMS);
+
+	return signalAmplitude / RMS;
+
+}
+
+
+
+
+float Utility_Variance(float* h_signal, uint64_t signalLength)
+{
+	float variance = 0;
+
+	for(uint64_t i = 0; i < signalLength; ++i)
+	{
+		variance += h_signal[i] * h_signal[i];
+	}
+
+	return variance / signalLength;
+}
+
+
+
+
+
 
 
 //Write a host signal matrix to a file

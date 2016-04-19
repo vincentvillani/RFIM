@@ -13,6 +13,9 @@
 void Benchmark();
 void BenchmarkComplex();
 
+//Benchmark the actual effectiveness of removing RFIM
+void BenchmarkRFIMConstantInterferor();
+
 
 
 #endif /* BENCHMARK_H_ */

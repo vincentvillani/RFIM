@@ -23,9 +23,7 @@
 
 
 //TODO: Look into ways of using less memory
-//TODO: Write a unit test to test eigenvector removal gives the correct result
-
-
+//TODO: Write a CPU version?
 
 int main(int argc, char **argv)
 {

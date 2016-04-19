@@ -3,12 +3,15 @@
 #include "../Header/RFIM.h"
 #include "../Header/RFIMHelperFunctions.h"
 #include "../Header/RFIMMemoryStructComplex.h"
+#include "../Header/UtilityFunctions.h"
 
 #include <stdio.h>
 #include <sys/time.h>
+#include <cuda.h>
 #include <curand.h>
 #include <thread>
 #include <vector>
+#include <sstream>
 
 double cpuSecond()
 {
@@ -352,7 +355,6 @@ void BenchmarkComplex()
 					RFIMMemoryStructComplexDestroy(RFIMStructArray[currentThreadIndex]);
 					std::thread* currentThread = threadVector[currentThreadIndex];
 					delete currentThread;
-
 				}
 
 
@@ -377,6 +379,152 @@ void BenchmarkComplex()
 
 	printf("Benchmark complete!!\n");
 }
+
+
+
+
+//Add a sine wave with random amplitudes but equal phase to multiple beams
+//1/4 beams, half beams, all beams
+void BenchmarkRFIMConstantInterferor()
+{
+	//Signal
+	uint64_t h_valuesPerSample = 13;
+	uint64_t h_numberOfSamples  = 1 << 15;
+	uint64_t h_dimensionsToReduce = 1;
+	uint64_t h_batchSize = 1;
+	uint64_t h_numberOfCudaStreams = 1;
+	uint64_t h_numberOfThreads = 1;
+
+
+
+
+	//Start up the RNG
+	curandGenerator_t rngGen;
+
+	if( curandCreateGenerator(&rngGen, CURAND_RNG_PSEUDO_DEFAULT) != CURAND_STATUS_SUCCESS)
+	{
+		fprintf(stderr, "main: Unable to start cuRand library\n");
+		exit(1);
+	}
+
+	//Set the RNG seed
+	if((curandSetPseudoRandomGeneratorSeed(rngGen, 1)) != CURAND_STATUS_SUCCESS)
+	{
+		fprintf(stderr, "main: Unable to set the RNG Seed value\n");
+		exit(1);
+	}
+
+
+
+	float h_sineWaveFreq = 3;
+	float h_sineWaveAmplitude = 5;
+	uint64_t h_numberOfBeamsToAdd = 3; //Start at three, add three each time through the loop
+
+
+	//Each time through this loop, add the interferor to three more beams
+	for(uint64_t currentRegime = 0; currentRegime < 4; ++currentRegime)
+	{
+
+		//Create an RFIMStruct
+		RFIMMemoryStruct* RFIM = RFIMMemoryStructCreate(h_valuesPerSample, h_numberOfSamples,
+				h_dimensionsToReduce, h_batchSize, h_numberOfCudaStreams);
+
+
+		//Generate a signal
+		uint64_t signalByteSize = sizeof(float) * h_valuesPerSample * h_numberOfSamples * h_batchSize * h_numberOfThreads;
+		float* d_signal = Device_GenerateWhiteNoiseSignal(&rngGen, h_valuesPerSample, h_numberOfSamples,
+				h_batchSize,  h_numberOfThreads);
+
+		//Copy it to the host so I can add stuff to it
+		float* h_signal;
+		cudaMallocHost(&h_signal, signalByteSize);
+		cudaMemcpy(h_signal, d_signal, signalByteSize, cudaMemcpyDeviceToHost);
+
+
+		//TODO: THIS NEEDS TO BE DONE FOR EACH BEAM
+		//Calculate the variance of the signal, we'll need this later
+		//float varianceBefore = ;
+
+		const float pi = 3.14159265359f;
+
+
+		float* h_sineWave;
+		cudaMallocHost(&h_sineWave, signalByteSize);
+
+		//Add a sine wave to the beams
+		for(uint64_t i = 0; i < h_numberOfSamples; ++i)
+		{
+
+			h_sineWave[i] =  sinf( (2 * pi * h_sineWaveFreq * i) / h_numberOfSamples) * h_sineWaveAmplitude;
+
+			//Add sineValue to the existing noisy, uncorrelated signal to each beam
+			for(uint64_t j = 0; j < h_numberOfBeamsToAdd; ++j)
+			{
+				h_signal[ (i * h_valuesPerSample) + j] += h_sineWave[i];
+			}
+
+		}
+
+		std::stringstream ss;
+		ss << "RFIMBenchmark/BenchmarkRFIMConstantInterferor/before" << h_numberOfBeamsToAdd << "StreamsToRemove.txt";
+
+
+		Utility_WriteSignalMatrixToFile( ss.str(), h_signal, h_numberOfSamples, h_valuesPerSample);
+
+
+		//Copy this altered signal back to the device
+		cudaMemcpy(d_signal, h_signal, signalByteSize, cudaMemcpyHostToDevice);
+
+		//Allocate memory for the output
+		float* d_filteredSignal;
+		cudaMalloc(&d_filteredSignal, signalByteSize);
+
+		//Carry out the RFIM Benchmark
+		RFIMRoutine(RFIM, d_signal, d_filteredSignal);
+
+
+		//Copy the result back to the host
+		float*h_filteredSignal;
+		cudaMallocHost(&h_filteredSignal, signalByteSize);
+		cudaMemcpy(h_filteredSignal, d_filteredSignal, signalByteSize, cudaMemcpyDeviceToHost);
+
+
+		ss.str("");
+		ss << "RFIMBenchmark/BenchmarkRFIMConstantInterferor/after" << h_numberOfBeamsToAdd << "StreamsToRemove.txt";
+
+
+		//Write the result to file
+		Utility_WriteSignalMatrixToFile( ss.str(), h_filteredSignal, h_numberOfSamples, h_valuesPerSample);
+
+
+		//Compute a bunch of important stats
+		//TODO: THIS NEEDS TO BE DONE FOR EACH BEAM
+
+		//TODO: Does it make sense to compute the signal to noise of a sine wave? I guess it does to see how strong it is?
+		//float signalToNoise = Utility_SignalToNoiseRatio(h_filteredSignal, h_numberOfSamples, h_sineWaveAmplitude);
+
+		//float varianceAfter = ;
+
+
+		//Free all memory
+		RFIMMemoryStructDestroy(RFIM);
+
+		cudaFree(d_signal);
+		cudaFree(d_filteredSignal);
+
+		cudaFreeHost(h_signal);
+		cudaFreeHost(h_sineWave);
+		cudaFreeHost(h_filteredSignal);
+
+	}
+
+
+}
+
+
+
+
+
 
 
 
