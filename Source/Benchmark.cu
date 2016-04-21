@@ -415,6 +415,8 @@ void BenchmarkRFIMConstantInterferor()
 	}
 
 
+	float whiteNoiseMean = 0.0f;
+	float whiteNoiseStdDev = 1.0f;
 
 	float h_sineWaveFreq = 3;
 	float h_sineWaveAmplitude = 5;
@@ -433,7 +435,7 @@ void BenchmarkRFIMConstantInterferor()
 		//Generate a signal
 		uint64_t signalByteSize = sizeof(float) * h_valuesPerSample * h_numberOfSamples * h_batchSize * h_numberOfThreads;
 		float* d_signal = Device_GenerateWhiteNoiseSignal(&rngGen, h_valuesPerSample, h_numberOfSamples,
-				h_batchSize,  h_numberOfThreads);
+				h_batchSize,  h_numberOfThreads, whiteNoiseMean, whiteNoiseStdDev);
 
 		//Copy it to the host so I can add stuff to it
 		float* h_signal;
@@ -441,9 +443,10 @@ void BenchmarkRFIMConstantInterferor()
 		cudaMemcpy(h_signal, d_signal, signalByteSize, cudaMemcpyDeviceToHost);
 
 
-		//TODO: THIS NEEDS TO BE DONE FOR EACH BEAM
 		//Calculate the variance of the signal, we'll need this later
-		//float varianceBefore = ;
+		float h_totalVarianceBefore = Utility_Variance(h_signal, h_valuesPerSample * h_numberOfSamples);
+		float* h_subSignalVarianceBefore = Utility_SubSignalVariance(h_signal, h_valuesPerSample, h_numberOfSamples);
+
 
 		const float pi = 3.14159265359f;
 
@@ -479,12 +482,12 @@ void BenchmarkRFIMConstantInterferor()
 		float* d_filteredSignal;
 		cudaMalloc(&d_filteredSignal, signalByteSize);
 
-		//Carry out the RFIM Benchmark
+		//Carry out the RFIM Routine
 		RFIMRoutine(RFIM, d_signal, d_filteredSignal);
 
 
 		//Copy the result back to the host
-		float*h_filteredSignal;
+		float* h_filteredSignal;
 		cudaMallocHost(&h_filteredSignal, signalByteSize);
 		cudaMemcpy(h_filteredSignal, d_filteredSignal, signalByteSize, cudaMemcpyDeviceToHost);
 
@@ -498,12 +501,98 @@ void BenchmarkRFIMConstantInterferor()
 
 
 		//Compute a bunch of important stats
-		//TODO: THIS NEEDS TO BE DONE FOR EACH BEAM
+
+
+		//After variances
+
+		float h_totalSignalVarianceAfter = Utility_Variance(h_filteredSignal, h_valuesPerSample * h_numberOfSamples);
+		float* h_subSignalVarianceAfter = Utility_SubSignalVariance(h_filteredSignal, h_valuesPerSample, h_numberOfSamples);
+
 
 		//TODO: Does it make sense to compute the signal to noise of a sine wave? I guess it does to see how strong it is?
-		//float signalToNoise = Utility_SignalToNoiseRatio(h_filteredSignal, h_numberOfSamples, h_sineWaveAmplitude);
+		//Signal to noise of the interferor waves
+		float h_signalToNoise = Utility_SignalToNoiseRatio(h_sineWave, h_numberOfSamples, h_sineWaveAmplitude);
 
-		//float varianceAfter = ;
+
+		//Copy the largest eigenvalue over
+		float h_largestEigenvalue;
+		cudaMemcpy(&h_largestEigenvalue, RFIM->d_S, sizeof(float), cudaMemcpyDeviceToHost);
+
+
+		float* h_subSignalCorrelationCoefficents = Utility_CoefficentOfCrossCorrelation(h_filteredSignal, h_sineWave,
+				h_valuesPerSample, h_numberOfSamples, h_valuesPerSample * h_numberOfSamples);
+
+
+
+		ss.str("");
+		ss << "RFIMBenchmark/BenchmarkRFIMConstantInterferor/statsFile" << h_numberOfBeamsToAdd << "StreamsToRemove.txt";
+
+
+		std::string statsFilename = ss.str();
+
+		//Write all this stuff to disk
+		FILE* statsFile = std::fopen(statsFilename.c_str(), "w");
+
+		if(statsFile == NULL)
+		{
+			fprintf(stderr, "BenchmarkRFIMConstantInterferor: Unable to open statsFile for writing\n");
+			exit(1);
+		}
+
+
+		//Start writing data to the file
+		fprintf(statsFile, "Signal Info\n");
+		fprintf(statsFile, "Number of samples: %llu\n", h_numberOfSamples);
+		fprintf(statsFile, "White noise mean: %f\n", whiteNoiseMean);
+		fprintf(statsFile, "White noise standard deviation: %f\n\n", whiteNoiseStdDev);
+
+
+		fprintf(statsFile, "Interference Info\n");
+		fprintf(statsFile, "Frequency: %f\n", h_sineWaveFreq);
+		fprintf(statsFile, "Amplitude: %f\n", h_sineWaveAmplitude);
+		fprintf(statsFile, "Signal to Noise: %f\n", h_signalToNoise);
+		fprintf(statsFile, "Added to %llu beams\n", h_numberOfBeamsToAdd);
+		fprintf(statsFile, "Number of samples: %llu\n\n", h_numberOfSamples);
+
+
+		fprintf(statsFile, "Eigenvectors Info\n");
+		fprintf(statsFile, "Dimensions removed: %llu\n", h_dimensionsToReduce);
+		fprintf(statsFile, "Largest eigenvalue: %f\n\n", h_largestEigenvalue);
+
+
+		fprintf(statsFile, "Variance Info\n");
+		fprintf(statsFile, "Total variance before: %f\n", h_totalVarianceBefore);
+		for(uint64_t i = 0; i < h_valuesPerSample; ++i)
+		{
+			fprintf(statsFile, "Beam %llu variance before: %f\n", i, h_subSignalVarianceBefore[i]);
+		}
+
+
+
+		fprintf(statsFile, "\nTotal variance after: %f\n", h_totalSignalVarianceAfter);
+		for(uint64_t i = 0; i < h_valuesPerSample; ++i)
+		{
+			fprintf(statsFile, "Beam %llu variance after: %f\n", i, h_subSignalVarianceAfter[i]);
+		}
+
+
+		fprintf(statsFile, "\n");
+
+		fprintf(statsFile, "Correlation Coefficent Info\n");
+		for(uint64_t i = 0; i < h_valuesPerSample; ++i)
+		{
+			fprintf(statsFile, "Beam %llu Correlation Coefficent: %f\n", i, h_subSignalCorrelationCoefficents[i]);
+		}
+
+
+		fprintf(statsFile, "\n");
+
+		std::fclose(statsFile);
+
+		//Add more beams
+		h_numberOfBeamsToAdd += 3;
+
+
 
 
 		//Free all memory
@@ -515,6 +604,10 @@ void BenchmarkRFIMConstantInterferor()
 		cudaFreeHost(h_signal);
 		cudaFreeHost(h_sineWave);
 		cudaFreeHost(h_filteredSignal);
+
+		cudaFreeHost(h_subSignalVarianceBefore);
+		cudaFreeHost(h_subSignalVarianceAfter);
+		cudaFreeHost(h_subSignalCorrelationCoefficents);
 
 	}
 
