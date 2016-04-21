@@ -91,7 +91,7 @@ float* Device_GenerateWhiteNoiseSignal(curandGenerator_t* rngGen, uint64_t h_val
 }
 
 
-
+/*
 float* Device_GenerateWhiteNoiseSignal(curandGenerator_t* rngGen, uint64_t h_valuesPerSample, uint64_t h_numberOfSamples,
 		uint64_t h_batchSize, uint64_t h_threadNum, float mean, float stdDev)
 {
@@ -119,7 +119,7 @@ float* Device_GenerateWhiteNoiseSignal(curandGenerator_t* rngGen, uint64_t h_val
 
 	return d_signalMatrix;
 }
-
+*/
 
 
 

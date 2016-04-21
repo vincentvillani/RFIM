@@ -47,6 +47,24 @@ float Utility_GenerateSingleWhiteNoiseValueHost(float mean, float stdDev)
 
 
 
+float* Utility_GenerateSineWaveHost(uint64_t length, float frequency, float amplitude)
+{
+	float* result;
+	cudaMallocHost(&result, sizeof(float) * length);
+
+	const float pi = 3.14159265359f;
+
+	for(uint64_t i = 0; i < length; ++i)
+	{
+		result[i] = sinf( (2 * pi * frequency * i) / length) * amplitude;
+	}
+
+	return result;
+}
+
+
+
+
 float Utility_Mean(float* h_signal, uint64_t signalLength)
 {
 	float result = 0;

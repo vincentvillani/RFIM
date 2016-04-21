@@ -22,6 +22,8 @@
 float* Utility_GenerateWhiteNoiseHost(uint64_t length, float mean, float stdDev);
 float Utility_GenerateSingleWhiteNoiseValueHost(float mean, float stdDev);
 
+float* Utility_GenerateSineWaveHost(uint64_t length, float frequency, float amplitude);
+
 float Utility_Mean(float* h_signal, uint64_t signalLength);
 float* Utility_SubSignalMean(float* h_signal, uint64_t h_valuesPerSample, uint64_t h_numberOfSamples);
 

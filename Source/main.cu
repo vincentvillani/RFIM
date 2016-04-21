@@ -46,12 +46,13 @@ int main(int argc, char **argv)
 	//Benchmark();
 	//BenchmarkComplex();
 	BenchmarkRFIMConstantInterferor();
+	//BenchmarkRFIMVariableInterferorVariableEigenvectorRemoval();
 
 
 	//2. Free everything
 	//--------------------------
 
-
+	printf("All done!\n");
 
 	return 0;
 }
