@@ -420,11 +420,12 @@ void BenchmarkRFIMConstantInterferor()
 
 	float h_sineWaveFreq = 3;
 	float h_sineWaveAmplitude = 5;
-	uint64_t h_numberOfBeamsToAdd = 3; //Start at three, add three each time through the loop
+	uint64_t h_numberOfBeamsToAdd; //Start at three, add three each time through the loop
 
 
-	//Each time through this loop, add the interferor to three more beams
-	for(uint64_t currentRegime = 0; currentRegime < 4; ++currentRegime)
+	//Each time through this loop, add the interferor to one more beam
+	//0 beams to all beams
+	for(h_numberOfBeamsToAdd = 0; h_numberOfBeamsToAdd < h_valuesPerSample + 1; ++h_numberOfBeamsToAdd)
 	{
 
 		//Create an RFIMStruct
@@ -588,10 +589,6 @@ void BenchmarkRFIMConstantInterferor()
 		fprintf(statsFile, "\n");
 
 		std::fclose(statsFile);
-
-		//Add more beams
-		h_numberOfBeamsToAdd += 3;
-
 
 
 
