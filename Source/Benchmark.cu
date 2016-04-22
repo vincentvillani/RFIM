@@ -673,6 +673,7 @@ void BenchmarkRFIMVariableInterferorVariableEigenvectorRemoval()
 		//Write the results to a file
 
 
+
 	//Generate i sine waves at different amplitudes
 	for(uint64_t i = 1; i < h_valuesPerSample; ++i)
 	{
@@ -683,6 +684,7 @@ void BenchmarkRFIMVariableInterferorVariableEigenvectorRemoval()
 		for(uint64_t j = 1; j < h_valuesPerSample; ++j)
 		{
 
+			printf("1\n");
 			h_dimensionsToReduce = j;
 
 			//Generate h_valuesPerSample beams
@@ -700,8 +702,8 @@ void BenchmarkRFIMVariableInterferorVariableEigenvectorRemoval()
 			float* h_signal;
 			float* h_filteredSignal;
 
-			cudaMalloc(&h_signal, signalByteSize);
-			cudaMalloc(&h_filteredSignal, signalByteSize);
+			cudaMallocHost(&h_signal, signalByteSize);
+			cudaMallocHost(&h_filteredSignal, signalByteSize);
 
 
 			//Copy the white noise signal to the host
@@ -721,12 +723,16 @@ void BenchmarkRFIMVariableInterferorVariableEigenvectorRemoval()
 			cudaMallocHost(&h_sineWaveFrequencies, sizeof(float) * h_numberOfBeamsToAdd);
 
 
+			printf("2\n");
+
 			//Generate the sine waves and add it to the appropriate beam
 			for(uint64_t currentSineWaveIndex = 0; currentSineWaveIndex < h_numberOfBeamsToAdd; ++currentSineWaveIndex)
 			{
 
 				h_sineWaveAmplitudes[currentSineWaveIndex] = Utility_GenerateSingleWhiteNoiseValueHost(sineWaveMean, sineWaveStdDev);
 				h_sineWaveFrequencies[currentSineWaveIndex] = Utility_GenerateSingleWhiteNoiseValueHost(sineWaveMean, sineWaveStdDev);
+
+				//printf("2.1\n");
 
 				//Allocate memory for the current sine wave
 				cudaMallocHost(sineWaves + currentSineWaveIndex, signalByteSize);
@@ -736,14 +742,22 @@ void BenchmarkRFIMVariableInterferorVariableEigenvectorRemoval()
 						h_sineWaveFrequencies[currentSineWaveIndex], h_sineWaveAmplitudes[currentSineWaveIndex]);
 
 
+				//printf("2.2\n");
+
 				//Add each sine wave to the appropriate beam
 				for(uint64_t currentSineWaveValueIndex = 0; currentSineWaveValueIndex < h_numberOfSamples; ++currentSineWaveValueIndex)
 				{
 					h_signal[ (currentSineWaveValueIndex * h_valuesPerSample) + currentSineWaveIndex] +=
 							sineWaves[currentSineWaveIndex][currentSineWaveValueIndex];
+
+					//printf("2.3\n");
 				}
 
+				//printf("2.4\n");
+
 			}
+
+			printf("3\n");
 
 
 
@@ -761,6 +775,7 @@ void BenchmarkRFIMVariableInterferorVariableEigenvectorRemoval()
 
 			Utility_WriteSignalMatrixToFile( ss.str(), h_signal, h_numberOfSamples, h_valuesPerSample);
 
+			printf("4\n");
 
 			//copy the signal back to the device
 			cudaMemcpy(d_signal, h_signal, signalByteSize, cudaMemcpyHostToDevice);
@@ -787,7 +802,7 @@ void BenchmarkRFIMVariableInterferorVariableEigenvectorRemoval()
 			Utility_WriteSignalMatrixToFile( ss.str(), h_filteredSignal, h_numberOfSamples, h_valuesPerSample);
 
 
-
+			printf("5\n");
 
 			//Compute important stats
 			float h_totalVarianceAfter = Utility_Variance(h_filteredSignal, h_valuesPerSample * h_numberOfSamples);
@@ -819,6 +834,8 @@ void BenchmarkRFIMVariableInterferorVariableEigenvectorRemoval()
 			}
 
 
+			printf("6\n");
+
 			//Copy the largest eigenvalue over
 			float h_largestEigenvalue;
 			cudaMemcpy(&h_largestEigenvalue, RFIM->d_S, sizeof(float), cudaMemcpyDeviceToHost);
@@ -842,6 +859,7 @@ void BenchmarkRFIMVariableInterferorVariableEigenvectorRemoval()
 				exit(1);
 			}
 
+			printf("7\n");
 
 			//Start writing data to the file
 			fprintf(statsFile, "Signal Info\n");
@@ -862,11 +880,13 @@ void BenchmarkRFIMVariableInterferorVariableEigenvectorRemoval()
 			}
 
 
-
+			printf("8\n");
 
 			fprintf(statsFile, "Eigenvectors Info\n");
 			fprintf(statsFile, "Dimensions removed: %llu\n", h_dimensionsToReduce);
 			fprintf(statsFile, "Largest eigenvalue: %f\n\n", h_largestEigenvalue);
+
+			printf("8.1\n");
 
 
 			fprintf(statsFile, "Variance Info\n");
@@ -877,6 +897,7 @@ void BenchmarkRFIMVariableInterferorVariableEigenvectorRemoval()
 			}
 
 
+			printf("8.2\n");
 
 			fprintf(statsFile, "\nTotal variance after: %f\n", h_totalVarianceAfter);
 			for(uint64_t i = 0; i < h_valuesPerSample; ++i)
@@ -884,14 +905,16 @@ void BenchmarkRFIMVariableInterferorVariableEigenvectorRemoval()
 				fprintf(statsFile, "Beam %llu variance after: %f\n", i, h_subSignalVarianceAfter[i]);
 			}
 
+			printf("8.3\n");
 
 			fprintf(statsFile, "\n");
 
 			fprintf(statsFile, "Correlation Coefficent Info\n");
-			for(uint64_t currentIndex = 0; currentIndex < h_valuesPerSample; ++currentIndex)
+			for(uint64_t currentIndex = 0; currentIndex < h_numberOfBeamsToAdd; ++currentIndex)
 			{
 				for(uint64_t currentCorrelationIndex = 0; currentCorrelationIndex < h_valuesPerSample; ++currentCorrelationIndex)
 				{
+					printf("8.4\n");
 					fprintf(statsFile, "\tSine wave %llu correlation with beam %llu: %f\n", currentIndex,
 							currentCorrelationIndex, h_correlationCoefficents[currentIndex][currentCorrelationIndex]);
 				}
@@ -904,6 +927,7 @@ void BenchmarkRFIMVariableInterferorVariableEigenvectorRemoval()
 			std::fclose(statsFile);
 
 
+			printf("9\n");
 			//Free everything
 
 
@@ -936,6 +960,8 @@ void BenchmarkRFIMVariableInterferorVariableEigenvectorRemoval()
 
 
 			RFIMMemoryStructDestroy(RFIM);
+
+			printf("10\n");
 
 		}
 

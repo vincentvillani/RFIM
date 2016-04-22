@@ -45,8 +45,8 @@ int main(int argc, char **argv)
 	//--------------------------
 	//Benchmark();
 	//BenchmarkComplex();
-	BenchmarkRFIMConstantInterferor();
-	//BenchmarkRFIMVariableInterferorVariableEigenvectorRemoval();
+	//BenchmarkRFIMConstantInterferor();
+	BenchmarkRFIMVariableInterferorVariableEigenvectorRemoval();
 
 
 	//2. Free everything
