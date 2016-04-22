@@ -23,6 +23,7 @@ void BenchmarkRFIMConstantInterferor();
 //Add different sine waves with different freq and amplitudes and try removing different amounts of eigenvectors
 void BenchmarkRFIMVariableInterferorVariableEigenvectorRemoval();
 
-
+//Add two sine waves with different amplitudes
+void BenchmarkRFIMDualInterferor();
 
 #endif /* BENCHMARK_H_ */

@@ -12,6 +12,7 @@
 #include <random>
 #include <math.h>
 #include <string.h>
+#include <chrono>
 
 
 float* Utility_GenerateWhiteNoiseHost(uint64_t length, float mean, float stdDev)
@@ -41,6 +42,14 @@ float Utility_GenerateSingleWhiteNoiseValueHost(float mean, float stdDev)
 {
 	std::default_random_engine generator;
 	std::normal_distribution<float> distribution(mean, stdDev);
+
+	//Get a seed value from the clock
+	std::chrono::high_resolution_clock::time_point beginning = std::chrono::high_resolution_clock::now();
+
+	std::chrono::high_resolution_clock::duration timeDifference = std::chrono::high_resolution_clock::now() - beginning;
+	uint64_t seedValue = timeDifference.count();
+
+	generator.seed(seedValue);
 
 	return distribution(generator);
 }

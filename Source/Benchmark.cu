@@ -684,7 +684,7 @@ void BenchmarkRFIMVariableInterferorVariableEigenvectorRemoval()
 		for(uint64_t j = 1; j < h_valuesPerSample; ++j)
 		{
 
-			printf("1\n");
+			//printf("1\n");
 			h_dimensionsToReduce = j;
 
 			//Generate h_valuesPerSample beams
@@ -710,6 +710,13 @@ void BenchmarkRFIMVariableInterferorVariableEigenvectorRemoval()
 			cudaMemcpy(h_signal, d_signal, signalByteSize, cudaMemcpyDeviceToHost);
 
 
+			//Compute the before variance
+			//Calculate the variance of the signal, we'll need this later
+			float h_totalVarianceBefore = Utility_Variance(h_signal, h_valuesPerSample * h_numberOfSamples);
+			float* h_subSignalVarianceBefore = Utility_SubSignalVariance(h_signal, h_valuesPerSample, h_numberOfSamples);
+
+
+
 			uint64_t sineWaveSignalLength = h_numberOfSamples;
 			//uint64_t sineWaveByteSize = sizeof(float) * sineWaveSignalLength;
 
@@ -723,7 +730,7 @@ void BenchmarkRFIMVariableInterferorVariableEigenvectorRemoval()
 			cudaMallocHost(&h_sineWaveFrequencies, sizeof(float) * h_numberOfBeamsToAdd);
 
 
-			printf("2\n");
+			//printf("2\n");
 
 			//Generate the sine waves and add it to the appropriate beam
 			for(uint64_t currentSineWaveIndex = 0; currentSineWaveIndex < h_numberOfBeamsToAdd; ++currentSineWaveIndex)
@@ -757,15 +764,12 @@ void BenchmarkRFIMVariableInterferorVariableEigenvectorRemoval()
 
 			}
 
-			printf("3\n");
+			//printf("3\n");
 
 
 
 
-			//Compute the before variance
-			//Calculate the variance of the signal, we'll need this later
-			float h_totalVarianceBefore = Utility_Variance(h_signal, h_valuesPerSample * h_numberOfSamples);
-			float* h_subSignalVarianceBefore = Utility_SubSignalVariance(h_signal, h_valuesPerSample, h_numberOfSamples);
+
 
 
 			//Write the whole before signal to file
@@ -775,7 +779,7 @@ void BenchmarkRFIMVariableInterferorVariableEigenvectorRemoval()
 
 			Utility_WriteSignalMatrixToFile( ss.str(), h_signal, h_numberOfSamples, h_valuesPerSample);
 
-			printf("4\n");
+			//printf("4\n");
 
 			//copy the signal back to the device
 			cudaMemcpy(d_signal, h_signal, signalByteSize, cudaMemcpyHostToDevice);
@@ -802,7 +806,7 @@ void BenchmarkRFIMVariableInterferorVariableEigenvectorRemoval()
 			Utility_WriteSignalMatrixToFile( ss.str(), h_filteredSignal, h_numberOfSamples, h_valuesPerSample);
 
 
-			printf("5\n");
+			//printf("5\n");
 
 			//Compute important stats
 			float h_totalVarianceAfter = Utility_Variance(h_filteredSignal, h_valuesPerSample * h_numberOfSamples);
@@ -834,7 +838,7 @@ void BenchmarkRFIMVariableInterferorVariableEigenvectorRemoval()
 			}
 
 
-			printf("6\n");
+			//printf("6\n");
 
 			//Copy the largest eigenvalue over
 			float h_largestEigenvalue;
@@ -859,7 +863,7 @@ void BenchmarkRFIMVariableInterferorVariableEigenvectorRemoval()
 				exit(1);
 			}
 
-			printf("7\n");
+			//printf("7\n");
 
 			//Start writing data to the file
 			fprintf(statsFile, "Signal Info\n");
@@ -870,7 +874,7 @@ void BenchmarkRFIMVariableInterferorVariableEigenvectorRemoval()
 
 			fprintf(statsFile, "Interference Info\n");
 
-			for(uint64_t currentIndex = 0; currentIndex < h_dimensionsToReduce; ++currentIndex)
+			for(uint64_t currentIndex = 0; currentIndex < h_numberOfBeamsToAdd; ++currentIndex)
 			{
 				fprintf(statsFile, "\tInterference sine wave %llu info\n", currentIndex);
 				fprintf(statsFile, "\t\tFrequency: %f\n", h_sineWaveFrequencies[currentIndex]);
@@ -880,13 +884,13 @@ void BenchmarkRFIMVariableInterferorVariableEigenvectorRemoval()
 			}
 
 
-			printf("8\n");
+			//printf("8\n");
 
 			fprintf(statsFile, "Eigenvectors Info\n");
 			fprintf(statsFile, "Dimensions removed: %llu\n", h_dimensionsToReduce);
 			fprintf(statsFile, "Largest eigenvalue: %f\n\n", h_largestEigenvalue);
 
-			printf("8.1\n");
+			//printf("8.1\n");
 
 
 			fprintf(statsFile, "Variance Info\n");
@@ -897,7 +901,7 @@ void BenchmarkRFIMVariableInterferorVariableEigenvectorRemoval()
 			}
 
 
-			printf("8.2\n");
+			//printf("8.2\n");
 
 			fprintf(statsFile, "\nTotal variance after: %f\n", h_totalVarianceAfter);
 			for(uint64_t i = 0; i < h_valuesPerSample; ++i)
@@ -905,7 +909,7 @@ void BenchmarkRFIMVariableInterferorVariableEigenvectorRemoval()
 				fprintf(statsFile, "Beam %llu variance after: %f\n", i, h_subSignalVarianceAfter[i]);
 			}
 
-			printf("8.3\n");
+			//printf("8.3\n");
 
 			fprintf(statsFile, "\n");
 
@@ -914,10 +918,12 @@ void BenchmarkRFIMVariableInterferorVariableEigenvectorRemoval()
 			{
 				for(uint64_t currentCorrelationIndex = 0; currentCorrelationIndex < h_valuesPerSample; ++currentCorrelationIndex)
 				{
-					printf("8.4\n");
+					//printf("8.4\n");
 					fprintf(statsFile, "\tSine wave %llu correlation with beam %llu: %f\n", currentIndex,
 							currentCorrelationIndex, h_correlationCoefficents[currentIndex][currentCorrelationIndex]);
 				}
+
+				fprintf(statsFile, "\n");
 
 			}
 
@@ -927,7 +933,7 @@ void BenchmarkRFIMVariableInterferorVariableEigenvectorRemoval()
 			std::fclose(statsFile);
 
 
-			printf("9\n");
+			//printf("9\n");
 			//Free everything
 
 
@@ -961,7 +967,7 @@ void BenchmarkRFIMVariableInterferorVariableEigenvectorRemoval()
 
 			RFIMMemoryStructDestroy(RFIM);
 
-			printf("10\n");
+			//printf("10\n");
 
 		}
 
@@ -974,6 +980,125 @@ void BenchmarkRFIMVariableInterferorVariableEigenvectorRemoval()
 
 }
 
+
+
+
+void BenchmarkRFIMDualInterferor()
+{
+	//Signal
+	uint64_t h_valuesPerSample = 13;
+	uint64_t h_numberOfSamples  = 1 << 15;
+	uint64_t h_dimensionsToReduce;
+	uint64_t h_batchSize = 1;
+	uint64_t h_numberOfCudaStreams = 1;
+	uint64_t h_numberOfThreads = 1;
+	uint64_t h_numberOfBeamsToAdd;
+
+	float whiteNoiseMean = 0.0f;
+	float whiteNoiseStdDev = 1.0f;
+
+	float sineWaveMean = 3;
+	float sineWaveStdDev = 6;
+
+
+
+	//Start up the RNG
+	curandGenerator_t rngGen;
+
+	if( curandCreateGenerator(&rngGen, CURAND_RNG_PSEUDO_DEFAULT) != CURAND_STATUS_SUCCESS)
+	{
+		fprintf(stderr, "main: Unable to start cuRand library\n");
+		exit(1);
+	}
+
+	//Set the RNG seed
+	if((curandSetPseudoRandomGeneratorSeed(rngGen, 1)) != CURAND_STATUS_SUCCESS)
+	{
+		fprintf(stderr, "main: Unable to set the RNG Seed value\n");
+		exit(1);
+	}
+
+
+
+	//Generate 13 beam signal and space for it's result
+	uint64_t signalLength = h_valuesPerSample * h_numberOfSamples * h_batchSize * h_numberOfThreads;
+	uint64_t signalByteSize = sizeof(float) * signalLength;
+
+	float* d_signal;
+	d_signal = Device_GenerateWhiteNoiseSignal(&rngGen, h_valuesPerSample, h_numberOfSamples, h_batchSize, h_numberOfThreads);
+
+	//float* d_filteredSignal;
+	//cudaMalloc(&d_filteredSignal, signalByteSize);
+
+
+
+
+
+	//Generate the sine waves with random frequencies
+	uint64_t sineWaveLength = h_numberOfSamples;
+	//uint64_t sineWaveByteSize = sizeof(float) * h_numberOfSamples;
+
+	//Get random frequency values
+	float sineWave1Freq = Utility_GenerateSingleWhiteNoiseValueHost(sineWaveMean, sineWaveStdDev);
+	float sineWave2Freq = Utility_GenerateSingleWhiteNoiseValueHost(sineWaveMean, sineWaveStdDev);
+
+	float* h_sineWave1;
+	float* h_sineWave2;
+
+	//Generate the actual sine waves, with amplitude of one
+	h_sineWave1 = Utility_GenerateSineWaveHost(sineWaveLength, sineWave1Freq, 1.0f);
+	h_sineWave2 = Utility_GenerateSineWaveHost(sineWaveLength, sineWave2Freq, 1.0f);
+
+
+	//Add the signal to each beam, do this twice and remove 1, then 2 eigenvectors and see what happens
+
+
+	//Use the same white noise signal as a base each time, add stuff to d_currentSignal rather than d_signal
+	float* d_currentSignal;
+	cudaMalloc(&d_currentSignal, signalByteSize);
+
+	//Copy the original signal to the host
+	float* h_signal;
+	cudaMallocHost(&h_signal, signalByteSize);
+	cudaMemcpy(h_signal, d_signal, signalByteSize, cudaMemcpyDeviceToHost);
+
+
+	//TODO: CALCULATE THE BEFORE VARIANCE
+
+
+	//Add both the sine waves to each beam, with different amplitudes each time
+	for(uint64_t currentIndex = 0; currentIndex < h_valuesPerSample; ++currentIndex)
+	{
+		//Generate new amplitudes for both sine waves
+		float sineWave1Amp = Utility_GenerateSingleWhiteNoiseValueHost(sineWaveMean, sineWaveStdDev);
+		float sineWave2Amp = Utility_GenerateSingleWhiteNoiseValueHost(sineWaveMean, sineWaveStdDev);
+
+		for(uint64_t currentValueIndex = 0; currentValueIndex < h_numberOfSamples; ++currentValueIndex)
+		{
+			//Add both sine wave to this beam, with their respective amplitudes
+			h_signal[ (currentValueIndex * h_valuesPerSample) + currentIndex ] += h_sineWave1[currentValueIndex] * sineWave1Amp;
+			h_signal[ (currentValueIndex * h_valuesPerSample) + currentIndex ] += h_sineWave2[currentValueIndex] * sineWave2Amp;
+		}
+
+	}
+
+	//Copy this new signal back to the device
+	cudaMemcpy(d_currentSignal, h_signal, signalByteSize, cudaMemcpyHostToDevice);
+
+
+
+	//Free everything from this iteration
+	cudaFree(d_currentSignal);
+
+	cudaFreeHost(h_signal);
+
+
+
+
+	//Free everything
+
+
+}
 
 
 
