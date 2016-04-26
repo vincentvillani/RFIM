@@ -46,12 +46,12 @@ void Benchmark()
 {
 
 	//Benchmark
-	uint64_t iterations = 50;
+	uint64_t iterations = 5;
 
 	//Signal
 	uint64_t h_valuesPerSample = 13;
 	uint64_t h_numberOfSamples;
-	uint64_t h_dimensionsToReduce = 2;
+	uint64_t h_dimensionsToReduce = 1;
 	uint64_t h_batchSize;
 	uint64_t h_numberOfCudaStreams;
 	uint64_t h_numberOfThreads;
@@ -75,137 +75,134 @@ void Benchmark()
 
 
 
-	for(uint64_t f = 0; f < 11; ++f)
+
+	//For each numberOfSamples value
+	for(uint64_t i = 14; i < 15; ++i)
 	{
+		//h_numberOfSamples = 1 << i;
+		h_numberOfSamples = 15625;
 
-		//For each numberOfSamples value
-		for(uint64_t i = 14; i < 15; ++i)
+		//For each batchSize
+		for(uint64_t j = 1; j < 2; ++j)
 		{
-			h_numberOfSamples = 1 << i;
+
+			//h_batchSize = 1 << j;
+			//h_numberOfCudaStreams = 1 << j;
+			h_batchSize = 1024;
+			h_numberOfCudaStreams = 1024;
 
 
-
-			//For each batchSize
-			for(uint64_t j = 0; j < 4; ++j)
+			for(uint64_t p = 0; p < 1; ++p)
 			{
 
-				h_batchSize = 1 << j;
-				h_numberOfCudaStreams = 1 << j;
+				//h_numberOfThreads = 1 << p;
+				h_numberOfThreads = 1;
 
 
 
-				for(uint64_t p = 0; p < 1; ++p)
+				RFIMMemoryStruct** RFIMStructArray;
+				cudaMallocHost(&RFIMStructArray, sizeof(RFIMMemoryStruct*) * h_numberOfThreads);
+
+				//Allocate all the signal memory
+				float* d_signal;
+				float* d_filteredSignal;
+				uint64_t signalThreadOffset = h_valuesPerSample * h_numberOfSamples * h_batchSize;
+				uint64_t signalByteSize = sizeof(float) * h_valuesPerSample * h_numberOfSamples * h_batchSize * h_numberOfThreads;
+
+
+				cudaMalloc(&d_filteredSignal, signalByteSize);
+
+				d_signal = Device_GenerateWhiteNoiseSignal(&rngGen, h_valuesPerSample, h_numberOfSamples, h_batchSize, h_numberOfThreads);
+
+
+				//Create a struct for each of the threads
+				for(uint64_t currentThreadIndex = 0; currentThreadIndex < h_numberOfThreads; ++currentThreadIndex)
 				{
+					RFIMStructArray[currentThreadIndex] = RFIMMemoryStructCreate(h_valuesPerSample, h_numberOfSamples,
+							h_dimensionsToReduce, h_batchSize, h_numberOfCudaStreams);
 
-					h_numberOfThreads = 1 << p;
-
-
-
-
-					RFIMMemoryStruct** RFIMStructArray;
-					cudaMallocHost(&RFIMStructArray, sizeof(RFIMMemoryStruct*) * h_numberOfThreads);
-
-					//Allocate all the signal memory
-					float* d_signal;
-					float* d_filteredSignal;
-					uint64_t signalThreadOffset = h_valuesPerSample * h_numberOfSamples * h_batchSize;
-					uint64_t signalByteSize = sizeof(float) * h_valuesPerSample * h_numberOfSamples * h_batchSize * h_numberOfThreads;
-
-
-					cudaMalloc(&d_filteredSignal, signalByteSize);
-
-					d_signal = Device_GenerateWhiteNoiseSignal(&rngGen, h_valuesPerSample, h_numberOfSamples, h_batchSize, h_numberOfThreads);
-
-
-					//Create a struct for each of the threads
-					for(uint64_t currentThreadIndex = 0; currentThreadIndex < h_numberOfThreads; ++currentThreadIndex)
-					{
-						RFIMStructArray[currentThreadIndex] = RFIMMemoryStructCreate(h_valuesPerSample, h_numberOfSamples,
-								h_dimensionsToReduce, h_batchSize, h_numberOfCudaStreams);
-
-					}
+				}
 
 
 
-					//Start a thread for each RFIMStruct
-					std::vector<std::thread*> threadVector;
+				//Start a thread for each RFIMStruct
+				std::vector<std::thread*> threadVector;
 
 
 
 
-					//Start the timer
-					double startTime = cpuSecond();
+				//Start the timer
+				double startTime = cpuSecond();
 
-					//Start the threads
-					for(uint64_t currentThreadIndex = 0; currentThreadIndex < h_numberOfThreads; ++currentThreadIndex)
-					{
-						//Placement new, construct an object on already allocated memory
-						threadVector.push_back( new std::thread(RFIMInstance,
-								RFIMStructArray[currentThreadIndex],
-								d_signal + (currentThreadIndex * signalThreadOffset),
-								d_filteredSignal + (currentThreadIndex * signalThreadOffset), iterations));
-
-
-					}
-
-
-					//Join with each of the threads
-					for(uint64_t currentThreadIndex = 0; currentThreadIndex < h_numberOfThreads; ++currentThreadIndex)
-					{
-						threadVector[currentThreadIndex]->join();
-					}
-
-
-
-
-
-					//Compute stats here
-					//calculate total duration
-					double totalDuration = cpuSecond() - startTime;
-
-					//find the average time taken for each iteration
-					double averageIterationTime = totalDuration / iterations;
-
-					//TODO: *************** ADD THREAD NUM HERE!!!! ***************
-					//Calculate the average samples processed per iteration in Mhz
-					double averageHz = (h_numberOfSamples * h_batchSize * iterations * h_numberOfThreads) / totalDuration;
-					double averageMhz =  averageHz / 1000000.0;
-
-
-
-					//Print the results
-					printf("Signal: (%llu, %llu, %llu, %llu, %llu)\nIterations: %llu\nTotal time: %fs\nAverage time: %fs\nAverage Mhz: %f\n\n",
-							h_valuesPerSample, h_numberOfSamples, h_batchSize, h_numberOfCudaStreams, h_numberOfThreads, iterations, totalDuration, averageIterationTime, averageMhz);
-
-
-
-
-
-					//Free each of the RFIMStructs
-					for(uint64_t currentThreadIndex = 0; currentThreadIndex < h_numberOfThreads; ++currentThreadIndex)
-					{
-						RFIMMemoryStructDestroy(RFIMStructArray[currentThreadIndex]);
-						std::thread* currentThread = threadVector[currentThreadIndex];
-						delete currentThread;
-
-					}
-
-
-
-					cudaFreeHost(RFIMStructArray);
-
-
-					cudaFree(d_signal);
-					cudaFree(d_filteredSignal);
+				//Start the threads
+				for(uint64_t currentThreadIndex = 0; currentThreadIndex < h_numberOfThreads; ++currentThreadIndex)
+				{
+					//Placement new, construct an object on already allocated memory
+					threadVector.push_back( new std::thread(RFIMInstance,
+							RFIMStructArray[currentThreadIndex],
+							d_signal + (currentThreadIndex * signalThreadOffset),
+							d_filteredSignal + (currentThreadIndex * signalThreadOffset), iterations));
 
 
 				}
 
-			}
-		}
 
-		h_valuesPerSample *= 2;
+				//Join with each of the threads
+				for(uint64_t currentThreadIndex = 0; currentThreadIndex < h_numberOfThreads; ++currentThreadIndex)
+				{
+					threadVector[currentThreadIndex]->join();
+				}
+
+
+
+
+
+				//Compute stats here
+				//calculate total duration
+				double totalDuration = cpuSecond() - startTime;
+
+				//find the average time taken for each iteration
+				double averageIterationTime = totalDuration / iterations;
+
+				//TODO: *************** ADD THREAD NUM HERE!!!! ***************
+				//Calculate the average samples processed per iteration in Mhz
+				double averageHz = (h_numberOfSamples * h_batchSize * iterations * h_numberOfThreads) / totalDuration;
+				double averageMhz =  averageHz / 1000000.0;
+
+
+
+				//Print the results
+				printf("Signal: (%llu, %llu, %llu, %llu, %llu)\nIterations: %llu\nTotal time: %fs\nAverage time: %fs\nAverage Mhz: %f\n\n",
+						h_valuesPerSample, h_numberOfSamples, h_batchSize, h_numberOfCudaStreams, h_numberOfThreads, iterations, totalDuration, averageIterationTime, averageMhz);
+
+
+
+
+
+				//Free each of the RFIMStructs
+				for(uint64_t currentThreadIndex = 0; currentThreadIndex < h_numberOfThreads; ++currentThreadIndex)
+				{
+					RFIMMemoryStructDestroy(RFIMStructArray[currentThreadIndex]);
+					std::thread* currentThread = threadVector[currentThreadIndex];
+					delete currentThread;
+
+				}
+
+
+
+				cudaFreeHost(RFIMStructArray);
+
+
+				cudaFree(d_signal);
+				cudaFree(d_filteredSignal);
+
+
+			}
+
+		}
 	}
+
+
 
 
 	curandDestroyGenerator(rngGen);
@@ -992,7 +989,7 @@ void BenchmarkRFIMDualInterferor()
 	uint64_t h_batchSize = 1;
 	uint64_t h_numberOfCudaStreams = 1;
 	uint64_t h_numberOfThreads = 1;
-	uint64_t h_numberOfBeamsToAdd;
+	uint64_t h_numberOfBeamsToAdd = 13;
 
 	float whiteNoiseMean = 0.0f;
 	float whiteNoiseStdDev = 1.0f;
@@ -1019,6 +1016,8 @@ void BenchmarkRFIMDualInterferor()
 	}
 
 
+	printf("1\n");
+
 
 	//Generate 13 beam signal and space for it's result
 	uint64_t signalLength = h_valuesPerSample * h_numberOfSamples * h_batchSize * h_numberOfThreads;
@@ -1027,76 +1026,328 @@ void BenchmarkRFIMDualInterferor()
 	float* d_signal;
 	d_signal = Device_GenerateWhiteNoiseSignal(&rngGen, h_valuesPerSample, h_numberOfSamples, h_batchSize, h_numberOfThreads);
 
-	//float* d_filteredSignal;
-	//cudaMalloc(&d_filteredSignal, signalByteSize);
-
-
-
 
 
 	//Generate the sine waves with random frequencies
 	uint64_t sineWaveLength = h_numberOfSamples;
-	//uint64_t sineWaveByteSize = sizeof(float) * h_numberOfSamples;
+	uint64_t sineWaveByteSize = sizeof(float) * h_numberOfSamples;
+	uint64_t totalSineWaveByteSize = sineWaveByteSize * h_valuesPerSample;
 
 	//Get random frequency values
 	float sineWave1Freq = Utility_GenerateSingleWhiteNoiseValueHost(sineWaveMean, sineWaveStdDev);
 	float sineWave2Freq = Utility_GenerateSingleWhiteNoiseValueHost(sineWaveMean, sineWaveStdDev);
 
-	float* h_sineWave1;
-	float* h_sineWave2;
+	float* h_sineWave1; //Base sine wave
+	float* h_sineWave2; //Base sine wave
 
 	//Generate the actual sine waves, with amplitude of one
 	h_sineWave1 = Utility_GenerateSineWaveHost(sineWaveLength, sineWave1Freq, 1.0f);
 	h_sineWave2 = Utility_GenerateSineWaveHost(sineWaveLength, sineWave2Freq, 1.0f);
 
+	float* h_sineWave1Amplitudes;
+	float* h_sineWave2Amplitudes;
 
-	//Add the signal to each beam, do this twice and remove 1, then 2 eigenvectors and see what happens
+	cudaMallocHost(&h_sineWave1Amplitudes, sizeof(float) * h_valuesPerSample);
+	cudaMallocHost(&h_sineWave2Amplitudes, sizeof(float) * h_valuesPerSample);
 
+	float* h_allSineWaves1; //All thirteen versions of sine wave 1 used
+	float* h_allSineWaves2; //All thirteen versions of sine wave 2 used
 
-	//Use the same white noise signal as a base each time, add stuff to d_currentSignal rather than d_signal
-	float* d_currentSignal;
-	cudaMalloc(&d_currentSignal, signalByteSize);
-
-	//Copy the original signal to the host
-	float* h_signal;
-	cudaMallocHost(&h_signal, signalByteSize);
-	cudaMemcpy(h_signal, d_signal, signalByteSize, cudaMemcpyDeviceToHost);
-
-
-	//TODO: CALCULATE THE BEFORE VARIANCE
+	cudaMallocHost(&h_allSineWaves1, totalSineWaveByteSize);
+	cudaMallocHost(&h_allSineWaves2, totalSineWaveByteSize);
 
 
-	//Add both the sine waves to each beam, with different amplitudes each time
-	for(uint64_t currentIndex = 0; currentIndex < h_valuesPerSample; ++currentIndex)
+	printf("2\n");
+
+	//Generate the random amplitude sine waves to use, from the base sine waves
+	for(uint64_t i = 0; i < h_valuesPerSample; ++i)
 	{
-		//Generate new amplitudes for both sine waves
-		float sineWave1Amp = Utility_GenerateSingleWhiteNoiseValueHost(sineWaveMean, sineWaveStdDev);
-		float sineWave2Amp = Utility_GenerateSingleWhiteNoiseValueHost(sineWaveMean, sineWaveStdDev);
+		h_sineWave1Amplitudes[i] = Utility_GenerateSingleWhiteNoiseValueHost(sineWaveMean, sineWaveStdDev);
+		h_sineWave2Amplitudes[i] = Utility_GenerateSingleWhiteNoiseValueHost(sineWaveMean, sineWaveStdDev);
 
-		for(uint64_t currentValueIndex = 0; currentValueIndex < h_numberOfSamples; ++currentValueIndex)
+		/*
+		for(uint64_t j = 0; j < h_numberOfSamples; ++j)
 		{
-			//Add both sine wave to this beam, with their respective amplitudes
-			h_signal[ (currentValueIndex * h_valuesPerSample) + currentIndex ] += h_sineWave1[currentValueIndex] * sineWave1Amp;
-			h_signal[ (currentValueIndex * h_valuesPerSample) + currentIndex ] += h_sineWave2[currentValueIndex] * sineWave2Amp;
+			//Base index + beam base offset + line up with the actual beams index
+			h_allSineWaves1[ (i * sineWaveLength) + (j * h_valuesPerSample) + i ] =  h_sineWave1[j] * h_sineWave1Amplitudes[i];
+			h_allSineWaves2[ (i * sineWaveLength) + (j * h_valuesPerSample) + i ] =  h_sineWave2[j] * h_sineWave2Amplitudes[i];
 		}
+		*/
+
+
+		for(uint64_t j = 0; j < h_numberOfSamples; ++j)
+		{
+			//Add random amplitudes to each sine wave that we are going to use
+			h_allSineWaves1[ (i * sineWaveLength) + j] = h_sineWave1[j] * h_sineWave1Amplitudes[i];
+			h_allSineWaves2[ (i * sineWaveLength) + j] = h_sineWave2[j] * h_sineWave2Amplitudes[i];
+		}
+
+
 
 	}
 
-	//Copy this new signal back to the device
-	cudaMemcpy(d_currentSignal, h_signal, signalByteSize, cudaMemcpyHostToDevice);
+	printf("3\n");
+
+
+	//Add the signal to each beam, do this twice and remove 1, then 2 eigenvectors and see what happens
+
+	for(uint64_t i = 0; i < 2; ++i)
+	{
+
+		h_dimensionsToReduce = i + 1;
+
+
+		//Use the same white noise signal as a base each time, add stuff to d_currentSignal rather than d_signal
+		float* d_currentSignal;
+		cudaMalloc(&d_currentSignal, signalByteSize);
+
+		//Copy the original signal to the host
+		float* h_signal;
+		cudaMallocHost(&h_signal, signalByteSize);
+		cudaMemcpy(h_signal, d_signal, signalByteSize, cudaMemcpyDeviceToHost);
 
 
 
-	//Free everything from this iteration
-	cudaFree(d_currentSignal);
+		//TODO: CALCULATE THE BEFORE VARIANCE
+		float h_totalVarianceBefore = Utility_Variance(h_signal, h_valuesPerSample * h_numberOfSamples);
+		float* h_subSignalVarianceBefore = Utility_SubSignalVariance(h_signal, h_valuesPerSample, h_numberOfSamples);
 
-	cudaFreeHost(h_signal);
+		printf("4\n");
 
+		//Add both the sine waves to each beam, with their different amplitudes each time
+		//For each beam
+		for(uint64_t currentIndex = 0; currentIndex < h_valuesPerSample; ++currentIndex)
+		{
+
+			//For each sample in that beam
+			for(uint64_t currentValueIndex = 0; currentValueIndex < h_numberOfSamples; ++currentValueIndex)
+			{
+				uint64_t currentBeamIndex = (currentValueIndex * h_valuesPerSample) + currentIndex;
+				uint64_t currentSineWaveIndex = (currentIndex * sineWaveLength) + currentValueIndex;
+
+				//Add both sine wave to this beam
+				h_signal[ currentBeamIndex ] += h_allSineWaves1[ currentSineWaveIndex ];
+				h_signal[ currentBeamIndex ] += h_allSineWaves2[ currentSineWaveIndex ];
+			}
+
+		}
+
+
+		printf("5\n");
+
+
+		//Write the whole before signal to a file
+		std::stringstream ss;
+		ss << "RFIMBenchmark/BenchmarkRFIMDualInterferor/before" << 13 << "BeamsToAdd"
+				<< h_dimensionsToReduce << "DimensionsToReduce.txt";
+
+		Utility_WriteSignalMatrixToFile( ss.str(), h_signal, h_numberOfSamples, h_valuesPerSample);
+
+
+		//Copy this new signal back to the device
+		cudaMemcpy(d_currentSignal, h_signal, signalByteSize, cudaMemcpyHostToDevice);
+
+
+		float* d_filteredSignal;
+		cudaMalloc(&d_filteredSignal, signalByteSize);
+
+		//Run the routine once and remove one eigenvector
+		RFIMMemoryStruct* RFIM = RFIMMemoryStructCreate(h_valuesPerSample, h_numberOfSamples, h_dimensionsToReduce, h_batchSize, h_numberOfCudaStreams);
+		RFIMRoutine(RFIM, d_currentSignal, d_filteredSignal);
+
+
+		float* h_filteredSignal;
+		cudaMallocHost(&h_filteredSignal, signalByteSize);
+		cudaMemcpy(h_filteredSignal, d_filteredSignal, signalByteSize, cudaMemcpyDeviceToHost);
+
+
+		//Write the whole after signal to a file
+		ss.str("");
+		ss << "RFIMBenchmark/BenchmarkRFIMDualInterferor/after" << h_numberOfBeamsToAdd << "BeamsToAdd"
+				<< h_dimensionsToReduce << "DimensionsToReduce.txt";
+
+		Utility_WriteSignalMatrixToFile( ss.str(), h_filteredSignal, h_numberOfSamples, h_valuesPerSample);
+
+
+
+		printf("6\n");
+
+
+		//Compute a bunch of stats
+		float h_totalVarianceAfter = Utility_Variance(h_filteredSignal, h_valuesPerSample * h_numberOfSamples);
+		float* h_subSignalVarianceAfter = Utility_SubSignalVariance(h_filteredSignal, h_valuesPerSample, h_numberOfSamples);
+
+		//TODO: Does it make sense to compute the signal to noise of a sine wave? I guess it does to see how strong it is?
+		//Signal to noise of the interferor waves
+		//float* h_signalToNoises;
+		//cudaMallocHost(&h_signalToNoises, sizeof(float) * h_numberOfBeamsToAdd);
+
+		float** h_sineWave1CorrelationCoefficents;
+		float** h_sineWave2CorrelationCoefficents;
+		cudaMallocHost(&h_sineWave1CorrelationCoefficents, sizeof(float*) * h_valuesPerSample);
+		cudaMallocHost(&h_sineWave2CorrelationCoefficents, sizeof(float*) * h_valuesPerSample);
+
+
+		printf("7\n");
+
+
+
+		//Compute the subSignalCorrelationCoefficents for each sine wave with every beam
+		for(uint64_t currentIndex = 0; currentIndex < h_valuesPerSample; ++currentIndex)
+		{
+			h_sineWave1CorrelationCoefficents[currentIndex] = Utility_CoefficentOfCrossCorrelation(h_filteredSignal,
+					h_allSineWaves1 + (currentIndex * h_numberOfSamples), h_valuesPerSample, h_numberOfSamples,
+					sineWaveLength);
+			h_sineWave2CorrelationCoefficents[currentIndex] = Utility_CoefficentOfCrossCorrelation(h_filteredSignal,
+					h_allSineWaves2 + (currentIndex * h_numberOfSamples), h_valuesPerSample, h_numberOfSamples,
+					sineWaveLength);
+		}
+
+
+		printf("8\n");
+
+		//Copy the largest eigenvalue over
+		float h_largestEigenvalue;
+		cudaMemcpy(&h_largestEigenvalue, RFIM->d_S, sizeof(float), cudaMemcpyDeviceToHost);
+
+
+		//Write the stats to file
+		ss.str("");
+		ss << "RFIMBenchmark/BenchmarkRFIMDualInterferor/statsFile" << h_numberOfBeamsToAdd << "BeamsToAdd"
+							<< h_dimensionsToReduce << "DimensionsToReduce.txt";
+
+
+		std::string statsFilename = ss.str();
+
+		//Write all this stuff to disk
+		FILE* statsFile = std::fopen(statsFilename.c_str(), "w");
+
+		if(statsFile == NULL)
+		{
+			fprintf(stderr, "BenchmarkRFIMDualInterferor: Unable to open statsFile for writing\n");
+			exit(1);
+		}
+
+
+		fprintf(statsFile, "Signal Info\n");
+		fprintf(statsFile, "Number of samples: %llu\n", h_numberOfSamples);
+		fprintf(statsFile, "White noise mean: %f\n", whiteNoiseMean);
+		fprintf(statsFile, "White noise standard deviation: %f\n\n", whiteNoiseStdDev);
+
+
+		printf("9\n");
+
+
+		fprintf(statsFile, "Interference Info\n");
+
+		//Sine wave one
+		fprintf(statsFile, "Sine wave 1\n");
+		for(uint64_t currentIndex = 0; currentIndex < h_numberOfBeamsToAdd; ++currentIndex)
+		{
+			fprintf(statsFile, "\tInterference sine wave1, added to beam %llu info\n", currentIndex);
+			fprintf(statsFile, "\t\tFrequency: %f\n", sineWave1Freq);
+			fprintf(statsFile, "\t\tAmplitude: %f\n", h_sineWave1Amplitudes[currentIndex]);
+			fprintf(statsFile, "\t\tNumber of samples: %llu\n\n", h_numberOfSamples);
+		}
+
+		printf("10\n");
+
+
+		fprintf(statsFile, "Sine wave 2\n");
+		for(uint64_t currentIndex = 0; currentIndex < h_numberOfBeamsToAdd; ++currentIndex)
+		{
+			fprintf(statsFile, "\tInterference sine wave2, added to beam %llu info\n", currentIndex);
+			fprintf(statsFile, "\t\tFrequency: %f\n", sineWave2Freq);
+			fprintf(statsFile, "\t\tAmplitude: %f\n", h_sineWave2Amplitudes[currentIndex]);
+			fprintf(statsFile, "\t\tNumber of samples: %llu\n\n", h_numberOfSamples);
+		}
+
+		printf("11\n");
+
+
+		fprintf(statsFile, "Eigenvectors Info\n");
+		fprintf(statsFile, "Dimensions removed: %llu\n", h_dimensionsToReduce);
+		fprintf(statsFile, "Largest eigenvalue: %f\n\n", h_largestEigenvalue);
+
+
+
+		fprintf(statsFile, "Variance Info\n");
+		fprintf(statsFile, "Total variance before: %f\n", h_totalVarianceBefore);
+		for(uint64_t currentIndex = 0; currentIndex < h_valuesPerSample; ++currentIndex)
+		{
+			fprintf(statsFile, "Beam %llu variance before: %f\n", currentIndex, h_subSignalVarianceBefore[currentIndex]);
+		}
+
+		printf("12\n");
+
+		fprintf(statsFile, "\n");
+		fprintf(statsFile, "Total variance after: %f\n", h_totalVarianceAfter);
+		for(uint64_t currentIndex = 0; currentIndex < h_valuesPerSample; ++currentIndex)
+		{
+			fprintf(statsFile, "Beam %llu variance after: %f\n", currentIndex, h_subSignalVarianceAfter[currentIndex]);
+		}
+
+
+		printf("13\n");
+
+		//Correlation coefficents
+		fprintf(statsFile, "\nSine Wave correlation coefficents\n");
+		//For each sine wave
+		for(uint64_t currentSineWaveIndex = 0; currentSineWaveIndex < h_valuesPerSample; ++currentSineWaveIndex)
+		{
+			//Print it's correlation with each beam
+			for(uint64_t currentBeamindex = 0; currentBeamindex < h_valuesPerSample; ++currentBeamindex)
+			{
+				fprintf(statsFile, "Correlation of base sine wave [1, %llu] with beam %llu: %f\n",
+						currentSineWaveIndex, currentBeamindex, h_sineWave1CorrelationCoefficents[currentSineWaveIndex][currentBeamindex]);
+
+				fprintf(statsFile, "Correlation of base sine wave [2, %llu] with beam %llu: %f\n",
+								currentSineWaveIndex, currentBeamindex, h_sineWave2CorrelationCoefficents[currentSineWaveIndex][currentBeamindex]);
+			}
+		}
+
+
+		printf("14\n");
+
+		std::fclose(statsFile);
+
+		//Free everything from this iteration
+		cudaFree(d_currentSignal);
+		cudaFree(d_filteredSignal);
+
+
+		cudaFreeHost(h_signal);
+		cudaFreeHost(h_filteredSignal);
+		cudaFreeHost(h_subSignalVarianceBefore);
+		cudaFreeHost(h_subSignalVarianceAfter);
+
+		for(uint64_t currentIndex = 0; currentIndex < h_valuesPerSample; ++currentIndex)
+		{
+			cudaFreeHost(h_sineWave1CorrelationCoefficents[currentIndex]);
+			cudaFreeHost(h_sineWave2CorrelationCoefficents[currentIndex]);
+		}
+
+		cudaFreeHost(h_sineWave1CorrelationCoefficents);
+		cudaFreeHost(h_sineWave2CorrelationCoefficents);
+
+		RFIMMemoryStructDestroy(RFIM);
+
+		printf("15\n");
+
+	}
 
 
 
 	//Free everything
+	cudaFree(d_signal);
 
+	cudaFreeHost(h_sineWave1);
+	cudaFreeHost(h_sineWave2);
+
+	cudaFreeHost(h_sineWave1Amplitudes);
+	cudaFreeHost(h_sineWave2Amplitudes);
+
+	printf("16\n");
 
 }
 

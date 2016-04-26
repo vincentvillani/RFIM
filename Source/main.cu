@@ -43,10 +43,11 @@ int main(int argc, char **argv)
 
 	//1. Run RFIM benchmark
 	//--------------------------
-	//Benchmark();
+	Benchmark();
 	//BenchmarkComplex();
 	//BenchmarkRFIMConstantInterferor();
-	BenchmarkRFIMVariableInterferorVariableEigenvectorRemoval();
+	//BenchmarkRFIMVariableInterferorVariableEigenvectorRemoval();
+	//BenchmarkRFIMDualInterferor();
 
 
 	//2. Free everything

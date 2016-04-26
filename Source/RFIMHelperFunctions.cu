@@ -626,6 +626,7 @@ void Device_EigenvalueSolver(RFIMMemoryStruct* RFIMStruct)
 
 
 
+	/*
 	//TODO: ****************** EXPERIMENT WITH PUTTING THIS AT THE END OF THE RFIM ROUTINE ******************
 	//Wait for everything to complete
 	for(uint64_t i = 0; i < RFIMStruct->h_cudaStreamsLength; ++i)
@@ -644,6 +645,7 @@ void Device_EigenvalueSolver(RFIMMemoryStruct* RFIMStruct)
 		}
 	}
 
+*/
 
 	//********************************************************************************************************
 

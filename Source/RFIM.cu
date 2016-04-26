@@ -53,6 +53,18 @@ void RFIMRoutine(RFIMMemoryStruct* RFIMStruct, float* d_columnMajorSignalMatrice
 		}
 	}
 
+
+
+	//Check each devInfo value from the eigenvalue/vector solver
+	for(uint64_t i = 0; i < RFIMStruct->h_batchSize; ++i)
+	{
+		if(RFIMStruct->h_devInfo[i] != 0)
+		{
+			fprintf(stderr, "Device_EigenvalueSolver: Error with the %dth parameter on the %lluth batch\n", RFIMStruct->h_devInfo[i], i);
+			exit(1);
+		}
+	}
+
 }
 
 
