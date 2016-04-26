@@ -15,6 +15,7 @@
 #include <cusolverDn.h>
 
 #include "../Header/RFIMMemoryStruct.h"
+#include "../Header/RFIMMemoryStructBatched.h"
 #include "../Header/RFIMMemoryStructComplex.h"
 
 
@@ -27,6 +28,7 @@ cuComplex* Device_GenerateWhiteNoiseSignalComplex(curandGenerator_t* rngGen, uin
 		uint64_t h_batchSize, uint64_t h_threadNum);
 
 void Device_CalculateMeanMatrices(RFIMMemoryStruct* RFIMStruct, float* d_signalMatrices);
+void Device_CalculateMeanMatricesBatched(RFIMMemoryStructBatched* RFIMStruct, float** d_signalMatrices);
 void Device_CalculateMeanMatricesComplex(RFIMMemoryStructComplex* RFIMStruct, cuComplex* d_signalMatrices);
 
 void Device_CalculateCovarianceMatrix(RFIMMemoryStruct* RFIMStruct, float* d_signalMatrices);

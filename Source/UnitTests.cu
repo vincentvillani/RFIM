@@ -15,6 +15,7 @@
 #include "../Header/RFIMMemoryStruct.h"
 #include "../Header/RFIMMemoryStructComplex.h"
 #include "../Header/RFIM.h"
+#include "../Header/CudaUtilityFunctions.h"
 
 #include <cublas_v2.h>
 
@@ -27,6 +28,7 @@
 
 //Production tests
 void MeanCublasProduction();
+void MeanCublasBatchedProduction();
 void MeanCublasComplexProduction();
 
 void CovarianceCublasProduction();
@@ -127,7 +129,7 @@ void MeanCublasProduction()
 	//Print the results
 	for(uint64_t i = 0; i < meanMatricesLength; ++i)
 	{
-		//printf("%llu: %f\n", i, h_meanMatrices[i]);
+		printf("Unbatched[%llu]: %f\n", i, h_meanMatrices[i]);
 	}
 
 
@@ -148,6 +150,85 @@ void MeanCublasProduction()
 	}
 
 }
+
+
+
+void MeanCublasBatchedProduction()
+{
+	uint32_t valuesPerSample = 3;
+	uint32_t sampleNum = 2;
+	uint32_t batchSize = 5;
+	uint32_t numberOfCudaStreams = 1;
+
+	RFIMMemoryStructBatched* RFIMStruct = RFIMMemoryStructBatchedCreate(valuesPerSample, sampleNum, 0, batchSize, numberOfCudaStreams);
+
+	uint64_t signalLength = valuesPerSample * sampleNum * batchSize;
+	uint64_t signalByteSize = sizeof(float) * signalLength;
+
+	float* h_signal;
+	cudaMallocHost(&h_signal, signalByteSize);
+
+	//Set the host signal
+	for(uint32_t i = 0; i < signalLength; ++i)
+	{
+		h_signal[i] = i + 1;
+	}
+
+
+	//Copy the signal over to the host
+	float* d_signal;
+	cudaMalloc(&d_signal, signalByteSize);
+	cudaMemcpy(d_signal, h_signal, signalByteSize, cudaMemcpyHostToDevice);
+
+	uint64_t signalBatchOffset = valuesPerSample * sampleNum;
+
+	//Create the batched pointers to the signal
+	float** d_signalBatched = CudaUtility_createBatchedDevicePointers(d_signal, signalBatchOffset, batchSize);
+
+	//Compute the mean vector
+	Device_CalculateMeanMatricesBatched(RFIMStruct, d_signalBatched);
+
+	//Copy the results to the host and check them
+	float* h_meanVec;
+	uint64_t meanVecLength = valuesPerSample * batchSize;
+	uint64_t meanVecByteSize = meanVecLength * sizeof(float);
+	cudaMallocHost(&h_meanVec, meanVecByteSize);
+	cudaMemcpy(h_meanVec, RFIMStruct->d_meanVec, meanVecByteSize, cudaMemcpyDeviceToHost);
+
+	//print the results
+	for(uint64_t i = 0; i < meanVecLength; ++i)
+	{
+		//printf("MeanVecBatched %llu: %f\n", i, h_meanVec[i]);
+	}
+
+
+
+	//Copy the mean matrix over to the device
+	float* h_meanMatrix;
+	uint64_t meanMatrixLength = valuesPerSample * valuesPerSample * batchSize;
+	uint64_t meanMatrixByteSize = sizeof(float) * meanMatrixLength;
+	cudaMallocHost(&h_meanMatrix, meanMatrixByteSize);
+	cudaMemcpy(h_meanMatrix, RFIMStruct->d_covarianceMatrix, meanMatrixByteSize, cudaMemcpyDeviceToHost);
+
+
+	for(uint64_t i = 0; i < meanMatrixLength; ++i)
+	{
+		printf("MeanMatrix[%llu]: %f\n", i, h_meanMatrix[i]);
+	}
+
+
+
+	//Free everything
+	cudaFreeHost(h_signal);
+	cudaFreeHost(h_meanVec);
+	cudaFreeHost(h_meanMatrix);
+
+	cudaFree(d_signal);
+	cudaFree(d_signalBatched);
+
+	RFIMMemoryStructDestroy(RFIMStruct);
+}
+
 
 
 
@@ -1722,10 +1803,12 @@ void RFIMTest()
 
 void RunAllUnitTests()
 {
-	/*
+
 	MeanCublasProduction();
+	MeanCublasBatchedProduction();
 	MeanCublasComplexProduction();
 
+	/*
 	CovarianceCublasProduction();
 	CovarianceCublasComplexProduction();
 
@@ -1739,10 +1822,10 @@ void RunAllUnitTests()
 	RoundTripNoReductionComplex();
 
 	MemoryLeakTest();
-
+	*/
 
 	//MemoryLeakTestComplex();
-	*/
+
 
 	//RFIMTest();
 

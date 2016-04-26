@@ -277,6 +277,91 @@ void Device_CalculateMeanMatrices(RFIMMemoryStruct* RFIMStruct, float* d_signalM
 
 
 
+void Device_CalculateMeanMatricesBatched(RFIMMemoryStructBatched* RFIMStruct, float** d_signalMatrices)
+{
+	//Calculate d_meanVec
+	//d_meanVec = d_oneMatrix (1 x h_numberOfSamples) * d_signal (transposed) (h_numberOfSamples x h_valuesPerSample ) matrix = 1 * h_valuesPerSample matrix
+	//This each of the beams added up. It adds up the columns of transposed d_signal
+	//---------------------------
+	cublasStatus_t cublasError;
+
+
+	float alpha = 1.0f / RFIMStruct->h_numberOfSamples;
+	float beta = 0;
+
+	//uint64_t signalMatrixOffset = RFIMStruct->h_valuesPerSample * RFIMStruct->h_numberOfSamples;
+	//uint64_t meanVecOffset = RFIMStruct->h_valuesPerSample;
+
+	//uint64_t streamIndex = 0;
+
+
+
+	//Set the cuda stream
+	//cublasSetStream_v2(*RFIMStruct->cublasHandle, RFIMStruct->h_cudaStreams[streamIndex]);
+
+	//Compute the mean vector
+	//We use the same d_onevec each time
+	cublasError = cublasSgemmBatched(*RFIMStruct->cublasHandle, CUBLAS_OP_N, CUBLAS_OP_T,
+								1, RFIMStruct->h_valuesPerSample, RFIMStruct->h_numberOfSamples,
+								&alpha, (const float**)RFIMStruct->d_oneVecBatched, 1,
+								(const float**)d_signalMatrices, RFIMStruct->h_valuesPerSample, &beta,
+								RFIMStruct->d_meanVecBatched, 1,
+								RFIMStruct->h_batchSize);
+
+
+	//Check for errors
+	if(cublasError != CUBLAS_STATUS_SUCCESS)
+	{
+		fprintf(stderr, "Device_CalculateMeanMatrices: An error occured while computing d_meanVec\n");
+		exit(1);
+	}
+
+
+	/*
+	//TODO: DEBUG REMOVE
+	cudaError_t cudaError = cudaDeviceSynchronize();
+	cublasError = cublasGetError();
+
+	if(cudaError != cudaSuccess || cublasError != CUBLAS_STATUS_SUCCESS)
+	{
+		fprintf(stderr, "CalculateMeanMatrix 1 error\n");
+	}
+	*/
+
+
+
+	//Calculate mean matrix
+	//mean matrix = outer product of the transposed d_meanVec with itself
+	//d_meanMatrix = d_meanVec_Transposed (h_valuesPerSample x 1) * d_meanVec (1 x h_valuesPerSample)
+	//--------------------------------------
+
+	alpha = 1.0f;
+
+	//Compute the mean outer product
+	cublasError = cublasSgemmBatched(*RFIMStruct->cublasHandle, CUBLAS_OP_T, CUBLAS_OP_N,
+			RFIMStruct->h_valuesPerSample, RFIMStruct->h_valuesPerSample, 1,
+			&alpha, (const float**)RFIMStruct->d_meanVecBatched, 1,
+			(const float**)RFIMStruct->d_meanVecBatched, 1, &beta,
+			RFIMStruct->d_covarianceMatrixBatched, RFIMStruct->h_valuesPerSample,
+			RFIMStruct->h_batchSize);
+
+
+
+	//Check for errors
+	if(cublasError != CUBLAS_STATUS_SUCCESS)
+	{
+		fprintf(stderr, "Device_CalculateMeanMatrices: An error occured while computing d_meanVec\n");
+		exit(1);
+	}
+
+
+}
+
+
+
+
+
+
 void Device_CalculateMeanMatricesComplex(RFIMMemoryStructComplex* RFIMStruct, cuComplex* d_signalMatrices)
 {
 	//Calculate d_meanVec
