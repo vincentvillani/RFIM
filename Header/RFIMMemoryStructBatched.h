@@ -44,12 +44,15 @@ typedef struct RFIMMemoryStructBatched
 	//Eigenvector/value working memory
 	float* d_U;
 	uint64_t h_UBatchOffset;
+	float** d_UBatched;
 
 	float* d_S;
 	uint64_t h_SBatchOffset;
+	//float** d_SBatched;
 
 	float* d_VT;
 	uint64_t h_VTBatchOffset;
+
 
 
 	int h_singleEigWorkingSpaceByteSize;

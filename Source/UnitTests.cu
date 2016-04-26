@@ -32,9 +32,11 @@ void MeanCublasBatchedProduction();
 void MeanCublasComplexProduction();
 
 void CovarianceCublasProduction();
+void CovarianceCublasBatchedProduction();
 void CovarianceCublasComplexProduction();
 
 void EigendecompProduction();
+void EigendecompBatchedProduction();
 void EigendecompComplexProduction();
 
 void FilteringProduction();
@@ -419,6 +421,77 @@ void CovarianceCublasProduction()
 
 
 
+
+
+void CovarianceCublasBatchedProduction()
+{
+	uint32_t valuesPerSample = 3;
+	uint32_t sampleNum = 2;
+	uint32_t batchSize = 5;
+	uint32_t numberOfCudaStreams = 1;
+
+	RFIMMemoryStructBatched* RFIMStruct = RFIMMemoryStructBatchedCreate(valuesPerSample, sampleNum, 0, batchSize, numberOfCudaStreams);
+
+	uint64_t signalLength = valuesPerSample * sampleNum * batchSize;
+	uint64_t signalByteSize = sizeof(float) * signalLength;
+
+	float* h_signal;
+	cudaMallocHost(&h_signal, signalByteSize);
+
+	//Set the host signal
+	for(uint32_t i = 0; i < signalLength; ++i)
+	{
+		h_signal[i] = i + 1;
+	}
+
+
+	//Copy the signal over to the host
+	float* d_signal;
+	cudaMalloc(&d_signal, signalByteSize);
+	cudaMemcpy(d_signal, h_signal, signalByteSize, cudaMemcpyHostToDevice);
+
+
+	//Make batched pointers to the signal
+	float** d_signalBatched;
+	uint64_t signalOffset = valuesPerSample * sampleNum;
+	d_signalBatched = CudaUtility_createBatchedDevicePointers(d_signal, signalOffset, batchSize);
+
+
+	//Calculate the covariance matrices
+	Device_CalculateCovarianceMatrixBatched(RFIMStruct, d_signalBatched);
+
+
+	//Copy the covariance matrix over to the host
+	float* h_covarianceMatrix;
+	uint64_t covarianceMatrixLength = valuesPerSample * valuesPerSample * batchSize;
+	uint64_t covarianceMatrixByteSize = sizeof(float) * covarianceMatrixLength;
+	cudaMallocHost(&h_covarianceMatrix, covarianceMatrixByteSize);
+	cudaMemcpy(h_covarianceMatrix, RFIMStruct->d_covarianceMatrix, covarianceMatrixByteSize, cudaMemcpyDeviceToHost);
+
+
+	//Print the result
+	for(uint64_t i = 0; i < covarianceMatrixLength; ++i)
+	{
+		printf("CovarianceMatrix[%llu]: %f\n", i, h_covarianceMatrix[i]);
+	}
+
+
+	//Free all memory
+	cudaFree(d_signal);
+	cudaFree(d_signalBatched);
+
+	cudaFreeHost(h_signal);
+	cudaFreeHost(h_covarianceMatrix);
+
+	RFIMMemoryStructDestroy(RFIMStruct);
+
+}
+
+
+
+
+
+
 void CovarianceCublasComplexProduction()
 {
 	uint32_t valuesPerSample = 3;
@@ -694,6 +767,170 @@ void EigendecompProduction()
 
 	RFIMMemoryStructDestroy(RFIMStruct);
 }
+
+
+
+
+
+
+void EigendecompBatchedProduction()
+{
+	uint64_t valuesPerSample = 2;
+	uint64_t numberOfSamples = 2;
+	uint64_t batchSize = 20;
+	uint64_t numberOfCudaStreams = 1;
+	uint64_t singleCovarianceMatrixLength = valuesPerSample * valuesPerSample;
+	uint64_t covarianceMatrixLength = singleCovarianceMatrixLength * batchSize;
+	uint64_t covarianceMatrixByteSize = sizeof(float) * covarianceMatrixLength;
+
+
+	RFIMMemoryStructBatched* RFIMStruct = RFIMMemoryStructBatchedCreate(valuesPerSample, valuesPerSample,
+			numberOfSamples, batchSize, numberOfCudaStreams);
+
+
+	float* h_covarianceMatrices;
+	cudaMallocHost(&h_covarianceMatrices, covarianceMatrixByteSize);
+
+
+	//Set the matrices
+	for(uint64_t i = 0; i < batchSize; ++i)
+	{
+		float* currentCovarianceMatrix = h_covarianceMatrices + (i * singleCovarianceMatrixLength);
+
+		currentCovarianceMatrix[0] = 5.0f;
+		currentCovarianceMatrix[1] = 2.0f;
+		currentCovarianceMatrix[2] = 2.0f;
+		currentCovarianceMatrix[3] = 5.0f;
+
+	}
+
+
+	//Copy the matrices over to the host
+	cudaMemcpy(RFIMStruct->d_covarianceMatrix, h_covarianceMatrices, covarianceMatrixByteSize, cudaMemcpyHostToDevice);
+
+
+
+
+	//Compute the eigenvectors/values
+	Device_EigenvalueSolverBatched(RFIMStruct);
+
+
+	//Copy the results back to the host
+	float* h_S;
+	float* h_U;
+
+	uint64_t h_SLength = valuesPerSample * batchSize;
+	uint64_t h_SByteSize = sizeof(float) * h_SLength;
+
+	uint64_t h_ULength = valuesPerSample * valuesPerSample * batchSize;
+	uint64_t h_UByteSize = sizeof(float) * h_ULength;
+
+	cudaMallocHost(&h_S, h_SByteSize);
+	cudaMallocHost(&h_U, h_UByteSize);
+
+	cudaMemcpy(h_S, RFIMStruct->d_S, h_SByteSize, cudaMemcpyDeviceToHost);
+	cudaMemcpy(h_U, RFIMStruct->d_U, h_UByteSize, cudaMemcpyDeviceToHost);
+
+
+	float eigenvalueExpectedResults[2];
+	eigenvalueExpectedResults[0] = 7.0f;
+	eigenvalueExpectedResults[1] = 3.0f;
+
+	float eigenvectorExpectedResults[4];
+	eigenvectorExpectedResults[0] = -0.707107f;
+	eigenvectorExpectedResults[1] = -0.707107f;
+	eigenvectorExpectedResults[2] = -0.707107f;
+	eigenvectorExpectedResults[3] = 0.707107f;
+
+
+	uint64_t singleSLength = valuesPerSample;
+	uint64_t singleULength = valuesPerSample * valuesPerSample;
+
+
+	//Check the results
+	//Eigenvalues
+	for(uint64_t i = 0; i < batchSize; ++i)
+	{
+		float* currentS = h_S + (i * singleSLength);
+
+		bool failed = false;
+
+		if(fabs(currentS[0]) - fabs(eigenvalueExpectedResults[0]) > 0.000001f)
+		{
+			failed = true;
+		}
+
+		if(fabs(currentS[1]) - fabs(eigenvalueExpectedResults[1]) > 0.000001f)
+		{
+			failed = true;
+		}
+
+
+		for(uint64_t j = 0; j < 2; ++j)
+		{
+			printf("Eigenvalue[%llu][%llu] = %f\n", i, j, currentS[j]);
+		}
+
+
+		if(failed)
+		{
+			fprintf(stderr, "EigendecompProduction unit test: eigenvalues are not being computed properly!\n");
+			exit(1);
+		}
+	}
+
+
+	//Check eigenvectors
+	for(uint64_t i = 0; i < batchSize; ++i)
+	{
+
+		float* currentU = h_U + (i * singleULength);
+
+		bool failed = false;
+
+		if(fabs(currentU[0]) - fabs(eigenvectorExpectedResults[0]) > 0.000001f)
+		{
+			failed = true;
+		}
+		if(fabs(currentU[1]) - fabs(eigenvectorExpectedResults[1]) > 0.000001f)
+		{
+			failed = true;
+		}
+		if(fabs(currentU[2]) - fabs(eigenvectorExpectedResults[2]) > 0.000001f)
+		{
+			failed = true;
+		}
+		if(fabs(currentU[3]) - fabs(eigenvectorExpectedResults[3]) > 0.000001f)
+		{
+			failed = true;
+		}
+
+
+		for(uint64_t j = 0; j < 4; ++j)
+		{
+			printf("Eigenvector[%llu][%llu] = %f\n", i, j, currentU[j]);
+		}
+
+
+		if(failed)
+		{
+			fprintf(stderr, "EigendecompProduction unit test: eigenvectors are not being computed properly!\n");
+			exit(1);
+		}
+	}
+
+
+
+	//Free all memory
+	cudaFreeHost(h_covarianceMatrices);
+	cudaFreeHost(h_S);
+	cudaFreeHost(h_U);
+
+	RFIMMemoryStructDestroy(RFIMStruct);
+
+}
+
+
 
 
 
@@ -1804,17 +2041,24 @@ void RFIMTest()
 void RunAllUnitTests()
 {
 
+	/*
 	MeanCublasProduction();
 	MeanCublasBatchedProduction();
 	MeanCublasComplexProduction();
 
-	/*
+
+
 	CovarianceCublasProduction();
+	CovarianceCublasBatchedProduction();
 	CovarianceCublasComplexProduction();
+	 */
+
 
 	EigendecompProduction();
+	EigendecompBatchedProduction();
 	EigendecompComplexProduction();
 
+	/*
 	FilteringProduction();
 	FilteringProductionComplex();
 

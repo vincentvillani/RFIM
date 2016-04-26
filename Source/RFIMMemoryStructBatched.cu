@@ -127,6 +127,69 @@ RFIMMemoryStructBatched* RFIMMemoryStructBatchedCreate(uint64_t h_valuesPerSampl
 
 
 
+	//Setup eigen vector solving stuff
+
+	//U and VT
+	uint64_t singleULength = h_valuesPerSample * h_valuesPerSample;
+	uint64_t ULength = singleULength * h_batchSize;
+	uint64_t UByteSize = sizeof(float) * ULength;
+
+	cudaMalloc(&(result->d_U), UByteSize);
+	cudaMalloc(&(result->d_VT), UByteSize); //VT is the same size as U
+
+	result->h_UBatchOffset = singleULength;
+	result->h_VTBatchOffset = singleULength;
+
+	//Setup batched stuff on the device
+	//We only need batch pointers for U, we don't care about VT
+	result->d_UBatched = CudaUtility_createBatchedDevicePointers(result->d_U, result->h_UBatchOffset, h_batchSize);
+
+
+	//S
+	uint64_t singleSLength = h_valuesPerSample;
+	uint64_t SLength = h_valuesPerSample * h_batchSize;
+	uint64_t SByteLength = sizeof(float) * SLength;
+
+	cudaMalloc(&(result->d_S), SByteLength);
+
+	result->h_SBatchOffset = singleSLength;
+
+	//Setup batched stuff on the device
+	//result->d_SBatched = CudaUtility_createBatchedDevicePointers(result->d_S, result->h_SBatchOffset, h_batchSize);
+
+
+	//Eigenworking space length
+	result->h_singleEigWorkingSpaceByteSize = 0;
+
+	cusolverStatus = cusolverDnSgesvd_bufferSize(*result->cusolverHandle, h_valuesPerSample, h_valuesPerSample, &(result->h_singleEigWorkingSpaceByteSize));
+
+	//Check if it went well
+	if(cusolverStatus != CUSOLVER_STATUS_SUCCESS)
+	{
+		fprintf(stderr, "RFIMMemory::RFIMMemory(): Error finding eigenvalue working buffer size\n");
+		exit(1);
+	}
+
+
+	uint64_t totalEigenvalueWorkingspace = result->h_singleEigWorkingSpaceByteSize * h_batchSize;
+
+	//Allocate memory for the eigen working space
+	cudaMalloc(&(result->d_eigenWorkingSpace), totalEigenvalueWorkingspace);
+
+	result->h_eigenWorkingSpaceBatchOffset = result->h_singleEigWorkingSpaceByteSize / sizeof(int);
+
+
+	//DevInfo
+	uint64_t devInfoSingleLength = 1;
+	uint64_t devInfoLength = devInfoSingleLength * h_batchSize;
+	uint64_t devInfoByteSize = sizeof(int) * devInfoLength;
+
+	cudaMalloc(&(result->d_devInfo), devInfoByteSize);
+	cudaMallocHost(&(result->h_devInfo), devInfoByteSize);
+
+	result->h_devInfoBatchOffset = devInfoSingleLength;
+
+
 	return result;
 
 }

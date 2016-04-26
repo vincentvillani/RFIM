@@ -32,9 +32,11 @@ void Device_CalculateMeanMatricesBatched(RFIMMemoryStructBatched* RFIMStruct, fl
 void Device_CalculateMeanMatricesComplex(RFIMMemoryStructComplex* RFIMStruct, cuComplex* d_signalMatrices);
 
 void Device_CalculateCovarianceMatrix(RFIMMemoryStruct* RFIMStruct, float* d_signalMatrices);
+void Device_CalculateCovarianceMatrixBatched(RFIMMemoryStructBatched* RFIMStruct, float** d_signalMatrices);
 void Device_CalculateCovarianceMatrixComplex(RFIMMemoryStructComplex* RFIMStruct, cuComplex* d_signalMatrices);
 
 void Device_EigenvalueSolver(RFIMMemoryStruct* RFIMStruct);
+void Device_EigenvalueSolverBatched(RFIMMemoryStructBatched* RFIMStruct);
 void Device_EigenvalueSolverComplex(RFIMMemoryStructComplex* RFIMStruct);
 
 void Device_EigenReductionAndFiltering(RFIMMemoryStruct* RFIMStruct, float* d_originalSignalMatrices, float* d_filteredSignals);
