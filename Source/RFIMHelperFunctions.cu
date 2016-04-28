@@ -539,16 +539,6 @@ void Host_CalculateMeanMatrices(RFIMMemoryStructCPU* RFIMStruct, float* h_signal
 				RFIMStruct->h_meanVec + (i * meanVecOffset), 1, beta,
 				RFIMStruct->h_covarianceMatrix + (i * covarianceMatrixOffset), RFIMStruct->h_valuesPerSample);
 
-
-		//Compute the mean vector
-		//We use the same d_onevec each time
-		/*
-		cublasError = cublasSgemm_v2(*RFIMStruct->cublasHandle, CUBLAS_OP_N, CUBLAS_OP_T,
-									1, RFIMStruct->h_valuesPerSample, RFIMStruct->h_numberOfSamples,
-									&alpha, RFIMStruct->d_oneVec, 1,
-									d_signalMatrices + (i * signalMatrixOffset), RFIMStruct->h_valuesPerSample, &beta,
-									RFIMStruct->d_meanVec + (i * meanVecOffset), 1);
-									*/
 	}
 
 
@@ -802,13 +792,6 @@ void Host_CalculateCovarianceMatrix(RFIMMemoryStructCPU* RFIMStruct, float* sign
 				signalMatrices + (i * signalOffset), RFIMStruct->h_valuesPerSample, beta,
 				RFIMStruct->h_covarianceMatrix + (i * covarianceMatrixOffset), RFIMStruct->h_valuesPerSample);
 
-		/*
-		cublasError = cublasSgemm_v2(*RFIMStruct->cublasHandle, CUBLAS_OP_N, CUBLAS_OP_T,
-				RFIMStruct->h_valuesPerSample, RFIMStruct->h_valuesPerSample, RFIMStruct->h_numberOfSamples,
-				&alpha, d_signalMatrices + (i * signalOffset), RFIMStruct->h_valuesPerSample,
-				d_signalMatrices + (i * signalOffset), RFIMStruct->h_valuesPerSample, &beta,
-				RFIMStruct->d_covarianceMatrix + (i * covarianceMatrixOffset), RFIMStruct->h_valuesPerSample);
-		*/
 	}
 
 }
