@@ -8,6 +8,8 @@
 #ifndef RFIMMEMORYSTRUCTCPU_H_
 #define RFIMMEMORYSTRUCTCPU_H_
 
+#include <stdint.h>
+
 typedef struct RFIMMemoryStructCPU
 {
 
