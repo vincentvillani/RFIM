@@ -22,8 +22,9 @@
 #include "../Header/Benchmark.h"
 
 
+//TODO: Merge the mean matrix calculations and the covariance matrix calculations into the same function
 //TODO: Look into ways of using less memory
-//TODO: Write a CPU version?
+
 
 int main(int argc, char **argv)
 {

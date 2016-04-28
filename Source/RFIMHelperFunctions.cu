@@ -776,6 +776,43 @@ void Device_CalculateCovarianceMatrixComplex(RFIMMemoryStructComplex* RFIMStruct
 
 
 
+void Host_CalculateCovarianceMatrix(RFIMMemoryStructCPU* RFIMStruct, float* signalMatrices)
+{
+	//Calculate the mean matrices
+	Host_CalculateMeanMatrices(RFIMStruct, signalMatrices);
+
+
+	//Calculate the covariance matrices
+	//Take the outer product of the signal with itself
+	float alpha = 1.0f / RFIMStruct->h_numberOfSamples;
+	float beta = -1;
+
+	uint64_t signalOffset = RFIMStruct->h_valuesPerSample * RFIMStruct->h_numberOfSamples;
+	uint64_t covarianceMatrixOffset = RFIMStruct->h_valuesPerSample * RFIMStruct->h_valuesPerSample;
+
+
+
+
+	for(uint64_t i = 0; i < RFIMStruct->h_batchSize; ++i)
+	{
+
+		cblas_sgemm(CblasColMajor, CblasNoTrans, CblasTrans,
+				RFIMStruct->h_valuesPerSample, RFIMStruct->h_valuesPerSample, RFIMStruct->h_numberOfSamples,
+				alpha, signalMatrices + (i * signalOffset), RFIMStruct->h_valuesPerSample,
+				signalMatrices + (i * signalOffset), RFIMStruct->h_valuesPerSample, beta,
+				RFIMStruct->h_covarianceMatrix + (i * covarianceMatrixOffset), RFIMStruct->h_valuesPerSample);
+
+		/*
+		cublasError = cublasSgemm_v2(*RFIMStruct->cublasHandle, CUBLAS_OP_N, CUBLAS_OP_T,
+				RFIMStruct->h_valuesPerSample, RFIMStruct->h_valuesPerSample, RFIMStruct->h_numberOfSamples,
+				&alpha, d_signalMatrices + (i * signalOffset), RFIMStruct->h_valuesPerSample,
+				d_signalMatrices + (i * signalOffset), RFIMStruct->h_valuesPerSample, &beta,
+				RFIMStruct->d_covarianceMatrix + (i * covarianceMatrixOffset), RFIMStruct->h_valuesPerSample);
+		*/
+	}
+
+}
+
 
 
 

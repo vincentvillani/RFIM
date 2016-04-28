@@ -36,6 +36,7 @@ void MeanCublasProductionCPU();
 void CovarianceCublasProduction();
 void CovarianceCublasBatchedProduction();
 void CovarianceCublasComplexProduction();
+void CovarianceHostProduction();
 
 void EigendecompProduction();
 void EigendecompBatchedProduction();
@@ -624,6 +625,49 @@ void CovarianceCublasComplexProduction()
 	cudaFree(d_signal);
 
 	RFIMMemoryStructComplexDestroy(RFIMStruct);
+}
+
+
+
+
+void CovarianceHostProduction()
+{
+	uint32_t valuesPerSample = 3;
+	uint32_t sampleNum = 2;
+	uint32_t batchSize = 5;
+
+	RFIMMemoryStructCPU* RFIMStruct = RFIMMemoryStructCreateCPU(valuesPerSample, sampleNum, 0, batchSize);
+
+	uint64_t signalLength = valuesPerSample * sampleNum * batchSize;
+	uint64_t signalByteSize = sizeof(float) * signalLength;
+
+	float* h_signal = (float*)malloc(signalByteSize);
+
+	//Set the host signal
+	for(uint32_t i = 0; i < signalLength; ++i)
+	{
+		h_signal[i] = i + 1;
+	}
+
+
+	//calculate the covariance matrix
+	Host_CalculateCovarianceMatrix(RFIMStruct, h_signal);
+
+
+	uint64_t covarianceMatrixLength = valuesPerSample * valuesPerSample * batchSize;
+
+	//print the result
+	for(uint64_t i = 0; i < covarianceMatrixLength; ++i)
+	{
+		printf("CovarianceMatrixHost[%llu]: %f\n", i, RFIMStruct->h_covarianceMatrix[i]);
+	}
+
+
+	//Free everything
+	free(h_signal);
+
+	RFIMMemoryStructDestroy(RFIMStruct);
+
 }
 
 
@@ -2222,6 +2266,8 @@ void RunAllUnitTests()
 
 	MeanCublasProduction();
 	MeanCublasProductionCPU();
+
+	CovarianceHostProduction();
 
 	/*
 	MeanCublasBatchedProduction();
