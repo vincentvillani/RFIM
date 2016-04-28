@@ -85,6 +85,15 @@ RFIMMemoryStructCPU* RFIMMemoryStructCreateCPU(uint64_t h_valuesPerSample, uint6
 	result->h_SBatchOffset = singleSLength;
 
 
+	//Projected signal
+	//------------------------
+	uint64_t projectedSignalSingleLength = h_valuesPerSample * h_numberOfSamples;
+	uint64_t projectedSignalLength = projectedSignalSingleLength * h_batchSize;
+	uint64_t projectedSignalByteSize = sizeof(float) * projectedSignalLength;
+	result->h_projectedSignalBatchOffset = projectedSignalSingleLength;
+
+	result->h_projectedSignalMatrix = (float*)malloc(projectedSignalByteSize);
+
 	return result;
 }
 
@@ -101,6 +110,7 @@ void RFIMMemoryStructDestroy(RFIMMemoryStructCPU* RFIMStruct)
 	free(RFIMStruct->h_VT);
 	free(RFIMStruct->h_S);
 
+	free(RFIMStruct->h_projectedSignalMatrix);
 
 	free(RFIMStruct);
 }

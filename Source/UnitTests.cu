@@ -45,6 +45,7 @@ void EigendecompHostProduction();
 
 void FilteringProduction();
 void FilteringProductionComplex();
+void FilteringProductionHost();
 
 void RoundTripNoReduction();
 void RoundTripNoReductionBatched();
@@ -1230,7 +1231,7 @@ void EigendecompHostProduction()
 
 
 	uint64_t singleCovarianceMatrixLength = valuesPerSample * valuesPerSample;
-	uint64_t covarianceMatrixLength = singleCovarianceMatrixLength * batchSize;
+	//uint64_t covarianceMatrixLength = singleCovarianceMatrixLength * batchSize;
 	//uint64_t covarianceMatrixByteSize = sizeof(float) * covarianceMatrixLength;
 
 
@@ -1622,6 +1623,85 @@ void FilteringProductionComplex()
 
 }
 
+
+
+
+void FilteringProductionHost()
+{
+	uint64_t valuesPerSample = 2;
+	uint64_t numberOfSamples = 3; //THIS MAY MAKE THE UNIT TEST FAIL!?
+	uint64_t dimensionsToReduce = 0;
+	uint64_t batchSize = 20;
+
+
+	RFIMMemoryStructCPU* RFIMStruct = RFIMMemoryStructCreateCPU(valuesPerSample, numberOfSamples, dimensionsToReduce, batchSize);
+
+
+	uint64_t singleSignalLength = valuesPerSample * numberOfSamples;
+	uint64_t signalLength = singleSignalLength * batchSize;
+	uint64_t signalByteSize = sizeof(float) * signalLength;
+
+	float* h_signal = (float*)malloc(signalByteSize);
+
+
+	//Set the signal
+	for(uint64_t i = 0; i < batchSize; ++i)
+	{
+		float* currentSignal = h_signal + (i * singleSignalLength);
+
+		currentSignal[0] = 1.0f;
+		currentSignal[1] = 2.0f;
+		currentSignal[2] = 7.0f;
+		currentSignal[3] = -8.0f;
+	}
+
+
+
+	//Calculate the covarianceMatrices
+	Host_CalculateCovarianceMatrix(RFIMStruct, h_signal);
+
+
+	//Calculate the eigenvectors/values
+	Host_EigenvalueSolver(RFIMStruct);
+
+
+
+	//Allocate memory for the filtered signal
+	float* h_filteredSignal = (float*)malloc(signalByteSize);
+
+
+	//Do the projection/reprojection
+	Host_EigenReductionAndFiltering(RFIMStruct, h_signal, h_filteredSignal);
+
+
+
+	//print/check the results
+	for(uint64_t i = 0; i < batchSize; ++i)
+	{
+		float* currentSignal = h_signal + (i * singleSignalLength);
+		float* currentFilteredSignal = h_filteredSignal + (i * singleSignalLength);
+
+		for(uint64_t j = 0; j < 4; ++j)
+		{
+			printf("filteredSignal[%llu][%llu]: %f\n", i, j, currentFilteredSignal[j]);
+
+			if(currentSignal[j] - currentFilteredSignal[j] > 0.000001f)
+			{
+				fprintf(stderr, "FilteringProductionHost unit test: results are different from expected!\n");
+				fprintf(stderr, "Expected %f, Actual: %f\n", currentSignal[j], currentFilteredSignal[j]);
+				exit(1);
+			}
+		}
+	}
+
+
+
+	//Free all memory
+	free(h_signal);
+	free(h_filteredSignal);
+
+	RFIMMemoryStructDestroy(RFIMStruct);
+}
 
 
 
@@ -2400,7 +2480,8 @@ void RunAllUnitTests()
 
 	//CovarianceHostProduction();
 
-	EigendecompHostProduction();
+	//EigendecompHostProduction();
+	FilteringProductionHost();
 
 	/*
 	MeanCublasBatchedProduction();

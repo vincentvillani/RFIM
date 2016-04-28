@@ -46,7 +46,7 @@ void Host_EigenvalueSolver(RFIMMemoryStructCPU* RFIMStruct);
 void Device_EigenReductionAndFiltering(RFIMMemoryStruct* RFIMStruct, float* d_originalSignalMatrices, float* d_filteredSignals);
 void Device_EigenReductionAndFilteringBatched(RFIMMemoryStructBatched* RFIMStruct, float** d_originalSignalMatrices, float** d_filteredSignals);
 void Device_EigenReductionAndFilteringComplex(RFIMMemoryStructComplex* RFIMStruct, cuComplex* d_originalSignalMatrices, cuComplex* d_filteredSignals);
-
+void Host_EigenReductionAndFiltering(RFIMMemoryStructCPU* RFIMStruct, float* h_originalSignalMatrices, float* h_filtredSignalMatrices);
 
 
 //void Device_MatrixTranspose(cublasHandle_t* cublasHandle, const float* d_matrix, float* d_matrixTransposed, uint64_t rowNum, uint64_t colNum);

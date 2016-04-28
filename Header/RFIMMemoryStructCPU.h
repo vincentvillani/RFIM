@@ -46,27 +46,9 @@ typedef struct RFIMMemoryStructCPU
 	uint64_t h_VTBatchOffset;
 
 
-	int h_singleEigWorkingSpaceByteSize;
-	float* h_eigenWorkingSpace;
-	uint64_t h_eigenWorkingSpaceBatchOffset;
-
-
-	//int* d_devInfo;
-	int* h_devInfo;
-	uint64_t h_devInfoBatchOffset;
-
-
 	float* h_projectedSignalMatrix;
 	uint64_t h_projectedSignalBatchOffset;
 
-
-	/*
-	//Library handles
-	cublasHandle_t* cublasHandle;
-	cusolverDnHandle_t* cusolverHandle;
-	cudaStream_t* h_cudaStreams;
-	uint64_t h_cudaStreamsLength;
-	*/
 
 
 }RFIMMemoryStructCPU;
