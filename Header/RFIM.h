@@ -13,12 +13,14 @@
 #include <cuComplex.h>
 
 #include "RFIMMemoryStruct.h"
+#include "RFIMMemoryStructBatched.h"
 #include "RFIMMemoryStructComplex.h"
 
 
 
 //Does RFIM mitigation and returns the filtered signal matrix device pointer
 void RFIMRoutine(RFIMMemoryStruct* RFIMStruct, float* d_columnMajorSignalMatrices, float* d_columnMajorFilteredSignalMatrices);
+void RFIMRoutineBatched(RFIMMemoryStructBatched* RFIMStruct, float** d_columnMajorSignalMatrices, float** d_columnMajorFilteredSignalMatrices);
 void RFIMRoutineComplex(RFIMMemoryStructComplex* RFIMStruct, cuComplex* d_columnMajorSignalMatrices, cuComplex* d_columnMajorFilteredSignalMatrices);
 
 

@@ -15,6 +15,15 @@
 RFIMMemoryStructBatched* RFIMMemoryStructBatchedCreate(uint64_t h_valuesPerSample, uint64_t h_numberOfSamples, uint64_t h_dimensionToReduce,
 		uint64_t h_batchSize, uint64_t h_numberOfCUDAStreams)
 {
+
+	if(h_numberOfCUDAStreams < 2)
+	{
+		fprintf(stderr, "RFIMMemoryStructBatchedCreate: h_numberOfCUDAStreams needs to be at least two\n");
+		exit(1);
+	}
+
+
+
 	RFIMMemoryStructBatched* result;
 	cudaMallocHost(&result, sizeof(RFIMMemoryStructBatched));
 
@@ -190,6 +199,22 @@ RFIMMemoryStructBatched* RFIMMemoryStructBatchedCreate(uint64_t h_valuesPerSampl
 	result->h_devInfoBatchOffset = devInfoSingleLength;
 
 
+
+	//Projected signal
+	//------------------------
+	uint64_t projectedSignalSingleLength = h_valuesPerSample * h_numberOfSamples;
+	uint64_t projectedSignalLength = projectedSignalSingleLength * h_batchSize;
+	uint64_t projectedSignalByteSize = sizeof(float) * projectedSignalLength;
+
+	cudaMalloc(&(result->d_projectedSignalMatrix), projectedSignalByteSize);
+
+	result->h_projectedSignalBatchOffset = projectedSignalSingleLength;
+
+	//Setup batch pointers
+	result->d_projectedSignalMatrixBatched = CudaUtility_createBatchedDevicePointers(result->d_projectedSignalMatrix,
+			projectedSignalSingleLength, h_batchSize);
+
+
 	return result;
 
 }
@@ -208,5 +233,40 @@ void RFIMMemoryStructDestroy(RFIMMemoryStructBatched* RFIMStruct)
 
 	cudaFree(RFIMStruct->d_covarianceMatrix);
 	cudaFree(RFIMStruct->d_covarianceMatrixBatched);
+
+	cudaFree(RFIMStruct->d_U);
+	cudaFree(RFIMStruct->d_UBatched);
+
+	cudaFree(RFIMStruct->d_S);
+
+	cudaFree(RFIMStruct->d_VT);
+
+	cudaFree(RFIMStruct->d_eigenWorkingSpace);
+
+	cudaFree(RFIMStruct->d_devInfo);
+	cudaFreeHost(RFIMStruct->h_devInfo);
+
+	cudaFree(RFIMStruct->d_projectedSignalMatrix);
+	cudaFree(RFIMStruct->d_projectedSignalMatrixBatched);
+
+
+	//Destroy the cuda library contexts
+	cublasDestroy_v2(*RFIMStruct->cublasHandle);
+	cusolverDnDestroy(*RFIMStruct->cusolverHandle);
+
+
+	cudaFreeHost(RFIMStruct->cublasHandle);
+	cudaFreeHost(RFIMStruct->cusolverHandle);
+
+	//Destroy the cuda streams
+	for(uint64_t i = 0; i < RFIMStruct->h_cudaStreamsLength; ++i)
+	{
+		cudaStreamDestroy(RFIMStruct->h_cudaStreams[i]);
+	}
+	cudaFreeHost(RFIMStruct->h_cudaStreams);
+
+	//Deallocate the struct memory on the host
+	cudaFreeHost(RFIMStruct);
+
 }
 

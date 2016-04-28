@@ -11,6 +11,7 @@
 #include "RFIMMemoryStruct.h"
 
 void Benchmark();
+void BenchmarkBatched();
 void BenchmarkComplex();
 
 //Benchmark the actual effectiveness of removing RFIM

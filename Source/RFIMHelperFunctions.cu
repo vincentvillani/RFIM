@@ -61,8 +61,21 @@ float* Device_GenerateWhiteNoiseSignal(curandGenerator_t* rngGen, uint64_t h_val
 }
 
 
-float* Device_GenerateWhiteNoiseSignal(curandGenerator_t* rngGen, uint64_t h_valuesPerSample, uint64_t h_numberOfSamples, uint64_t h_batchSize, uint64_t h_threadNum)
+float* Device_GenerateWhiteNoiseSignal(curandGenerator_t* rngGen, uint64_t h_valuesPerSample, uint64_t h_numberOfSamples,
+		uint64_t h_batchSize, uint64_t h_threadNum)
 {
+
+	/*
+	CURAND_STATUS_NOT_INITIALIZED if the generator was never created \n
+	 * - CURAND_STATUS_PREEXISTING_FAILURE if there was an existing error from
+	 *    a previous kernel launch \n
+	 * - CURAND_STATUS_LAUNCH_FAILURE if the kernel launch failed for any reason \n
+	 * - CURAND_STATUS_LENGTH_NOT_MULTIPLE if the number of output samples is
+	 *    not a multiple of the quasirandom dimension, or is not a multiple
+	 *    of two for pseudorandom generators \n
+	 * - CURAND_STATUS_SUCCESS if the results were generated successfully \n
+	 * */
+
 
 	uint64_t totalSignalLength = h_valuesPerSample * h_numberOfSamples * h_batchSize * h_threadNum;
 	uint64_t totalSignalByteSize = sizeof(float) * totalSignalLength;
@@ -77,9 +90,24 @@ float* Device_GenerateWhiteNoiseSignal(curandGenerator_t* rngGen, uint64_t h_val
 	//Generate random numbers using a normal distribution
 	//Normal distribution should emulate white noise hopefully?
 	//Generate signal
-	if(curandGenerateNormal(*rngGen, d_signalMatrix, totalSignalLength, 0.0f, 1.0f) != CURAND_STATUS_SUCCESS)
+	curandStatus_t curandStatus = curandGenerateNormal(*rngGen, d_signalMatrix, totalSignalLength, 0.0f, 1.0f);
+
+	if(curandStatus != CURAND_STATUS_SUCCESS)
 	{
 		fprintf(stderr, "Device_GenerateWhiteNoiseSignal: Error when generating the signal\n");
+
+		if(curandStatus == CURAND_STATUS_NOT_INITIALIZED)
+			fprintf(stderr, "CURAND_STATUS_NOT_INITIALIZED\n");
+		else if(curandStatus == CURAND_STATUS_PREEXISTING_FAILURE)
+			fprintf(stderr, "CURAND_STATUS_PREEXISTING_FAILURE\n");
+		else if(curandStatus == CURAND_STATUS_LAUNCH_FAILURE)
+			fprintf(stderr, "CURAND_STATUS_LAUNCH_FAILURE\n");
+		else if(curandStatus == CURAND_STATUS_LENGTH_NOT_MULTIPLE)
+			fprintf(stderr, "CURAND_STATUS_LENGTH_NOT_MULTIPLE\n");
+		else
+			fprintf(stderr, "Unknown cuRand error\n");
+
+
 		exit(1);
 	}
 
@@ -568,6 +596,9 @@ void Device_CalculateCovarianceMatrixBatched(RFIMMemoryStructBatched* RFIMStruct
 	//Calculate the meanMatrix of the signal
 	//--------------------------------
 
+	//Set the stream to stream zero, so it's not on the default stream
+	cublasSetStream_v2(*RFIMStruct->cublasHandle, RFIMStruct->h_cudaStreams[0]);
+
 	Device_CalculateMeanMatricesBatched(RFIMStruct, d_signalMatrices);
 
 	//--------------------------------
@@ -707,6 +738,7 @@ void Device_EigenvalueSolver(RFIMMemoryStruct* RFIMStruct)
 
 	uint64_t cudaStreamIterator = 0;
 
+
 	for(uint64_t i = 0; i < RFIMStruct->h_batchSize; ++i)
 	{
 
@@ -816,9 +848,16 @@ void Device_EigenvalueSolver(RFIMMemoryStruct* RFIMStruct)
 
 void Device_EigenvalueSolverBatched(RFIMMemoryStructBatched* RFIMStruct)
 {
+
+
+	//Have to wait for all batched calls to finish
+	cudaStreamSynchronize(RFIMStruct->h_cudaStreams[0]);
+
+
 	cusolverStatus_t cusolverStatus;
 
-	uint64_t cudaStreamIterator = 0;
+	//use streams 1 or greater for memcopies and eigenvalue solving
+	uint64_t cudaStreamIterator = 1;
 
 	for(uint64_t i = 0; i < RFIMStruct->h_batchSize; ++i)
 	{
@@ -870,7 +909,8 @@ void Device_EigenvalueSolverBatched(RFIMMemoryStructBatched* RFIMStruct)
 		cudaStreamIterator += 1;
 		if(cudaStreamIterator >= RFIMStruct->h_cudaStreamsLength)
 		{
-			cudaStreamIterator = 0;
+			//use streams 1 or greater for memcopies and eigenvalue solving
+			cudaStreamIterator = 1;
 		}
 
 		/*
@@ -1218,6 +1258,128 @@ void Device_EigenReductionAndFiltering(RFIMMemoryStruct* RFIMStruct, float* d_or
 	}
 
 
+
+}
+
+
+
+
+void Device_EigenReductionAndFilteringBatched(RFIMMemoryStructBatched* RFIMStruct, float** d_originalSignalMatrices, float** d_filteredSignals)
+{
+	//Set the appropriate number of columns to zero
+	uint64_t eigenvectorZeroByteSize = sizeof(float) * RFIMStruct->h_valuesPerSample * RFIMStruct->h_eigenVectorDimensionsToReduce;
+
+	//use streams 1 or greater for memcopies and eigenvalue solving
+	uint64_t cudaStreamIterator = 1;
+
+	for(uint64_t i = 0; i < RFIMStruct->h_batchSize; ++i)
+	{
+		cudaMemsetAsync(RFIMStruct->d_U + (i * RFIMStruct->h_UBatchOffset),
+				0, eigenvectorZeroByteSize, RFIMStruct->h_cudaStreams[cudaStreamIterator]);
+
+		cudaStreamIterator += 1;
+		if(cudaStreamIterator >= RFIMStruct->h_cudaStreamsLength)
+		{
+			cudaStreamIterator = 1;
+		}
+
+		/*
+		//TODO: DEBUG REMOVE
+		cudaError_t cudaError = cudaDeviceSynchronize();
+		cublasStatus_t cublasError = cublasGetError();
+
+		if(cudaError != cudaSuccess || cublasError != CUBLAS_STATUS_SUCCESS)
+		{
+			fprintf(stderr, "Device_EigenReductionAndFiltering 1 error\n");
+		}
+		*/
+	}
+
+
+	//Wait for all the memsets to complete before stating the compute
+	for(uint64_t i = 1; i < RFIMStruct->h_cudaStreamsLength; ++i)
+	{
+		cudaStreamSynchronize(RFIMStruct->h_cudaStreams[i]);
+	}
+
+
+
+	cublasStatus_t cublasStatus;
+
+	//Projected signal matrix
+	//Ps = (Er Transposed) * Os
+	float alpha = 1;
+	float beta = 0;
+
+
+	//Do the projection
+	//compute
+
+	//Set the stream to stream zero, so it's not on the default stream
+	cublasSetStream_v2(*RFIMStruct->cublasHandle, RFIMStruct->h_cudaStreams[0]);
+
+	cublasStatus = cublasSgemmBatched(*RFIMStruct->cublasHandle, CUBLAS_OP_T, CUBLAS_OP_N,
+			RFIMStruct->h_valuesPerSample, RFIMStruct->h_numberOfSamples, RFIMStruct->h_valuesPerSample,
+			&alpha, (const float**)RFIMStruct->d_UBatched, RFIMStruct->h_valuesPerSample,
+			(const float**)d_originalSignalMatrices, RFIMStruct->h_valuesPerSample, &beta,
+			RFIMStruct->d_projectedSignalMatrixBatched, RFIMStruct->h_valuesPerSample,
+			RFIMStruct->h_batchSize);
+
+
+	//Check request status codes
+	if(cublasStatus != CUBLAS_STATUS_SUCCESS)
+	{
+		fprintf(stderr, "Device_EigenReductionAndFiltering: error calculating the projected signal\n");
+		exit(1);
+	}
+
+
+	/*
+	//TODO: DEBUG REMOVE
+	cudaError_t cudaError = cudaDeviceSynchronize();
+
+	cublasStatus = cublasGetError();
+
+	if(cudaError != cudaSuccess || cublasStatus != CUBLAS_STATUS_SUCCESS)
+	{
+		fprintf(stderr, "Device_EigenReductionAndFiltering 2 error\n");
+	}
+	*/
+
+
+
+	//Do the reprojection back
+	//final signal matrix
+	// Fs = Er * Ps
+
+
+
+	cublasStatus_t = cublasSgemmBatched(*RFIMStruct->cublasHandle, CUBLAS_OP_N, CUBLAS_OP_N,
+			RFIMStruct->h_valuesPerSample, RFIMStruct->h_numberOfSamples, RFIMStruct->h_valuesPerSample,
+			&alpha, (const float**)RFIMStruct->d_UBatched, RFIMStruct->h_valuesPerSample,
+			(const float**)RFIMStruct->d_projectedSignalMatrixBatched, RFIMStruct->h_valuesPerSample, &beta,
+			d_filteredSignals, RFIMStruct->h_valuesPerSample,
+			RFIMStruct->h_batchSize);
+
+
+
+
+	if(cublasStatus != CUBLAS_STATUS_SUCCESS)
+	{
+		fprintf(stderr, "Device_EigenReductionAndFiltering: error calculating the filtered signal\n");
+		exit(1);
+	}
+
+	/*
+	//TODO: DEBUG REMOVE
+	cudaError_t cudaError = cudaDeviceSynchronize();
+	cublasStatus = cublasGetError();
+
+	if(cudaError != cudaSuccess || cublasStatus != CUBLAS_STATUS_SUCCESS)
+	{
+		fprintf(stderr, "Device_EigenReductionAndFiltering 3 error\n");
+	}
+	*/
 
 }
 

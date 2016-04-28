@@ -67,6 +67,7 @@ typedef struct RFIMMemoryStructBatched
 
 	float* d_projectedSignalMatrix;
 	uint64_t h_projectedSignalBatchOffset;
+	float** d_projectedSignalMatrixBatched;
 
 
 	//Library handles
