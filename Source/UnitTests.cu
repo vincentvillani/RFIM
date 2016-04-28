@@ -14,6 +14,7 @@
 #include "../Header/UtilityFunctions.h"
 #include "../Header/RFIMMemoryStruct.h"
 #include "../Header/RFIMMemoryStructComplex.h"
+#include "../Header/RFIMMemoryStructCPU.h"
 #include "../Header/RFIM.h"
 #include "../Header/CudaUtilityFunctions.h"
 
@@ -30,6 +31,7 @@
 void MeanCublasProduction();
 void MeanCublasBatchedProduction();
 void MeanCublasComplexProduction();
+void MeanCublasProductionCPU();
 
 void CovarianceCublasProduction();
 void CovarianceCublasBatchedProduction();
@@ -328,6 +330,48 @@ void MeanCublasComplexProduction()
 	}
 
 }
+
+
+
+
+void MeanCublasProductionCPU()
+{
+	uint32_t valuesPerSample = 3;
+	uint32_t sampleNum = 2;
+	uint32_t batchSize = 5;
+
+	RFIMMemoryStructCPU* RFIMStruct = RFIMMemoryStructCreateCPU(valuesPerSample, sampleNum, 0, batchSize);
+
+	uint64_t signalLength = valuesPerSample * sampleNum * batchSize;
+	uint64_t signalByteSize = sizeof(float) * signalLength;
+
+	float* h_signal = (float*)malloc(signalByteSize);
+
+	//Set the host signal
+	for(uint32_t i = 0; i < signalLength; ++i)
+	{
+		h_signal[i] = i + 1;
+	}
+
+
+	//Compute the mean vector
+	Host_CalculateMeanMatrices(RFIMStruct, h_signal);
+
+	uint64_t meanMatrixLength = valuesPerSample * valuesPerSample * batchSize;
+
+	//print the results
+	for(uint64_t i = 0; i < meanMatrixLength; ++i)
+	{
+		printf("CPU meanVec[%llu]: %f\n", i, RFIMStruct->h_covarianceMatrix[i]);
+	}
+
+
+	//Free everything
+	free(h_signal);
+
+	RFIMMemoryStructDestroy(RFIMStruct);
+}
+
 
 
 
@@ -2173,8 +2217,13 @@ void RFIMTest()
 void RunAllUnitTests()
 {
 
-	/*
+
+
+
 	MeanCublasProduction();
+	MeanCublasProductionCPU();
+
+	/*
 	MeanCublasBatchedProduction();
 	MeanCublasComplexProduction();
 
@@ -2194,11 +2243,12 @@ void RunAllUnitTests()
 	/*
 	FilteringProduction();
 	FilteringProductionComplex();
-	*/
+
 
 	RoundTripNoReduction();
 	RoundTripNoReductionBatched();
 	RoundTripNoReductionComplex();
+	*/
 
 	//MemoryLeakTest();
 

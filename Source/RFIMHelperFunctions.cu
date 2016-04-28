@@ -8,7 +8,7 @@
 #include "../Header/RFIMHelperFunctions.h"
 
 #include <stdio.h>
-
+#include <mkl.h>
 
 
 #include "../Header/Kernels.h"
@@ -504,6 +504,55 @@ void Device_CalculateMeanMatricesComplex(RFIMMemoryStructComplex* RFIMStruct, cu
 		}
 		*/
 	}
+}
+
+
+
+void Host_CalculateMeanMatrices(RFIMMemoryStructCPU* RFIMStruct, float* h_signalMatrices)
+{
+	float alphaOne = 1.0f / RFIMStruct->h_numberOfSamples;
+	float alphaTwo = 1;
+	float beta = 0;
+
+	uint64_t signalMatrixOffset = RFIMStruct->h_valuesPerSample * RFIMStruct->h_numberOfSamples;
+	uint64_t meanVecOffset = RFIMStruct->h_valuesPerSample;
+	uint64_t covarianceMatrixOffset = RFIMStruct->h_valuesPerSample * RFIMStruct->h_valuesPerSample;
+
+
+	//Compute the mean vector
+	//We use the same d_onevec each time
+	for(uint64_t i = 0; i < RFIMStruct->h_batchSize; ++i)
+	{
+
+		//Calculate meanVec
+		cblas_sgemm(CblasColMajor, CblasNoTrans, CblasTrans,
+				1, RFIMStruct->h_valuesPerSample, RFIMStruct->h_numberOfSamples,
+				alphaOne, RFIMStruct->h_oneVec, 1,
+				h_signalMatrices + (i * signalMatrixOffset), RFIMStruct->h_valuesPerSample, beta,
+				RFIMStruct->h_meanVec + (i * meanVecOffset), 1);
+
+
+		//Calculate mean outer product matrix
+		cblas_sgemm(CblasColMajor, CblasTrans, CblasNoTrans,
+				RFIMStruct->h_valuesPerSample, RFIMStruct->h_valuesPerSample, 1,
+				alphaTwo, RFIMStruct->h_meanVec + (i * meanVecOffset), 1,
+				RFIMStruct->h_meanVec + (i * meanVecOffset), 1, beta,
+				RFIMStruct->h_covarianceMatrix + (i * covarianceMatrixOffset), RFIMStruct->h_valuesPerSample);
+
+
+		//Compute the mean vector
+		//We use the same d_onevec each time
+		/*
+		cublasError = cublasSgemm_v2(*RFIMStruct->cublasHandle, CUBLAS_OP_N, CUBLAS_OP_T,
+									1, RFIMStruct->h_valuesPerSample, RFIMStruct->h_numberOfSamples,
+									&alpha, RFIMStruct->d_oneVec, 1,
+									d_signalMatrices + (i * signalMatrixOffset), RFIMStruct->h_valuesPerSample, &beta,
+									RFIMStruct->d_meanVec + (i * meanVecOffset), 1);
+									*/
+	}
+
+
+
 }
 
 
