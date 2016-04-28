@@ -62,6 +62,29 @@ RFIMMemoryStructCPU* RFIMMemoryStructCreateCPU(uint64_t h_valuesPerSample, uint6
 	result->h_covarianceMatrix = (float*)malloc(covarianceMatrixByteSize);
 
 
+
+	//Eigenvector stuff
+	//------------------------
+	uint64_t singleULength = h_valuesPerSample * h_valuesPerSample;
+	uint64_t ULength = singleULength * h_batchSize;
+	uint64_t UByteSize = sizeof(float) * ULength;
+
+	result->h_U = (float*)malloc(UByteSize);
+	result->h_VT = (float*)malloc(UByteSize); //VT is the same size as U
+
+	result->h_UBatchOffset = singleULength;
+	result->h_VTBatchOffset = singleULength;
+
+
+	//S
+	uint64_t singleSLength = h_valuesPerSample;
+	uint64_t SLength = h_valuesPerSample * h_batchSize;
+	uint64_t SByteLength = sizeof(float) * SLength;
+
+	result->h_S = (float*)malloc(SByteLength);
+	result->h_SBatchOffset = singleSLength;
+
+
 	return result;
 }
 
@@ -73,6 +96,10 @@ void RFIMMemoryStructDestroy(RFIMMemoryStructCPU* RFIMStruct)
 	free(RFIMStruct->h_meanVec);
 
 	free(RFIMStruct->h_covarianceMatrix);
+
+	free(RFIMStruct->h_U);
+	free(RFIMStruct->h_VT);
+	free(RFIMStruct->h_S);
 
 
 	free(RFIMStruct);

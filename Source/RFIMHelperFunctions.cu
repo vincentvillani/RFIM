@@ -9,6 +9,8 @@
 
 #include <stdio.h>
 #include <mkl.h>
+#include <mkl_lapacke.h>
+
 
 
 #include "../Header/Kernels.h"
@@ -1143,6 +1145,51 @@ void Device_EigenvalueSolverComplex(RFIMMemoryStructComplex* RFIMStruct)
 		fprintf(stderr, "Device_EigenvalueSolver 2 error\n");
 	}
 	*/
+}
+
+
+
+
+void Host_EigenvalueSolver(RFIMMemoryStructCPU* RFIMStruct)
+{
+	int info;
+
+	//Compute the SVD for each covariance matrix
+	for(uint64_t i = 0; i < RFIMStruct->h_batchSize; ++i)
+	{
+
+		info =  LAPACKE_sgesdd(LAPACK_COL_MAJOR, 'A',
+				RFIMStruct->h_valuesPerSample, RFIMStruct->h_valuesPerSample,
+				RFIMStruct->h_covarianceMatrix + (i * RFIMStruct->h_covarianceMatrixBatchOffset), RFIMStruct->h_valuesPerSample,
+				RFIMStruct->h_S + (i * RFIMStruct->h_SBatchOffset),
+				RFIMStruct->h_U + (i * RFIMStruct->h_UBatchOffset), RFIMStruct->h_valuesPerSample,
+				RFIMStruct->h_VT + (i * RFIMStruct->h_VTBatchOffset), RFIMStruct->h_valuesPerSample);
+
+
+		//Check to see if everything went ok
+		if(info != 0)
+		{
+			//If info = -i, the i-th parameter had an illegal value
+			//If info = i, then sgesdd did not converge, updataing process failed
+			fprintf(stderr, "Host_EigenvalueSolver: SVD computation didn't converge. Info: %d\n", info);
+			exit(1);
+		}
+
+		/*
+		//Tell the device to solve the eigenvectors
+		cusolverStatus = cusolverDnSgesvd(*RFIMStruct->cusolverHandle, 'A', 'A',
+				RFIMStruct->h_valuesPerSample, RFIMStruct->h_valuesPerSample,
+				RFIMStruct->d_covarianceMatrix + (i * RFIMStruct->h_covarianceMatrixBatchOffset), RFIMStruct->h_valuesPerSample,
+				RFIMStruct->d_S + (i * RFIMStruct->h_SBatchOffset),
+				RFIMStruct->d_U + (i * RFIMStruct->h_UBatchOffset), RFIMStruct->h_valuesPerSample,
+				RFIMStruct->d_VT + (i * RFIMStruct->h_VTBatchOffset), RFIMStruct->h_valuesPerSample,
+				RFIMStruct->d_eigenWorkingSpace + (i * RFIMStruct->h_eigenWorkingSpaceBatchOffset),
+				RFIMStruct->h_singleEigWorkingSpaceByteSize,
+				NULL,
+				RFIMStruct->d_devInfo + (i * RFIMStruct->h_devInfoBatchOffset));
+	*/
+	}
+
 }
 
 

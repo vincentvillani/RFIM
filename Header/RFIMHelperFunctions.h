@@ -41,6 +41,7 @@ void Host_CalculateCovarianceMatrix(RFIMMemoryStructCPU* RFIMStruct, float* sign
 void Device_EigenvalueSolver(RFIMMemoryStruct* RFIMStruct);
 void Device_EigenvalueSolverBatched(RFIMMemoryStructBatched* RFIMStruct);
 void Device_EigenvalueSolverComplex(RFIMMemoryStructComplex* RFIMStruct);
+void Host_EigenvalueSolver(RFIMMemoryStructCPU* RFIMStruct);
 
 void Device_EigenReductionAndFiltering(RFIMMemoryStruct* RFIMStruct, float* d_originalSignalMatrices, float* d_filteredSignals);
 void Device_EigenReductionAndFilteringBatched(RFIMMemoryStructBatched* RFIMStruct, float** d_originalSignalMatrices, float** d_filteredSignals);
