@@ -163,3 +163,29 @@ void RFIMRoutineComplex(RFIMMemoryStructComplex* RFIMStruct, cuComplex* d_column
 }
 
 
+void RFIMRoutineHost(RFIMMemoryStructCPU* RFIMStruct, float* h_columnMajorSignalMatrices, float* h_columnMajorFilteredSignalMatrices)
+{
+
+
+	//If we reduce everything, we will have nothing left...
+	if(RFIMStruct->h_eigenVectorDimensionsToReduce >= RFIMStruct->h_valuesPerSample)
+	{
+		fprintf(stderr, "RFIMStruct->h_eigenVectorDimensionsToReduce >= RFIMStruct->h_valuesPerSample\n");
+		exit(1);
+	}
+
+	//Calculate covariance matrix for this signal
+	Host_CalculateCovarianceMatrix(RFIMStruct, h_columnMajorSignalMatrices);
+
+
+
+	//Calculate the eigenvectors/values
+	Host_EigenvalueSolver(RFIMStruct);
+
+
+	//Project the signal against the reduced eigenvector matrix and back again to the original dimensions
+	Host_EigenReductionAndFiltering(RFIMStruct, h_columnMajorSignalMatrices, h_columnMajorFilteredSignalMatrices);
+
+}
+
+

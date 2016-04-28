@@ -38,6 +38,28 @@ float* Utility_GenerateWhiteNoiseHost(uint64_t length, float mean, float stdDev)
 }
 
 
+float* Utility_GenerateWhiteNoiseHostMalloc(uint64_t length, float mean, float stdDev)
+{
+	float* result = (float*)malloc(sizeof(float) * length);
+
+
+	//Setup RNG generator
+	std::default_random_engine generator;
+	std::normal_distribution<float> distribution(mean, stdDev);
+
+
+	//Generate the random numbers
+	for(uint64_t i = 0; i < length; ++i)
+	{
+		result[i] = distribution(generator);
+	}
+
+
+	return result;
+
+}
+
+
 float Utility_GenerateSingleWhiteNoiseValueHost(float mean, float stdDev)
 {
 	std::default_random_engine generator;

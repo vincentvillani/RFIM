@@ -20,7 +20,9 @@
 //Write a host signal matrix to a file
 
 float* Utility_GenerateWhiteNoiseHost(uint64_t length, float mean, float stdDev);
+float* Utility_GenerateWhiteNoiseHostMalloc(uint64_t length, float mean, float stdDev);
 float Utility_GenerateSingleWhiteNoiseValueHost(float mean, float stdDev);
+
 
 float* Utility_GenerateSineWaveHost(uint64_t length, float frequency, float amplitude);
 

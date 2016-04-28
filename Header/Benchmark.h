@@ -13,6 +13,7 @@
 void Benchmark();
 void BenchmarkBatched();
 void BenchmarkComplex();
+void BenchmarkHost();
 
 //Benchmark the actual effectiveness of removing RFIM
 

@@ -21,7 +21,7 @@
 #include "../Header/RFIM.h"
 #include "../Header/Benchmark.h"
 
-
+//TODO: Run host benchmark in release mode
 //TODO: Merge the mean matrix calculations and the covariance matrix calculations into the same function
 //TODO: Look into ways of using less memory
 
@@ -29,7 +29,7 @@
 int main(int argc, char **argv)
 {
 	//Run all the unit tests
-	RunAllUnitTests();
+	//RunAllUnitTests();
 
 	/*
 	uint32_t h_valuesPerSample = 26;
@@ -47,6 +47,7 @@ int main(int argc, char **argv)
 	//Benchmark();
 	//BenchmarkBatched();
 	//BenchmarkComplex();
+	BenchmarkHost();
 	//BenchmarkRFIMConstantInterferor();
 	//BenchmarkRFIMVariableInterferorVariableEigenvectorRemoval();
 	//BenchmarkRFIMDualInterferor();
