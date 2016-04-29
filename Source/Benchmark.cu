@@ -64,7 +64,7 @@ void Benchmark()
 {
 
 	//Benchmark
-	uint64_t iterations = 5;
+	uint64_t iterations = 1000000;
 
 	//Signal
 	uint64_t h_valuesPerSample = 13;
@@ -579,7 +579,7 @@ void BenchmarkComplex()
 void BenchmarkHost()
 {
 	//Benchmark
-	uint64_t iterations = 5;
+	uint64_t iterations = 1;
 
 	//Signal
 	uint64_t h_valuesPerSample = 13;
@@ -606,7 +606,7 @@ void BenchmarkHost()
 			h_batchSize = 94675;
 
 
-			for(uint64_t p = 0; p < 5; ++p)
+			for(uint64_t p = 0; p < 1; ++p)
 			{
 
 				if(p == 0)

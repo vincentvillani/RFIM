@@ -18,6 +18,7 @@
 #include "../Header/RFIMMemoryStructBatched.h"
 #include "../Header/RFIMMemoryStructComplex.h"
 #include "../Header/RFIMMemoryStructCPU.h"
+#include "../Header/RFIMMemoryStructCPUBatched.h"
 
 
 float* Device_GenerateWhiteNoiseSignal(curandGenerator_t* rngGen, uint64_t h_valuesPerSample, uint64_t h_numberOfSamples, uint64_t h_batchSize);
@@ -32,6 +33,7 @@ void Device_CalculateMeanMatrices(RFIMMemoryStruct* RFIMStruct, float* d_signalM
 void Device_CalculateMeanMatricesBatched(RFIMMemoryStructBatched* RFIMStruct, float** d_signalMatrices);
 void Device_CalculateMeanMatricesComplex(RFIMMemoryStructComplex* RFIMStruct, cuComplex* d_signalMatrices);
 void Host_CalculateMeanMatrices(RFIMMemoryStructCPU* RFIMStruct, float* h_signalMatrices);
+void Host_CalculateMeanMatricesBatched(RFIMMemoryStructCPUBatched* RFIMStruct, float** h_signalMatrices);
 
 void Device_CalculateCovarianceMatrix(RFIMMemoryStruct* RFIMStruct, float* d_signalMatrices);
 void Device_CalculateCovarianceMatrixBatched(RFIMMemoryStructBatched* RFIMStruct, float** d_signalMatrices);

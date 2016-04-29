@@ -11,6 +11,7 @@
 #include <string.h>
 #include <mkl.h>
 #include <mkl_lapacke.h>
+#include <mkl_cblas.h>
 
 
 
@@ -549,6 +550,43 @@ void Host_CalculateMeanMatrices(RFIMMemoryStructCPU* RFIMStruct, float* h_signal
 }
 
 
+
+/*
+void Host_CalculateMeanMatricesBatched(RFIMMemoryStructCPUBatched* RFIMStruct, float** h_signalMatrices)
+{
+	float alphaOne = 1.0f / RFIMStruct->h_numberOfSamples;
+	float alphaTwo = 1;
+	float beta = 0;
+
+	float one = 1;
+
+	uint64_t signalMatrixOffset = RFIMStruct->h_valuesPerSample * RFIMStruct->h_numberOfSamples;
+	uint64_t meanVecOffset = RFIMStruct->h_valuesPerSample;
+	uint64_t covarianceMatrixOffset = RFIMStruct->h_valuesPerSample * RFIMStruct->h_valuesPerSample;
+
+	CBLAS_TRANSPOSE noTrans = CblasNoTrans;
+	CBLAS_TRANSPOSE trans = CblasTrans;
+
+	//Calculate batched meanVec
+	cblas_sgemm_batch(CblasColMajor, &noTrans, &trans,
+			&one, &RFIMStruct->h_valuesPerSample, &RFIMStruct->h_numberOfSamples,
+			&alphaOne, &RFIMStruct->h_oneVec, &one,
+			h_signalMatrices, &RFIMStruct->h_valuesPerSample, &beta,
+			RFIMStruct->h_meanVecBatched, &one, 1, &RFIMStruct->h_batchSize);
+
+	//cblas_GE
+
+	/*
+	//Calculate batched mean outer product matrix
+	cblas_sgemm(CblasColMajor, &trans, &noTrans,
+			&RFIMStruct->h_valuesPerSample, &RFIMStruct->h_valuesPerSample, 1,
+			&alphaTwo, RFIMStruct->h_meanVec + (i * meanVecOffset), 1,
+			RFIMStruct->h_meanVec + (i * meanVecOffset), 1, beta,
+			RFIMStruct->h_covarianceMatrix + (i * covarianceMatrixOffset), RFIMStruct->h_valuesPerSample);
+
+
+}
+	*/
 
 
 
@@ -1153,6 +1191,68 @@ void Device_EigenvalueSolverComplex(RFIMMemoryStructComplex* RFIMStruct)
 
 void Host_EigenvalueSolver(RFIMMemoryStructCPU* RFIMStruct)
 {
+
+	/*
+
+	//SYEVR
+	lapack_int info;
+	//const char* sChar = 'S';
+	//const char* charArg = (const char*)malloc(sizeof(const char));
+	const char* test = "S";
+	float abstol = slamch(test);
+
+	for(uint64_t i = 0; i < RFIMStruct->h_batchSize; ++i)
+	{
+		LAPACKE_ssyevr(LAPACK_COL_MAJOR, 'V', 'A', 'U',
+				RFIMStruct->h_valuesPerSample,
+				RFIMStruct->h_covarianceMatrix + (i * RFIMStruct->h_covarianceMatrixBatchOffset),
+				RFIMStruct->h_valuesPerSample,
+				0, 0, 0, 0, abstol, &info, RFIMStruct->h_S + (i * RFIMStruct->h_SBatchOffset),
+				RFIMStruct->h_U + (i * RFIMStruct->h_UBatchOffset),
+				RFIMStruct->h_valuesPerSample,
+				(lapack_int*)RFIMStruct->h_VT);
+
+
+
+		if(info != RFIMStruct->h_valuesPerSample)
+		{
+			//If info = -i, the i-th parameter had an illegal value
+			//If info = i, then sgesdd did not converge, updataing process failed
+			fprintf(stderr, "Host_EigenvalueSolver: Eigen computation didn't converge. Info: %d\n", info);
+			exit(1);
+		}
+
+	}
+
+	*/
+
+
+
+	//SYEV
+	//Compute the SVD for each covariance matrix
+	for(uint64_t i = 0; i < RFIMStruct->h_batchSize; ++i)
+	{
+
+		int info = LAPACKE_ssyev(LAPACK_COL_MAJOR, 'V', 'U', RFIMStruct->h_valuesPerSample,
+				RFIMStruct->h_covarianceMatrix + (i * RFIMStruct->h_covarianceMatrixBatchOffset),
+				RFIMStruct->h_valuesPerSample, RFIMStruct->h_S + (i * RFIMStruct->h_SBatchOffset));
+
+
+		//Check to see if everything went ok
+		if(info != 0)
+		{
+			//If info = -i, the i-th parameter had an illegal value
+			//If info = i, then sgesdd did not converge, updataing process failed
+			fprintf(stderr, "Host_EigenvalueSolver: SVD computation didn't converge. Info: %d\n", info);
+			exit(1);
+		}
+	}
+
+
+
+
+	//SVD
+	/*
 	int info;
 
 	//Compute the SVD for each covariance matrix
@@ -1188,9 +1288,9 @@ void Host_EigenvalueSolver(RFIMMemoryStructCPU* RFIMStruct)
 				RFIMStruct->h_singleEigWorkingSpaceByteSize,
 				NULL,
 				RFIMStruct->d_devInfo + (i * RFIMStruct->h_devInfoBatchOffset));
-	*/
-	}
 
+	}
+	*/
 }
 
 

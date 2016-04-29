@@ -42,6 +42,8 @@ void EigendecompProduction();
 void EigendecompBatchedProduction();
 void EigendecompComplexProduction();
 void EigendecompHostProduction();
+void EigendecompHostProductionSYEV();
+void EigendecompHostProductionSYEVR();
 
 void FilteringProduction();
 void FilteringProductionComplex();
@@ -1352,6 +1354,266 @@ void EigendecompHostProduction()
 }
 
 
+void EigendecompHostProductionSYEV()
+{
+	uint64_t valuesPerSample = 2;
+	uint64_t numberOfSamples = 2;
+	uint64_t batchSize = 20;
+
+
+	uint64_t singleCovarianceMatrixLength = valuesPerSample * valuesPerSample;
+	//uint64_t covarianceMatrixLength = singleCovarianceMatrixLength * batchSize;
+	//uint64_t covarianceMatrixByteSize = sizeof(float) * covarianceMatrixLength;
+
+
+	RFIMMemoryStructCPU* RFIMStruct = RFIMMemoryStructCreateCPU(valuesPerSample, numberOfSamples, 1, batchSize);
+
+
+	//float* h_covarianceMatrices = (float*)malloc(covarianceMatrixByteSize);
+
+
+	//Set the matrices
+	for(uint64_t i = 0; i < batchSize; ++i)
+	{
+		float* currentCovarianceMatrix = RFIMStruct->h_covarianceMatrix + (i * singleCovarianceMatrixLength);
+
+		currentCovarianceMatrix[0] = 5.0f;
+		currentCovarianceMatrix[1] = 2.0f;
+		currentCovarianceMatrix[2] = 2.0f;
+		currentCovarianceMatrix[3] = 5.0f;
+
+	}
+
+
+	//Compute the eigenvectors/values
+	Host_EigenvalueSolver(RFIMStruct);
+
+
+
+	//Check against expected results
+	float eigenvalueExpectedResults[2];
+	eigenvalueExpectedResults[0] = 3.0f;
+	eigenvalueExpectedResults[1] = 7.0f;
+
+	float eigenvectorExpectedResults[4];
+	eigenvectorExpectedResults[0] = -0.707107f;
+	eigenvectorExpectedResults[1] = -0.707107f;
+	eigenvectorExpectedResults[2] = -0.707107f;
+	eigenvectorExpectedResults[3] = 0.707107f;
+
+
+
+	//Check the results
+	//Eigenvalues
+	for(uint64_t i = 0; i < batchSize; ++i)
+	{
+		float* currentS = RFIMStruct->h_S + (i * valuesPerSample);
+
+		bool failed = false;
+
+		if(fabs(currentS[0]) - fabs(eigenvalueExpectedResults[0]) > 0.000001f)
+		{
+			failed = true;
+		}
+
+		if(fabs(currentS[1]) - fabs(eigenvalueExpectedResults[1]) > 0.000001f)
+		{
+			failed = true;
+		}
+
+
+		for(uint64_t j = 0; j < 2; ++j)
+		{
+			printf("Eigenvalue[%llu][%llu] = %f\n", i, j, currentS[j]);
+		}
+
+
+		if(failed)
+		{
+			fprintf(stderr, "EigendecompProduction unit test: eigenvalues are not being computed properly!\n");
+			//exit(1);
+		}
+	}
+
+
+	//Check eigenvectors
+	for(uint64_t i = 0; i < batchSize; ++i)
+	{
+
+		float* currentU = RFIMStruct->h_covarianceMatrix + (i * valuesPerSample * valuesPerSample);
+
+		bool failed = false;
+
+		if(fabs(currentU[0]) - fabs(eigenvectorExpectedResults[0]) > 0.000001f)
+		{
+			failed = true;
+		}
+		if(fabs(currentU[1]) - fabs(eigenvectorExpectedResults[1]) > 0.000001f)
+		{
+			failed = true;
+		}
+		if(fabs(currentU[2]) - fabs(eigenvectorExpectedResults[2]) > 0.000001f)
+		{
+			failed = true;
+		}
+		if(fabs(currentU[3]) - fabs(eigenvectorExpectedResults[3]) > 0.000001f)
+		{
+			failed = true;
+		}
+
+
+		for(uint64_t j = 0; j < 4; ++j)
+		{
+			printf("Eigenvector[%llu][%llu] = %f\n", i, j, currentU[j]);
+		}
+
+
+		if(failed)
+		{
+			fprintf(stderr, "EigendecompProduction unit test: eigenvectors are not being computed properly!\n");
+			//exit(1);
+		}
+	}
+
+
+	//Free all the memory
+
+
+	RFIMMemoryStructDestroy(RFIMStruct);
+}
+
+
+
+
+void EigendecompHostProductionSYEVR()
+{
+	uint64_t valuesPerSample = 2;
+	uint64_t numberOfSamples = 2;
+	uint64_t batchSize = 20;
+
+
+	uint64_t singleCovarianceMatrixLength = valuesPerSample * valuesPerSample;
+	//uint64_t covarianceMatrixLength = singleCovarianceMatrixLength * batchSize;
+	//uint64_t covarianceMatrixByteSize = sizeof(float) * covarianceMatrixLength;
+
+
+	RFIMMemoryStructCPU* RFIMStruct = RFIMMemoryStructCreateCPU(valuesPerSample, numberOfSamples, 1, batchSize);
+
+
+	//float* h_covarianceMatrices = (float*)malloc(covarianceMatrixByteSize);
+
+
+	//Set the matrices
+	for(uint64_t i = 0; i < batchSize; ++i)
+	{
+		float* currentCovarianceMatrix = RFIMStruct->h_covarianceMatrix + (i * singleCovarianceMatrixLength);
+
+		currentCovarianceMatrix[0] = 5.0f;
+		currentCovarianceMatrix[1] = 2.0f;
+		currentCovarianceMatrix[2] = 2.0f;
+		currentCovarianceMatrix[3] = 5.0f;
+
+	}
+
+
+	//Compute the eigenvectors/values
+	Host_EigenvalueSolver(RFIMStruct);
+
+
+
+	//Check against expected results
+	float eigenvalueExpectedResults[2];
+	eigenvalueExpectedResults[0] = 3.0f;
+	eigenvalueExpectedResults[1] = 7.0f;
+
+	float eigenvectorExpectedResults[4];
+	eigenvectorExpectedResults[0] = -0.707107f;
+	eigenvectorExpectedResults[1] = -0.707107f;
+	eigenvectorExpectedResults[2] = -0.707107f;
+	eigenvectorExpectedResults[3] = 0.707107f;
+
+
+
+	//Check the results
+	//Eigenvalues
+	for(uint64_t i = 0; i < batchSize; ++i)
+	{
+		float* currentS = RFIMStruct->h_S + (i * valuesPerSample);
+
+		bool failed = false;
+
+		if(fabs(currentS[0]) - fabs(eigenvalueExpectedResults[0]) > 0.000001f)
+		{
+			failed = true;
+		}
+
+		if(fabs(currentS[1]) - fabs(eigenvalueExpectedResults[1]) > 0.000001f)
+		{
+			failed = true;
+		}
+
+
+		for(uint64_t j = 0; j < 2; ++j)
+		{
+			printf("Eigenvalue[%llu][%llu] = %f\n", i, j, currentS[j]);
+		}
+
+
+		if(failed)
+		{
+			fprintf(stderr, "EigendecompProduction unit test: eigenvalues are not being computed properly!\n");
+			//exit(1);
+		}
+	}
+
+
+	//Check eigenvectors
+	for(uint64_t i = 0; i < batchSize; ++i)
+	{
+
+		float* currentU = RFIMStruct->h_U + (i * valuesPerSample * valuesPerSample);
+
+		bool failed = false;
+
+		if(fabs(currentU[0]) - fabs(eigenvectorExpectedResults[0]) > 0.000001f)
+		{
+			failed = true;
+		}
+		if(fabs(currentU[1]) - fabs(eigenvectorExpectedResults[1]) > 0.000001f)
+		{
+			failed = true;
+		}
+		if(fabs(currentU[2]) - fabs(eigenvectorExpectedResults[2]) > 0.000001f)
+		{
+			failed = true;
+		}
+		if(fabs(currentU[3]) - fabs(eigenvectorExpectedResults[3]) > 0.000001f)
+		{
+			failed = true;
+		}
+
+
+		for(uint64_t j = 0; j < 4; ++j)
+		{
+			printf("Eigenvector[%llu][%llu] = %f\n", i, j, currentU[j]);
+		}
+
+
+		if(failed)
+		{
+			fprintf(stderr, "EigendecompProduction unit test: eigenvectors are not being computed properly!\n");
+			//exit(1);
+		}
+	}
+
+
+	//Free all the memory
+
+
+	RFIMMemoryStructDestroy(RFIMStruct);
+}
+
+
 
 
 //Doesn't actually prove that the filter itself works, just that the math functions are working as you would expected
@@ -2481,8 +2743,10 @@ void RunAllUnitTests()
 	//CovarianceHostProduction();
 
 	//EigendecompHostProduction();
-	FilteringProductionHost();
+	//FilteringProductionHost();
 
+	//EigendecompHostProductionSYEV();
+	EigendecompHostProductionSYEVR();
 	/*
 	MeanCublasBatchedProduction();
 	MeanCublasComplexProduction();
