@@ -595,7 +595,7 @@ void BenchmarkHost()
 	for(uint64_t i = 14; i < 15; ++i)
 	{
 		//h_numberOfSamples = 1 << i;
-		h_numberOfSamples = 15625;
+		h_numberOfSamples = 169;
 
 		//For each batchSize
 		for(uint64_t j = 1; j < 2; ++j)
@@ -603,10 +603,10 @@ void BenchmarkHost()
 
 			//h_batchSize = 1 << j;
 			//h_numberOfCudaStreams = 1 << j;
-			h_batchSize = 1024;
+			h_batchSize = 94675;
 
 
-			for(uint64_t p = 0; p < 4; ++p)
+			for(uint64_t p = 0; p < 5; ++p)
 			{
 
 				if(p == 0)
