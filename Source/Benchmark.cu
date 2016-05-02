@@ -884,7 +884,7 @@ void BenchmarkRFIMConstantInterferor()
 
 
 		float* h_subSignalCorrelationCoefficents = Utility_CoefficentOfCrossCorrelation(h_filteredSignal, h_sineWave,
-				h_valuesPerSample, h_numberOfSamples, h_valuesPerSample * h_numberOfSamples);
+				h_valuesPerSample, h_numberOfSamples);
 
 
 
@@ -1185,7 +1185,7 @@ void BenchmarkRFIMVariableInterferorVariableEigenvectorRemoval()
 				cudaMallocHost(h_correlationCoefficents + currentIndex, sizeof(float) * h_valuesPerSample);
 
 				//Calculate the current set of correlation coefficents
-				h_correlationCoefficents[currentIndex] = Utility_CoefficentOfCrossCorrelation(h_filteredSignal, sineWaves[currentIndex], h_valuesPerSample, h_numberOfSamples, sineWaveSignalLength);
+				h_correlationCoefficents[currentIndex] = Utility_CoefficentOfCrossCorrelation(h_filteredSignal, sineWaves[currentIndex], h_valuesPerSample, h_numberOfSamples);
 
 			}
 
@@ -1551,11 +1551,9 @@ void BenchmarkRFIMDualInterferor()
 		for(uint64_t currentIndex = 0; currentIndex < h_valuesPerSample; ++currentIndex)
 		{
 			h_sineWave1CorrelationCoefficents[currentIndex] = Utility_CoefficentOfCrossCorrelation(h_filteredSignal,
-					h_allSineWaves1 + (currentIndex * h_numberOfSamples), h_valuesPerSample, h_numberOfSamples,
-					sineWaveLength);
+					h_allSineWaves1 + (currentIndex * h_numberOfSamples), h_valuesPerSample, h_numberOfSamples);
 			h_sineWave2CorrelationCoefficents[currentIndex] = Utility_CoefficentOfCrossCorrelation(h_filteredSignal,
-					h_allSineWaves2 + (currentIndex * h_numberOfSamples), h_valuesPerSample, h_numberOfSamples,
-					sineWaveLength);
+					h_allSineWaves2 + (currentIndex * h_numberOfSamples), h_valuesPerSample, h_numberOfSamples);
 		}
 
 

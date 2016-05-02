@@ -208,7 +208,7 @@ float* Utility_CoefficentOfCrossCorrelation(float* h_multiplexedSignal, float* h
 	//memset(result, 0, resultByteLength);
 
 	//Calculate the means
-	float h_secondSignalMean = Utility_Mean(h_secondSignal, h_secondSignalLength);
+	float h_secondSignalMean = Utility_Mean(h_secondSignal, h_numberOfSamples);
 	float* h_subSignalMeans = Utility_SubSignalMean(h_multiplexedSignal, h_valuesPerSample, h_numberOfSamples);
 
 
