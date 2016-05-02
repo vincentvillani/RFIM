@@ -407,3 +407,17 @@ void Utility_DeviceWriteSignalMatrixToFile(const std::string filename, float* d_
 	*/
 }
 
+
+void Utility_PrintFilterbankMetadata(Filterbank* filterbank)
+{
+
+	printf("Number of Samples: %lu\n", filterbank->get_nsamps());
+	printf("Number of Channels: %f\n", filterbank->get_nchans());
+	printf("Bits per Sample: %f\n", filterbank->get_nbits());
+	printf("Sample time: %f\n", filterbank->get_tsamp());
+	printf("First channel Frequency: %f\n", filterbank->get_fch1());
+	printf("Per channel bandwidth: %f\n", filterbank->get_foff());
+
+}
+
+

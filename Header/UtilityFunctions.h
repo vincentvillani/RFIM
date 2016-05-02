@@ -16,6 +16,10 @@
 
 #include <string>
 
+#include "../Header/Sigproc/SigprocFilterbank.h"
+
+
+
 
 //Write a host signal matrix to a file
 
@@ -46,7 +50,9 @@ float* Utility_SubSignalVariance(float* h_signal, uint64_t h_valuesPerSample, ui
 void Utility_WriteSignalMatrixToFile(const std::string filename, float* h_rowMajorSignalMatrix, uint64_t rows, uint64_t columns);
 void Utility_DeviceWriteSignalMatrixToFile(const std::string filename, float* d_rowMajorSignalMatrix, uint64_t rows, uint64_t columns, bool transpose);
 
+void Utility_PrintFilterbankMetadata(Filterbank* filterbank);
 
+void Utility_ImportFilterbankSignal(std::string baseFilename);
 
 
 #endif /* UTILITYFUNCTIONS_H_ */

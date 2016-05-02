@@ -17,6 +17,7 @@
 #include "../Header/RFIMMemoryStructCPU.h"
 #include "../Header/RFIM.h"
 #include "../Header/CudaUtilityFunctions.h"
+#include "../Header/Sigproc/SigprocFilterbank.h"
 
 #include <cublas_v2.h>
 
@@ -25,6 +26,8 @@
 #include <string>
 #include <thread>
 #include <vector>
+#include <sstream>
+#include <iostream>
 
 
 //Production tests
@@ -56,8 +59,9 @@ void RoundTripNoReductionComplex();
 void MemoryLeakTest();
 void MemoryLeakTestComplex();
 
-
 void RFIMTest();
+
+void FilterbankImportProduction();
 
 
 //-------------------------------------
@@ -2726,6 +2730,50 @@ void RFIMTest()
 
 
 
+void FilterbankImportProduction()
+{
+
+	std::stringstream ss;
+	std::vector<SigprocFilterbank*> filterbanks;
+
+	//Load all 13 beams
+	for(uint32_t i = 1; i < 14; ++i)
+	{
+		if(i < 10)
+		{
+			ss << "/lustre/projects/p002_swin/surveys/SUPERB/2016-01-05-12:07:06/0" << i << "/2016-01-05-12:07:06.fil";
+		}
+		else
+		{
+			ss << "/lustre/projects/p002_swin/surveys/SUPERB/2016-01-05-12:07:06/" << i << "/2016-01-05-12:07:06.fil";
+		}
+
+		std::string currentFolder = ss.str();
+
+		std::cout << "Current folder: " << currentFolder << std::endl;
+
+
+		SigprocFilterbank* currentFilterbankFile = new SigprocFilterbank(currentFolder);
+		filterbanks.push_back(currentFilterbankFile);
+
+		Utility_PrintFilterbankMetadata(currentFilterbankFile);
+
+		std::cout << std::endl;
+
+		//Clear str
+		ss.str("");
+	}
+
+
+	//Free everything
+	for(uint32_t i = 0; i < 13; ++i)
+	{
+		delete filterbanks[i];
+	}
+
+}
+
+
 
 
 
@@ -2746,7 +2794,7 @@ void RunAllUnitTests()
 	//FilteringProductionHost();
 
 	//EigendecompHostProductionSYEV();
-	EigendecompHostProductionSYEVR();
+	//EigendecompHostProductionSYEVR();
 	/*
 	MeanCublasBatchedProduction();
 	MeanCublasComplexProduction();
@@ -2781,6 +2829,8 @@ void RunAllUnitTests()
 
 
 	//RFIMTest();
+
+	FilterbankImportProduction();
 
 	printf("All tests passed!\n");
 
