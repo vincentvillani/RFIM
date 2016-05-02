@@ -199,7 +199,7 @@ float* Utility_SubSignalSignalToNoiseRatio(float* h_signal, uint64_t h_valuesPer
 
 
 float* Utility_CoefficentOfCrossCorrelation(float* h_multiplexedSignal, float* h_secondSignal,
-		uint64_t h_valuesPerSample, uint64_t h_numberOfSamples, uint64_t h_secondSignalLength)
+		uint64_t h_valuesPerSample, uint64_t h_numberOfSamples)
 {
 
 	float* result;
@@ -221,6 +221,27 @@ float* Utility_CoefficentOfCrossCorrelation(float* h_multiplexedSignal, float* h
 	memset(numerators, 0, resultByteLength);
 	memset(denominators, 0, resultByteLength);
 
+
+	//For the current sub-beam/signal
+	for(uint64_t currentBeamIndex = 0; currentBeamIndex < h_valuesPerSample; ++currentBeamIndex)
+	{
+		//Correlate samples from the second signal with the current sub-beam/signal
+		for(uint64_t currentSampleIndex = 0; currentSampleIndex < h_numberOfSamples; ++currentSampleIndex)
+		{
+
+			float currentYValue = h_secondSignal[currentSampleIndex] - h_secondSignalMean;
+			float currentXValue = (h_multiplexedSignal[currentSampleIndex * h_valuesPerSample + currentBeamIndex]) -
+					h_subSignalMeans[currentBeamIndex];
+
+			//Calculate the numerator and the denominator
+			numerators[currentBeamIndex] += currentXValue * currentYValue;
+			denominators[currentBeamIndex] += sqrtf(currentXValue * currentXValue) *
+					sqrtf(currentYValue * currentYValue);
+
+		}
+	}
+
+	/*
 	//Calculate the coefficent of  cross correlation for each beam
 	for(uint64_t i = 0; i < h_numberOfSamples; ++i)
 	{
@@ -240,6 +261,7 @@ float* Utility_CoefficentOfCrossCorrelation(float* h_multiplexedSignal, float* h
 		}
 
 	}
+	*/
 
 
 	//Do the final calculations to get the correlation coefficents

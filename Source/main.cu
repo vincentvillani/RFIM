@@ -48,10 +48,10 @@ int main(int argc, char **argv)
 	//Benchmark();
 	//BenchmarkBatched();
 	//BenchmarkComplex();
-	BenchmarkHost();
+	//BenchmarkHost();
 	//BenchmarkRFIMConstantInterferor();
 	//BenchmarkRFIMVariableInterferorVariableEigenvectorRemoval();
-	//BenchmarkRFIMDualInterferor();
+	BenchmarkRFIMDualInterferor();
 
 
 	//2. Free everything
