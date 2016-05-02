@@ -1,16 +1,10 @@
-/*
- * RFIMMemoryStructCPU.h
- *
- *  Created on: 28 Apr 2016
- *      Author: vincentvillani
- */
+#ifndef RFIM_MEMORY_STRUCT_CPU_BATCHED
+#define RFIM_MEMORY_STRUCT_CPU_BATCHED
 
-#ifndef RFIMMEMORYSTRUCTCPU_H_
-#define RFIMMEMORYSTRUCTCPU_H_
 
 #include <stdint.h>
 
-typedef struct RFIMMemoryStructCPU
+typedef struct RFIMMemoryStructCPUBatched
 {
 
 	//Signal attributes, these need to be set before use
@@ -26,12 +20,15 @@ typedef struct RFIMMemoryStructCPU
 
 	//Mean working memory
 	float* h_oneVec; //A vector filled with ones, to calculate the mean
+	float** h_oneVecBatched;
 
 	float* h_meanVec;
+	float** h_meanVecBatched;
 	uint64_t h_meanVecBatchOffset;
 
 	//Covariance matrix working memory
 	float* h_covarianceMatrix;
+	float** h_covarianceMatrixBatched;
 	uint64_t h_covarianceMatrixBatchOffset;
 
 
@@ -51,13 +48,11 @@ typedef struct RFIMMemoryStructCPU
 
 
 
-}RFIMMemoryStructCPU;
+}RFIMMemoryStructCPUBatched;
 
 
-RFIMMemoryStructCPU* RFIMMemoryStructCreateCPU(uint64_t h_valuesPerSample, uint64_t h_numberOfSamples, uint64_t h_dimensionToReduce,
+RFIMMemoryStructCPUBatched* RFIMMemoryStructCreateCPUBatched(uint64_t h_valuesPerSample, uint64_t h_numberOfSamples, uint64_t h_dimensionToReduce,
 		uint64_t h_batchSize);
-void RFIMMemoryStructDestroy(RFIMMemoryStructCPU* RFIMStruct);
+void RFIMMemoryStructDestroy(RFIMMemoryStructCPUBatched* RFIMStruct);
 
-
-
-#endif /* RFIMMEMORYSTRUCTCPU_H_ */
+#endif

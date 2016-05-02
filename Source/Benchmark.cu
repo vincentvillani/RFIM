@@ -51,12 +51,20 @@ void RFIMInstanceComplex(RFIMMemoryStructComplex* RFIM, cuComplex* d_signal, cuC
 }
 
 
+void RFIMInstanceHost(RFIMMemoryStructCPU* RFIM, float* h_signal, float* h_filteredSignal, uint64_t iterations)
+{
+	for(uint64_t i = 0; i < iterations; ++i)
+	{
+		RFIMRoutineHost(RFIM, h_signal, h_filteredSignal);
+	}
+}
+
 
 void Benchmark()
 {
 
 	//Benchmark
-	uint64_t iterations = 5;
+	uint64_t iterations = 1000000;
 
 	//Signal
 	uint64_t h_valuesPerSample = 13;
@@ -568,6 +576,165 @@ void BenchmarkComplex()
 
 
 
+void BenchmarkHost()
+{
+	//Benchmark
+	uint64_t iterations = 1;
+
+	//Signal
+	uint64_t h_valuesPerSample = 13;
+	uint64_t h_numberOfSamples;
+	uint64_t h_dimensionsToReduce = 1;
+	uint64_t h_batchSize;
+	uint64_t h_numberOfThreads;
+
+
+
+
+	//For each numberOfSamples value
+	for(uint64_t i = 14; i < 15; ++i)
+	{
+		//h_numberOfSamples = 1 << i;
+		h_numberOfSamples = 169;
+
+		//For each batchSize
+		for(uint64_t j = 1; j < 2; ++j)
+		{
+
+			//h_batchSize = 1 << j;
+			//h_numberOfCudaStreams = 1 << j;
+			h_batchSize = 94675;
+
+
+			for(uint64_t p = 0; p < 1; ++p)
+			{
+
+				if(p == 0)
+				{
+					h_numberOfThreads = 1;
+				}
+				else
+				{
+					h_numberOfThreads = 1 << p;
+					//h_numberOfThreads = p;
+				}
+
+
+
+
+				RFIMMemoryStructCPU** RFIMStructArray = (RFIMMemoryStructCPU**)malloc(sizeof(RFIMMemoryStructCPU*) * h_numberOfThreads);
+
+
+				//Allocate all the signal memory
+				float* h_signal;
+				float* h_filteredSignal;
+				uint64_t signalThreadOffset = h_valuesPerSample * h_numberOfSamples * h_batchSize;
+				uint64_t signalLength = h_valuesPerSample * h_numberOfSamples * h_batchSize * h_numberOfThreads;
+				uint64_t signalByteSize = sizeof(float) * signalLength;
+
+
+				h_signal = Utility_GenerateWhiteNoiseHostMalloc(signalLength, 0.0f, 1.0f);
+				h_filteredSignal = (float*)malloc(signalByteSize);
+
+
+
+
+
+				//Create a struct for each of the threads
+				for(uint64_t currentThreadIndex = 0; currentThreadIndex < h_numberOfThreads; ++currentThreadIndex)
+				{
+					RFIMStructArray[currentThreadIndex] = RFIMMemoryStructCreateCPU(h_valuesPerSample, h_numberOfSamples,
+							h_dimensionsToReduce, h_batchSize);
+
+				}
+
+
+
+				//Start a thread for each RFIMStruct
+				std::vector<std::thread*> threadVector;
+
+
+
+
+				//Start the timer
+				double startTime = cpuSecond();
+
+				//Start the threads
+				for(uint64_t currentThreadIndex = 0; currentThreadIndex < h_numberOfThreads; ++currentThreadIndex)
+				{
+					//Placement new, construct an object on already allocated memory
+					threadVector.push_back( new std::thread(RFIMInstanceHost,
+							RFIMStructArray[currentThreadIndex],
+							h_signal + (currentThreadIndex * signalThreadOffset),
+							h_filteredSignal + (currentThreadIndex * signalThreadOffset), iterations));
+
+
+				}
+
+
+				//Join with each of the threads
+				for(uint64_t currentThreadIndex = 0; currentThreadIndex < h_numberOfThreads; ++currentThreadIndex)
+				{
+					threadVector[currentThreadIndex]->join();
+				}
+
+
+
+
+
+				//Compute stats here
+				//calculate total duration
+				double totalDuration = cpuSecond() - startTime;
+
+				//find the average time taken for each iteration
+				double averageIterationTime = totalDuration / iterations;
+
+				//TODO: *************** ADD THREAD NUM HERE!!!! ***************
+				//Calculate the average samples processed per iteration in Mhz
+				double averageHz = (h_numberOfSamples * h_batchSize * iterations * h_numberOfThreads) / totalDuration;
+				double averageMhz =  averageHz / 1000000.0;
+
+
+
+				//Print the results
+				printf("Signal: (%llu, %llu, %llu, %llu)\nIterations: %llu\nTotal time: %fs\nAverage time: %fs\nAverage Mhz: %f\n\n",
+						h_valuesPerSample, h_numberOfSamples, h_batchSize, h_numberOfThreads, iterations, totalDuration, averageIterationTime, averageMhz);
+
+
+
+
+
+				//Free each of the RFIMStructs
+				for(uint64_t currentThreadIndex = 0; currentThreadIndex < h_numberOfThreads; ++currentThreadIndex)
+				{
+					RFIMMemoryStructDestroy(RFIMStructArray[currentThreadIndex]);
+					std::thread* currentThread = threadVector[currentThreadIndex];
+					delete currentThread;
+
+				}
+
+
+
+				free(RFIMStructArray);
+
+
+				free(h_signal);
+				free(h_filteredSignal);
+
+
+			}
+
+		}
+	}
+
+
+	printf("Benchmark complete!!\n");
+}
+
+
+
+
+
 //Add a sine wave with random amplitudes but equal phase to multiple beams
 //1/4 beams, half beams, all beams
 void BenchmarkRFIMConstantInterferor()
@@ -717,7 +884,7 @@ void BenchmarkRFIMConstantInterferor()
 
 
 		float* h_subSignalCorrelationCoefficents = Utility_CoefficentOfCrossCorrelation(h_filteredSignal, h_sineWave,
-				h_valuesPerSample, h_numberOfSamples, h_valuesPerSample * h_numberOfSamples);
+				h_valuesPerSample, h_numberOfSamples);
 
 
 
@@ -1018,7 +1185,7 @@ void BenchmarkRFIMVariableInterferorVariableEigenvectorRemoval()
 				cudaMallocHost(h_correlationCoefficents + currentIndex, sizeof(float) * h_valuesPerSample);
 
 				//Calculate the current set of correlation coefficents
-				h_correlationCoefficents[currentIndex] = Utility_CoefficentOfCrossCorrelation(h_filteredSignal, sineWaves[currentIndex], h_valuesPerSample, h_numberOfSamples, sineWaveSignalLength);
+				h_correlationCoefficents[currentIndex] = Utility_CoefficentOfCrossCorrelation(h_filteredSignal, sineWaves[currentIndex], h_valuesPerSample, h_numberOfSamples);
 
 			}
 
@@ -1384,11 +1551,9 @@ void BenchmarkRFIMDualInterferor()
 		for(uint64_t currentIndex = 0; currentIndex < h_valuesPerSample; ++currentIndex)
 		{
 			h_sineWave1CorrelationCoefficents[currentIndex] = Utility_CoefficentOfCrossCorrelation(h_filteredSignal,
-					h_allSineWaves1 + (currentIndex * h_numberOfSamples), h_valuesPerSample, h_numberOfSamples,
-					sineWaveLength);
+					h_allSineWaves1 + (currentIndex * h_numberOfSamples), h_valuesPerSample, h_numberOfSamples);
 			h_sineWave2CorrelationCoefficents[currentIndex] = Utility_CoefficentOfCrossCorrelation(h_filteredSignal,
-					h_allSineWaves2 + (currentIndex * h_numberOfSamples), h_valuesPerSample, h_numberOfSamples,
-					sineWaveLength);
+					h_allSineWaves2 + (currentIndex * h_numberOfSamples), h_valuesPerSample, h_numberOfSamples);
 		}
 
 

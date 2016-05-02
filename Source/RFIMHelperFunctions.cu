@@ -8,6 +8,10 @@
 #include "../Header/RFIMHelperFunctions.h"
 
 #include <stdio.h>
+#include <string.h>
+#include <mkl.h>
+#include <mkl_lapacke.h>
+#include <mkl_cblas.h>
 
 
 
@@ -508,6 +512,82 @@ void Device_CalculateMeanMatricesComplex(RFIMMemoryStructComplex* RFIMStruct, cu
 
 
 
+void Host_CalculateMeanMatrices(RFIMMemoryStructCPU* RFIMStruct, float* h_signalMatrices)
+{
+	float alphaOne = 1.0f / RFIMStruct->h_numberOfSamples;
+	float alphaTwo = 1;
+	float beta = 0;
+
+	uint64_t signalMatrixOffset = RFIMStruct->h_valuesPerSample * RFIMStruct->h_numberOfSamples;
+	uint64_t meanVecOffset = RFIMStruct->h_valuesPerSample;
+	uint64_t covarianceMatrixOffset = RFIMStruct->h_valuesPerSample * RFIMStruct->h_valuesPerSample;
+
+
+	//Compute the mean vector
+	//We use the same d_onevec each time
+	for(uint64_t i = 0; i < RFIMStruct->h_batchSize; ++i)
+	{
+
+		//Calculate meanVec
+		cblas_sgemm(CblasColMajor, CblasNoTrans, CblasTrans,
+				1, RFIMStruct->h_valuesPerSample, RFIMStruct->h_numberOfSamples,
+				alphaOne, RFIMStruct->h_oneVec, 1,
+				h_signalMatrices + (i * signalMatrixOffset), RFIMStruct->h_valuesPerSample, beta,
+				RFIMStruct->h_meanVec + (i * meanVecOffset), 1);
+
+
+		//Calculate mean outer product matrix
+		cblas_sgemm(CblasColMajor, CblasTrans, CblasNoTrans,
+				RFIMStruct->h_valuesPerSample, RFIMStruct->h_valuesPerSample, 1,
+				alphaTwo, RFIMStruct->h_meanVec + (i * meanVecOffset), 1,
+				RFIMStruct->h_meanVec + (i * meanVecOffset), 1, beta,
+				RFIMStruct->h_covarianceMatrix + (i * covarianceMatrixOffset), RFIMStruct->h_valuesPerSample);
+
+	}
+
+
+
+}
+
+
+
+/*
+void Host_CalculateMeanMatricesBatched(RFIMMemoryStructCPUBatched* RFIMStruct, float** h_signalMatrices)
+{
+	float alphaOne = 1.0f / RFIMStruct->h_numberOfSamples;
+	float alphaTwo = 1;
+	float beta = 0;
+
+	float one = 1;
+
+	uint64_t signalMatrixOffset = RFIMStruct->h_valuesPerSample * RFIMStruct->h_numberOfSamples;
+	uint64_t meanVecOffset = RFIMStruct->h_valuesPerSample;
+	uint64_t covarianceMatrixOffset = RFIMStruct->h_valuesPerSample * RFIMStruct->h_valuesPerSample;
+
+	CBLAS_TRANSPOSE noTrans = CblasNoTrans;
+	CBLAS_TRANSPOSE trans = CblasTrans;
+
+	//Calculate batched meanVec
+	cblas_sgemm_batch(CblasColMajor, &noTrans, &trans,
+			&one, &RFIMStruct->h_valuesPerSample, &RFIMStruct->h_numberOfSamples,
+			&alphaOne, &RFIMStruct->h_oneVec, &one,
+			h_signalMatrices, &RFIMStruct->h_valuesPerSample, &beta,
+			RFIMStruct->h_meanVecBatched, &one, 1, &RFIMStruct->h_batchSize);
+
+	//cblas_GE
+
+	/*
+	//Calculate batched mean outer product matrix
+	cblas_sgemm(CblasColMajor, &trans, &noTrans,
+			&RFIMStruct->h_valuesPerSample, &RFIMStruct->h_valuesPerSample, 1,
+			&alphaTwo, RFIMStruct->h_meanVec + (i * meanVecOffset), 1,
+			RFIMStruct->h_meanVec + (i * meanVecOffset), 1, beta,
+			RFIMStruct->h_covarianceMatrix + (i * covarianceMatrixOffset), RFIMStruct->h_valuesPerSample);
+
+
+}
+	*/
+
 
 
 
@@ -726,6 +806,36 @@ void Device_CalculateCovarianceMatrixComplex(RFIMMemoryStructComplex* RFIMStruct
 
 
 
+
+void Host_CalculateCovarianceMatrix(RFIMMemoryStructCPU* RFIMStruct, float* signalMatrices)
+{
+	//Calculate the mean matrices
+	Host_CalculateMeanMatrices(RFIMStruct, signalMatrices);
+
+
+	//Calculate the covariance matrices
+	//Take the outer product of the signal with itself
+	float alpha = 1.0f / RFIMStruct->h_numberOfSamples;
+	float beta = -1;
+
+	uint64_t signalOffset = RFIMStruct->h_valuesPerSample * RFIMStruct->h_numberOfSamples;
+	uint64_t covarianceMatrixOffset = RFIMStruct->h_valuesPerSample * RFIMStruct->h_valuesPerSample;
+
+
+
+
+	for(uint64_t i = 0; i < RFIMStruct->h_batchSize; ++i)
+	{
+
+		cblas_sgemm(CblasColMajor, CblasNoTrans, CblasTrans,
+				RFIMStruct->h_valuesPerSample, RFIMStruct->h_valuesPerSample, RFIMStruct->h_numberOfSamples,
+				alpha, signalMatrices + (i * signalOffset), RFIMStruct->h_valuesPerSample,
+				signalMatrices + (i * signalOffset), RFIMStruct->h_valuesPerSample, beta,
+				RFIMStruct->h_covarianceMatrix + (i * covarianceMatrixOffset), RFIMStruct->h_valuesPerSample);
+
+	}
+
+}
 
 
 
@@ -1072,6 +1182,113 @@ void Device_EigenvalueSolverComplex(RFIMMemoryStructComplex* RFIMStruct)
 	if(cudaError != cudaSuccess)
 	{
 		fprintf(stderr, "Device_EigenvalueSolver 2 error\n");
+	}
+	*/
+}
+
+
+
+
+void Host_EigenvalueSolver(RFIMMemoryStructCPU* RFIMStruct)
+{
+
+	/*
+
+	//SYEVR
+	lapack_int info;
+	//const char* sChar = 'S';
+	//const char* charArg = (const char*)malloc(sizeof(const char));
+	const char* test = "S";
+	float abstol = slamch(test);
+
+	for(uint64_t i = 0; i < RFIMStruct->h_batchSize; ++i)
+	{
+		LAPACKE_ssyevr(LAPACK_COL_MAJOR, 'V', 'A', 'U',
+				RFIMStruct->h_valuesPerSample,
+				RFIMStruct->h_covarianceMatrix + (i * RFIMStruct->h_covarianceMatrixBatchOffset),
+				RFIMStruct->h_valuesPerSample,
+				0, 0, 0, 0, abstol, &info, RFIMStruct->h_S + (i * RFIMStruct->h_SBatchOffset),
+				RFIMStruct->h_U + (i * RFIMStruct->h_UBatchOffset),
+				RFIMStruct->h_valuesPerSample,
+				(lapack_int*)RFIMStruct->h_VT);
+
+
+
+		if(info != RFIMStruct->h_valuesPerSample)
+		{
+			//If info = -i, the i-th parameter had an illegal value
+			//If info = i, then sgesdd did not converge, updataing process failed
+			fprintf(stderr, "Host_EigenvalueSolver: Eigen computation didn't converge. Info: %d\n", info);
+			exit(1);
+		}
+
+	}
+
+	*/
+
+
+
+	//SYEV
+	//Compute the SVD for each covariance matrix
+	for(uint64_t i = 0; i < RFIMStruct->h_batchSize; ++i)
+	{
+
+		int info = LAPACKE_ssyev(LAPACK_COL_MAJOR, 'V', 'U', RFIMStruct->h_valuesPerSample,
+				RFIMStruct->h_covarianceMatrix + (i * RFIMStruct->h_covarianceMatrixBatchOffset),
+				RFIMStruct->h_valuesPerSample, RFIMStruct->h_S + (i * RFIMStruct->h_SBatchOffset));
+
+
+		//Check to see if everything went ok
+		if(info != 0)
+		{
+			//If info = -i, the i-th parameter had an illegal value
+			//If info = i, then sgesdd did not converge, updataing process failed
+			fprintf(stderr, "Host_EigenvalueSolver: SVD computation didn't converge. Info: %d\n", info);
+			exit(1);
+		}
+	}
+
+
+
+
+	//SVD
+	/*
+	int info;
+
+	//Compute the SVD for each covariance matrix
+	for(uint64_t i = 0; i < RFIMStruct->h_batchSize; ++i)
+	{
+
+		info =  LAPACKE_sgesdd(LAPACK_COL_MAJOR, 'A',
+				RFIMStruct->h_valuesPerSample, RFIMStruct->h_valuesPerSample,
+				RFIMStruct->h_covarianceMatrix + (i * RFIMStruct->h_covarianceMatrixBatchOffset), RFIMStruct->h_valuesPerSample,
+				RFIMStruct->h_S + (i * RFIMStruct->h_SBatchOffset),
+				RFIMStruct->h_U + (i * RFIMStruct->h_UBatchOffset), RFIMStruct->h_valuesPerSample,
+				RFIMStruct->h_VT + (i * RFIMStruct->h_VTBatchOffset), RFIMStruct->h_valuesPerSample);
+
+
+		//Check to see if everything went ok
+		if(info != 0)
+		{
+			//If info = -i, the i-th parameter had an illegal value
+			//If info = i, then sgesdd did not converge, updataing process failed
+			fprintf(stderr, "Host_EigenvalueSolver: SVD computation didn't converge. Info: %d\n", info);
+			exit(1);
+		}
+
+		/*
+		//Tell the device to solve the eigenvectors
+		cusolverStatus = cusolverDnSgesvd(*RFIMStruct->cusolverHandle, 'A', 'A',
+				RFIMStruct->h_valuesPerSample, RFIMStruct->h_valuesPerSample,
+				RFIMStruct->d_covarianceMatrix + (i * RFIMStruct->h_covarianceMatrixBatchOffset), RFIMStruct->h_valuesPerSample,
+				RFIMStruct->d_S + (i * RFIMStruct->h_SBatchOffset),
+				RFIMStruct->d_U + (i * RFIMStruct->h_UBatchOffset), RFIMStruct->h_valuesPerSample,
+				RFIMStruct->d_VT + (i * RFIMStruct->h_VTBatchOffset), RFIMStruct->h_valuesPerSample,
+				RFIMStruct->d_eigenWorkingSpace + (i * RFIMStruct->h_eigenWorkingSpaceBatchOffset),
+				RFIMStruct->h_singleEigWorkingSpaceByteSize,
+				NULL,
+				RFIMStruct->d_devInfo + (i * RFIMStruct->h_devInfoBatchOffset));
+
 	}
 	*/
 }
@@ -1497,6 +1714,81 @@ void Device_EigenReductionAndFilteringComplex(RFIMMemoryStructComplex* RFIMStruc
 }
 
 
+
+void Host_EigenReductionAndFiltering(RFIMMemoryStructCPU* RFIMStruct, float* h_originalSignalMatrices, float* h_filtredSignalMatrices)
+{
+
+	//Set the appropriate number of columns to zero
+	uint64_t eigenvectorZeroByteSize = sizeof(float) * RFIMStruct->h_valuesPerSample * RFIMStruct->h_eigenVectorDimensionsToReduce;
+
+	for(uint64_t i = 0; i < RFIMStruct->h_batchSize; ++i)
+	{
+		memset(RFIMStruct->h_U + (i * RFIMStruct->h_UBatchOffset), 0, eigenvectorZeroByteSize);
+
+		/*
+		cudaMemsetAsync(RFIMStruct->d_U + (i * RFIMStruct->h_UBatchOffset),
+				0, eigenvectorZeroByteSize, RFIMStruct->h_cudaStreams[cudaStreamIterator]);
+		*/
+	}
+
+
+
+
+	float alpha = 1;
+	float beta = 0;
+
+	uint64_t originalSignalBatchOffset = RFIMStruct->h_valuesPerSample * RFIMStruct->h_numberOfSamples;
+
+
+	//Do the projection
+	for(uint64_t i = 0; i < RFIMStruct->h_batchSize; ++i)
+	{
+
+		//Projected signal matrix
+		//Ps = (Er Transposed) * Os
+		cblas_sgemm(CblasColMajor, CblasTrans, CblasNoTrans,
+				RFIMStruct->h_valuesPerSample, RFIMStruct->h_numberOfSamples, RFIMStruct->h_valuesPerSample,
+				alpha, RFIMStruct->h_U + (i * RFIMStruct->h_UBatchOffset), RFIMStruct->h_valuesPerSample,
+				h_originalSignalMatrices + (i * originalSignalBatchOffset), RFIMStruct->h_valuesPerSample, beta,
+				RFIMStruct->h_projectedSignalMatrix + (i * RFIMStruct->h_projectedSignalBatchOffset), RFIMStruct->h_valuesPerSample);
+
+
+		/*
+		cublasStatus = cublasSgemm_v2(*RFIMStruct->cublasHandle, CUBLAS_OP_T, CUBLAS_OP_N,
+				RFIMStruct->h_valuesPerSample, RFIMStruct->h_numberOfSamples, RFIMStruct->h_valuesPerSample,
+				&alpha, RFIMStruct->d_U + (i * RFIMStruct->h_UBatchOffset), RFIMStruct->h_valuesPerSample,
+				d_originalSignalMatrices + (i * originalSignalBatchOffset), RFIMStruct->h_valuesPerSample, &beta,
+				RFIMStruct->d_projectedSignalMatrix + (i * RFIMStruct->h_projectedSignalBatchOffset), RFIMStruct->h_valuesPerSample);
+
+		*/
+
+
+		//Do the reprojection back
+		//final signal matrix
+		// Fs = Er * Ps
+
+		cblas_sgemm(CblasColMajor, CblasNoTrans, CblasNoTrans,
+				RFIMStruct->h_valuesPerSample, RFIMStruct->h_numberOfSamples, RFIMStruct->h_valuesPerSample,
+				alpha,  RFIMStruct->h_U + (i * RFIMStruct->h_UBatchOffset), RFIMStruct->h_valuesPerSample,
+				RFIMStruct->h_projectedSignalMatrix + (i * RFIMStruct->h_projectedSignalBatchOffset), RFIMStruct->h_valuesPerSample, beta,
+				h_filtredSignalMatrices + (i * originalSignalBatchOffset), RFIMStruct->h_valuesPerSample);
+
+
+		/*
+		cublasStatus_t = cublasSgemm_v2(*RFIMStruct->cublasHandle, CUBLAS_OP_N, CUBLAS_OP_N,
+				RFIMStruct->h_valuesPerSample, RFIMStruct->h_numberOfSamples, RFIMStruct->h_valuesPerSample,
+				&alpha, RFIMStruct->d_U + (i * RFIMStruct->h_UBatchOffset), RFIMStruct->h_valuesPerSample,
+				RFIMStruct->d_projectedSignalMatrix + (i * RFIMStruct->h_projectedSignalBatchOffset), RFIMStruct->h_valuesPerSample, &beta,
+				d_filteredSignals + (i * originalSignalBatchOffset), RFIMStruct->h_valuesPerSample);
+
+		*/
+	}
+
+
+
+
+
+}
 
 
 

@@ -15,6 +15,7 @@
 #include "RFIMMemoryStruct.h"
 #include "RFIMMemoryStructBatched.h"
 #include "RFIMMemoryStructComplex.h"
+#include "RFIMMemoryStructCPU.h"
 
 
 
@@ -22,6 +23,6 @@
 void RFIMRoutine(RFIMMemoryStruct* RFIMStruct, float* d_columnMajorSignalMatrices, float* d_columnMajorFilteredSignalMatrices);
 void RFIMRoutineBatched(RFIMMemoryStructBatched* RFIMStruct, float** d_columnMajorSignalMatrices, float** d_columnMajorFilteredSignalMatrices);
 void RFIMRoutineComplex(RFIMMemoryStructComplex* RFIMStruct, cuComplex* d_columnMajorSignalMatrices, cuComplex* d_columnMajorFilteredSignalMatrices);
-
+void RFIMRoutineHost(RFIMMemoryStructCPU* RFIMStruct, float* h_columnMajorSignalMatrices, float* h_columnMajorFilteredSignalMatrices);
 
 #endif /* RFIM_H_ */
