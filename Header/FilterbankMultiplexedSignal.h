@@ -35,7 +35,7 @@ typedef struct FilterbankMultiplexedSignal
 FilterbankMultiplexedSignal* FMS_Create(uint32_t signalNum, uint64_t frequencyChannelNum, uint64_t perSignalSampleNum);
 void FMS_Destroy(FilterbankMultiplexedSignal* FMS);
 
-void FMS_AddSigprocFilterbankSignal(SigprocFilterbank* signal, uint32_t signalIndex);
+void FMS_AddSigprocFilterbankSignal(FilterbankMultiplexedSignal* FMS, SigprocFilterbank* sigprocSignal, uint32_t signalIndex);
 
 
 #endif /* MUTLIPLEXEDSIGNAL_H_ */

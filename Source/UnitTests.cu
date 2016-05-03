@@ -18,6 +18,7 @@
 #include "../Header/RFIM.h"
 #include "../Header/CudaUtilityFunctions.h"
 #include "../Header/Sigproc/SigprocFilterbank.h"
+#include "../Header/FilterbankMultiplexedSignal.h"
 
 #include <cublas_v2.h>
 
@@ -2736,8 +2737,13 @@ void FilterbankImportProduction()
 	std::stringstream ss;
 	std::vector<SigprocFilterbank*> filterbanks;
 
+	uint32_t numberOfBeams = 13;
+
+	//Create a FMS
+	FilterbankMultiplexedSignal* FMS = FMS_Create(13, (uint64_t)filterbanks[0]->get_nchans(), (uint64_t)filterbanks[0]->get_nsamps());
+
 	//Load all 13 beams
-	for(uint32_t i = 1; i < 14; ++i)
+	for(uint32_t i = 1; i < numberOfBeams + 1; ++i)
 	{
 		if(i < 10)
 		{
@@ -2762,7 +2768,13 @@ void FilterbankImportProduction()
 
 		//Clear str
 		ss.str("");
+
+		//Add the current filterbank into the FMS
+		FMS_AddSigprocFilterbankSignal(FMS, currentFilterbankFile, i - 1);
 	}
+
+
+
 
 
 	//Free everything
@@ -2770,6 +2782,8 @@ void FilterbankImportProduction()
 	{
 		delete filterbanks[i];
 	}
+
+	FMS_Destroy(FMS);
 
 }
 
